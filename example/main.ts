@@ -8,7 +8,6 @@ const robotsPanel = document.getElementById('robots')!;
 const loadingEl = document.getElementById('loading')!;
 
 const partLabel = document.getElementById('part-label')!;
-const loadErrorEl = document.getElementById('load-error')!;
 
 const ignoreLimitsEl = document.getElementById('ignore-limits') as HTMLInputElement;
 const showCollisionEl = document.getElementById('show-collision') as HTMLInputElement;
@@ -40,14 +39,22 @@ const ROBOTS = [
     },
 ];
 
-function loadRobot(robot: (typeof ROBOTS)[number] | { name?: string; urdf: string; up: string; package?: string }) {
+function clearActiveRobot(): void {
+    for (const btn of robotsPanel.querySelectorAll<HTMLButtonElement>('.robot-btn')) {
+        btn.classList.remove('active');
+    }
+}
+
+function loadRobot(robot: { name?: string; urdf: string; up: string; package?: string }): void {
     viewer.up = robot.up;
     upAxisEl.value = robot.up;
     viewer.package = robot.package ?? '';
     viewer.urdf = robot.urdf;
 
-    for (const btn of robotsPanel.querySelectorAll<HTMLButtonElement>('.robot-btn')) {
-        btn.classList.toggle('active', 'name' in robot && btn.dataset.name === robot.name);
+    clearActiveRobot();
+    if (robot.name) {
+        robotsPanel.querySelector<HTMLButtonElement>(`.robot-btn[data-name="${robot.name}"]`)
+            ?.classList.add('active');
     }
 }
 
@@ -75,18 +82,12 @@ upAxisEl.value = viewer.up;
 
 // ── URL loader ────────────────────────────────────────────────────────────────
 
-function loadUrl() {
+function loadUrl(): void {
     const url = urlInput.value.trim();
     if (!url) return;
     const lower = url.toLowerCase();
-    if (!lower.endsWith('.urdf') && !lower.endsWith('.xml')) {
-        loadErrorEl.textContent = 'URL must point to a .urdf (or .xml) file';
-        loadingEl.classList.add('visible', 'error');
-        return;
-    }
-    for (const btn of robotsPanel.querySelectorAll<HTMLButtonElement>('.robot-btn')) {
-        btn.classList.remove('active');
-    }
+    if (!lower.endsWith('.urdf') && !lower.endsWith('.xml')) return;
+    clearActiveRobot();
     viewer.urdf = url;
 }
 
@@ -123,9 +124,9 @@ const inspectorClose    = document.getElementById('inspector-close')!;
 let selectedJoint: string | null = null;
 let hoveredJointName: string | null = null;
 
-function fmt(v: number) { return v.toFixed(4); }
+function fmt(v: number): string { return v.toFixed(4); }
 
-function refreshSnippet() {
+function refreshSnippet(): void {
     if (!selectedJoint || !viewer.robot) return;
     const joint = viewer.robot.joints[selectedJoint];
     if (!joint) return;
@@ -136,9 +137,9 @@ function refreshSnippet() {
     const sz = parseFloat(inspectorScaleZ.value);
     const anyScale = Math.abs(sx - 1) > 0.005 || Math.abs(sy - 1) > 0.005 || Math.abs(sz - 1) > 0.005;
     const uniform = Math.abs(sx - sy) < 0.001 && Math.abs(sy - sz) < 0.001;
-    const scaleLine = anyScale
-        ? (uniform ? `\nscale: ${sx.toFixed(2)}×` : `\nscale: ${sx.toFixed(2)} ${sy.toFixed(2)} ${sz.toFixed(2)}`)
-        : '';
+    let scaleLine = '';
+    if (anyScale && uniform) scaleLine = `\nscale: ${sx.toFixed(2)}\u00d7`;
+    else if (anyScale)       scaleLine = `\nscale: ${sx.toFixed(2)} ${sy.toFixed(2)} ${sz.toFixed(2)}`;
     inspectorSnippet.textContent =
         `[${selectedJoint}]\n` +
         `<origin xyz="${fmt(p.x)} ${fmt(p.y)} ${fmt(p.z)}"\n` +
@@ -147,7 +148,7 @@ function refreshSnippet() {
 
 let _snippetDebounce = 0;
 
-function applyInspector() {
+function applyInspector(): void {
     if (!selectedJoint || !viewer.robot) return;
     const joint = viewer.robot.joints[selectedJoint];
     if (!joint) return;
@@ -166,7 +167,7 @@ function applyInspector() {
     _snippetDebounce = window.setTimeout(refreshSnippet, 150);
 }
 
-function selectPart(jointName: string | null) {
+function selectPart(jointName: string | null): void {
     selectedJoint = jointName;
     if (!jointName || !viewer.robot) { inspectorEl.style.display = 'none'; return; }
     const joint = viewer.robot.joints[jointName];
@@ -200,9 +201,6 @@ inspectorCopy.addEventListener('click', () => {
     setTimeout(() => { inspectorCopy.textContent = 'Copy'; }, 1500);
 });
 
-// Click on viewer to select a part.
-// Uses 'click' rather than pointerup so browser drag-detection handles the
-// distinction between a click and a camera orbit or joint drag.
 viewer.addEventListener('click', () => {
     if (hoveredJointName) selectPart(hoveredJointName);
 });
@@ -211,14 +209,12 @@ viewer.addEventListener('click', () => {
 
 viewer.addEventListener('urdf-change', () => {
     loadingEl.classList.add('visible');
-    loadingEl.classList.remove('error');
     jointsPanel.innerHTML = '';
     selectPart(null);
 });
 
-viewer.addEventListener('urdf-error', (e: Event) => {
-    loadErrorEl.textContent = (e as CustomEvent<string>).detail ?? 'Failed to load robot';
-    loadingEl.classList.add('error');
+viewer.addEventListener('urdf-error', () => {
+    loadingEl.classList.remove('visible');
 });
 
 viewer.addEventListener('urdf-processed', () => {
@@ -233,7 +229,7 @@ type JointEl = HTMLElement & { update: () => void };
 
 let _jointPanelAbort: AbortController | null = null;
 
-function buildJointPanel() {
+function buildJointPanel(): void {
     _jointPanelAbort?.abort();
     _jointPanelAbort = new AbortController();
     const { signal } = _jointPanelAbort;
@@ -341,9 +337,7 @@ document.body.addEventListener('drop', e => {
     e.preventDefault();
     const file = e.dataTransfer?.files[0];
     if (file?.name.toLowerCase().endsWith('.urdf')) {
-        for (const btn of robotsPanel.querySelectorAll<HTMLButtonElement>('.robot-btn')) {
-            btn.classList.remove('active');
-        }
+        clearActiveRobot();
         if (_dropBlobUrl) URL.revokeObjectURL(_dropBlobUrl);
         _dropBlobUrl = URL.createObjectURL(file);
         viewer.urdf = _dropBlobUrl;
