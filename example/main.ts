@@ -17,6 +17,7 @@ const urlLoadBtn = document.getElementById('url-load') as HTMLButtonElement;
 // ── Available robots ──────────────────────────────────────────────────────────
 
 const ROBOTS = [
+    { name: 'Robot Car',          urdf: '/robots/robot-car/robot-car.urdf',                 up: '+Z' },
     { name: 'T12',                urdf: '/robots/T12/urdf/T12.URDF',                       up: '-Z' },
     { name: 'TriATHLETE',         urdf: '/robots/TriATHLETE/urdf/TriATHLETE.URDF',         up: '-Z' },
     { name: 'Laikago',            urdf: '/robots/laikago/urdf/laikago.urdf',               up: '+Z' },
