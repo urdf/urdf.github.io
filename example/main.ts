@@ -85,16 +85,121 @@ function loadUrl() {
 urlLoadBtn.addEventListener('click', loadUrl);
 urlInput.addEventListener('keydown', e => { if (e.key === 'Enter') loadUrl(); });
 
+// ── Part Inspector ────────────────────────────────────────────────────────────
+
+const inspectorEl       = document.getElementById('inspector')!;
+const inspectorName     = document.getElementById('inspector-name')!;
+const inspectorX        = document.getElementById('inspector-x') as HTMLInputElement;
+const inspectorY        = document.getElementById('inspector-y') as HTMLInputElement;
+const inspectorZ        = document.getElementById('inspector-z') as HTMLInputElement;
+const inspectorScaleX   = document.getElementById('inspector-scale-x') as HTMLInputElement;
+const inspectorScaleY   = document.getElementById('inspector-scale-y') as HTMLInputElement;
+const inspectorScaleZ   = document.getElementById('inspector-scale-z') as HTMLInputElement;
+const inspectorSnippet  = document.getElementById('inspector-snippet')!;
+const inspectorCopy     = document.getElementById('inspector-copy') as HTMLButtonElement;
+const inspectorClose    = document.getElementById('inspector-close')!;
+
+let selectedJoint: string | null = null;
+let hoveredJointName: string | null = null;
+
+function fmt(v: number) { return v.toFixed(4); }
+
+function refreshSnippet() {
+    if (!selectedJoint || !viewer.robot) return;
+    const joint = viewer.robot.joints[selectedJoint];
+    if (!joint) return;
+    const p = joint.position;
+    const r = joint.rotation;
+    const sx = parseFloat(inspectorScaleX.value);
+    const sy = parseFloat(inspectorScaleY.value);
+    const sz = parseFloat(inspectorScaleZ.value);
+    const anyScale = Math.abs(sx - 1) > 0.005 || Math.abs(sy - 1) > 0.005 || Math.abs(sz - 1) > 0.005;
+    const uniform = Math.abs(sx - sy) < 0.001 && Math.abs(sy - sz) < 0.001;
+    const scaleLine = anyScale
+        ? (uniform ? `\nscale: ${sx.toFixed(2)}×` : `\nscale: ${sx.toFixed(2)} ${sy.toFixed(2)} ${sz.toFixed(2)}`)
+        : '';
+    inspectorSnippet.textContent =
+        `[${selectedJoint}]\n` +
+        `<origin xyz="${fmt(p.x)} ${fmt(p.y)} ${fmt(p.z)}"\n` +
+        `        rpy="${fmt(r.x)} ${fmt(r.y)} ${fmt(r.z)}"/>${scaleLine}`;
+}
+
+function applyInspector() {
+    if (!selectedJoint || !viewer.robot) return;
+    const joint = viewer.robot.joints[selectedJoint];
+    if (!joint) return;
+    joint.position.set(
+        parseFloat(inspectorX.value) || 0,
+        parseFloat(inspectorY.value) || 0,
+        parseFloat(inspectorZ.value) || 0,
+    );
+    const sx = parseFloat(inspectorScaleX.value) || 1;
+    const sy = parseFloat(inspectorScaleY.value) || 1;
+    const sz = parseFloat(inspectorScaleZ.value) || 1;
+    const linkName = selectedJoint.replace(/_joint$/, '');
+    const link = viewer.robot.links[linkName];
+    if (link) link.scale.set(sx, sy, sz);
+    viewer.redraw();
+    refreshSnippet();
+}
+
+function selectPart(jointName: string | null) {
+    selectedJoint = jointName;
+    if (!jointName || !viewer.robot) { inspectorEl.style.display = 'none'; return; }
+    const joint = viewer.robot.joints[jointName];
+    if (!joint) { inspectorEl.style.display = 'none'; return; }
+
+    inspectorEl.style.display = '';
+    inspectorName.textContent = toLabel(jointName);
+
+    const p = joint.position;
+    inspectorX.value = fmt(p.x);
+    inspectorY.value = fmt(p.y);
+    inspectorZ.value = fmt(p.z);
+
+    const linkName = jointName.replace(/_joint$/, '');
+    const link = viewer.robot.links[linkName];
+    inspectorScaleX.value = String(link ? link.scale.x : 1);
+    inspectorScaleY.value = String(link ? link.scale.y : 1);
+    inspectorScaleZ.value = String(link ? link.scale.z : 1);
+
+    refreshSnippet();
+}
+
+inspectorX.addEventListener('input', applyInspector);
+inspectorY.addEventListener('input', applyInspector);
+inspectorZ.addEventListener('input', applyInspector);
+inspectorScaleX.addEventListener('input', applyInspector);
+inspectorScaleY.addEventListener('input', applyInspector);
+inspectorScaleZ.addEventListener('input', applyInspector);
+
+inspectorClose.addEventListener('click', () => selectPart(null));
+
+inspectorCopy.addEventListener('click', () => {
+    navigator.clipboard.writeText(inspectorSnippet.textContent ?? '');
+    inspectorCopy.textContent = 'Copied!';
+    setTimeout(() => { inspectorCopy.textContent = 'Copy'; }, 1500);
+});
+
+// Click on viewer to select a part.
+// Uses 'click' rather than pointerup so browser drag-detection handles the
+// distinction between a click and a camera orbit or joint drag.
+viewer.addEventListener('click', () => {
+    if (hoveredJointName) selectPart(hoveredJointName);
+});
+
 // ── Loading indicator ─────────────────────────────────────────────────────────
 
 viewer.addEventListener('urdf-change', () => {
     loadingEl.classList.add('visible');
     jointsPanel.innerHTML = '';
+    selectPart(null);
 });
 
 viewer.addEventListener('urdf-processed', () => {
     loadingEl.classList.remove('visible');
 });
+
 
 // ── Joint panel ───────────────────────────────────────────────────────────────
 
@@ -107,7 +212,7 @@ function buildJointPanel() {
     if (!viewer.robot) return;
 
     const joints = Object.values(viewer.robot.joints)
-        .filter(j => j.jointType !== 'fixed')
+        .filter(j => j.jointType !== 'fixed' && j.visible)
         .sort((a, b) => a.name.localeCompare(b.name));
 
     for (const joint of joints) {
@@ -187,6 +292,7 @@ document.addEventListener('pointermove', (e: PointerEvent) => {
 
 viewer.addEventListener('joint-mouseover', (e: Event) => {
     const name = (e as CustomEvent<string>).detail;
+    hoveredJointName = name;
     jointsPanel.querySelector(`[data-joint="${name}"]`)?.setAttribute('data-hovered', '');
     partLabel.textContent = toLabel(name);
     partLabel.style.display = 'block';
@@ -194,6 +300,7 @@ viewer.addEventListener('joint-mouseover', (e: Event) => {
 
 viewer.addEventListener('joint-mouseout', (e: Event) => {
     const name = (e as CustomEvent<string>).detail;
+    hoveredJointName = null;
     jointsPanel.querySelector(`[data-joint="${name}"]`)?.removeAttribute('data-hovered');
     partLabel.style.display = 'none';
 });

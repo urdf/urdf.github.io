@@ -14,6 +14,17 @@ function nearestJoint(object: Object3D): URDFJoint | null {
     return null;
 }
 
+function nearestAnyJoint(object: Object3D): URDFJoint | null {
+    let curr: Object3D | null = object;
+    while (curr) {
+        if ((curr as URDFJoint).isURDFJoint) {
+            return curr as URDFJoint;
+        }
+        curr = curr.parent;
+    }
+    return null;
+}
+
 // ─── Shared temps ─────────────────────────────────────────────────────────────
 
 const _prev = new Vector3();
@@ -34,6 +45,7 @@ export class URDFDragControls {
     initialGrabPoint = new Vector3();
 
     hovered: URDFJoint | null = null;
+    hoveredAny: URDFJoint | null = null;
     manipulating: URDFJoint | null = null;
     hitDistance = -1;
 
@@ -48,6 +60,7 @@ export class URDFDragControls {
         const hit = hits[0];
 
         const hoveredJoint = hit ? nearestJoint(hit.object) : null;
+        const hoveredAnyJoint = hit ? nearestAnyJoint(hit.object) : null;
         if (hit) {
             this.hitDistance = hit.distance;
             this.initialGrabPoint.copy(hit.point);
@@ -57,6 +70,12 @@ export class URDFDragControls {
             if (this.hovered) this.onUnhover(this.hovered);
             this.hovered = hoveredJoint;
             if (hoveredJoint) this.onHover(hoveredJoint);
+        }
+
+        if (hoveredAnyJoint !== this.hoveredAny) {
+            if (this.hoveredAny) this.onUnhoverAny(this.hoveredAny);
+            this.hoveredAny = hoveredAnyJoint;
+            if (hoveredAnyJoint) this.onHoverAny(hoveredAnyJoint);
         }
     }
 
@@ -131,6 +150,10 @@ export class URDFDragControls {
     onHover(_joint: URDFJoint): void {}
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     onUnhover(_joint: URDFJoint): void {}
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    onHoverAny(_joint: URDFJoint): void {}
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    onUnhoverAny(_joint: URDFJoint): void {}
 }
 
 // ─── PointerURDFDragControls ─────────────────────────────────────────────────

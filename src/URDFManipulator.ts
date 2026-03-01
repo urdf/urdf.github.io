@@ -54,14 +54,20 @@ export class URDFManipulator extends URDFViewer {
 
         this._dragControls.onHover = joint => {
             this._highlightJoint(joint, false);
-            this.dispatchEvent(new CustomEvent('joint-mouseover', { bubbles: true, detail: joint.name }));
             this.redraw();
         };
 
         this._dragControls.onUnhover = joint => {
             this._highlightJoint(joint, true);
-            this.dispatchEvent(new CustomEvent('joint-mouseout', { bubbles: true, detail: joint.name }));
             this.redraw();
+        };
+
+        this._dragControls.onHoverAny = joint => {
+            this.dispatchEvent(new CustomEvent('joint-mouseover', { bubbles: true, detail: joint.name }));
+        };
+
+        this._dragControls.onUnhoverAny = joint => {
+            this.dispatchEvent(new CustomEvent('joint-mouseout', { bubbles: true, detail: joint.name }));
         };
 
         this._dragControls.onDragStart = joint => {
