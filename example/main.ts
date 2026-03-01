@@ -135,8 +135,9 @@ function buildJointPanel() {
         const displayScale = isPrismatic ? 1 : 1 / DEG; // show degrees for rotary joints
 
         el.update = () => {
-            const lo = viewer.ignoreLimits ? -6.28 : joint.limit.lower;
-            const hi = viewer.ignoreLimits ? 6.28 : joint.limit.upper;
+            const continuous = joint.jointType === 'continuous';
+            const lo = (viewer.ignoreLimits || continuous) ? -6.28 : joint.limit.lower;
+            const hi = (viewer.ignoreLimits || continuous) ? 6.28 : joint.limit.upper;
             slider.min = String(lo);
             slider.max = String(hi);
             slider.value = String(joint.angle);
