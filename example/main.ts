@@ -17,13 +17,21 @@ const urlLoadBtn = document.getElementById('url-load') as HTMLButtonElement;
 // ── Available robots ──────────────────────────────────────────────────────────
 
 const ROBOTS = [
-    { name: 'T12',        urdf: '/robots/T12/urdf/T12.URDF',                   up: '-Z' },
-    { name: 'TriATHLETE', urdf: '/robots/TriATHLETE/urdf/TriATHLETE.URDF',     up: '-Z' },
+    { name: 'T12',           urdf: '/robots/T12/urdf/T12.URDF',                       up: '-Z' },
+    { name: 'TriATHLETE',    urdf: '/robots/TriATHLETE/urdf/TriATHLETE.URDF',         up: '-Z' },
+    { name: 'Laikago',       urdf: '/robots/laikago/urdf/laikago.urdf',               up: '+Z' },
+    {
+        name: 'Open Manipulator X',
+        urdf: '/robots/open_manipulator_x/open_manipulator_x.urdf',
+        package: 'open_manipulator_description: /robots/open_manipulator_x',
+        up: '+Z',
+    },
 ];
 
-function loadRobot(robot: (typeof ROBOTS)[number] | { name?: string; urdf: string; up: string }) {
+function loadRobot(robot: (typeof ROBOTS)[number] | { name?: string; urdf: string; up: string; package?: string }) {
     viewer.up = robot.up;
     upAxisEl.value = robot.up;
+    viewer.package = ('package' in robot && robot.package) ? robot.package : '';
     viewer.urdf = robot.urdf;
 
     for (const btn of robotsPanel.querySelectorAll<HTMLButtonElement>('.robot-btn')) {
