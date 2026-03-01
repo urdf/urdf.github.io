@@ -217,9 +217,12 @@
 
     /* ── Joints ──────────────────────────────────────────────────────────── */
 
-    .joints {
+    .sidebar-scroll {
       flex: 1;
       overflow-y: auto;
+    }
+
+    .joints {
       padding: 6px;
     }
 
@@ -392,7 +395,7 @@
     .credits {
       padding: 10px 12px;
       border-top: 1px solid var(--border);
-      margin-top: auto;
+      flex-shrink: 0;
     }
 
     .credits a {
@@ -408,7 +411,6 @@
       border-top: 1px solid var(--border);
       padding: 10px 12px 12px;
       background: var(--surface);
-      flex-shrink: 0;
     }
 
     .inspector-header {
@@ -594,49 +596,51 @@
       </label>
     </div>
 
-    <div class="section-label" style="padding: 10px 12px 4px;">Joints</div>
-    <div class="joints" id="joints"></div>
+    <div class="sidebar-scroll">
+      <div class="section-label" style="padding: 10px 12px 4px;">Joints</div>
+      <div class="joints" id="joints"></div>
+
+      <div id="inspector" style="display:none">
+        <div class="inspector-header">
+          <span class="inspector-title">Inspector</span>
+          <button type="button" class="inspector-close" id="inspector-close" aria-label="Deselect part">✕</button>
+        </div>
+        <div class="inspector-part-name" id="inspector-name"></div>
+        <div class="inspector-fields">
+          <div class="inspector-row">
+            <label>X</label>
+            <input type="number" id="inspector-x" step="0.001"/>
+          </div>
+          <div class="inspector-row">
+            <label>Y</label>
+            <input type="number" id="inspector-y" step="0.001"/>
+          </div>
+          <div class="inspector-row">
+            <label>Z</label>
+            <input type="number" id="inspector-z" step="0.001"/>
+          </div>
+          <div class="inspector-row">
+            <label>Sx</label>
+            <input type="number" id="inspector-scale-x" step="0.01" min="0.01" value="1"/>
+          </div>
+          <div class="inspector-row">
+            <label>Sy</label>
+            <input type="number" id="inspector-scale-y" step="0.01" min="0.01" value="1"/>
+          </div>
+          <div class="inspector-row">
+            <label>Sz</label>
+            <input type="number" id="inspector-scale-z" step="0.01" min="0.01" value="1"/>
+          </div>
+        </div>
+        <div class="inspector-snippet-wrap">
+          <code class="inspector-snippet" id="inspector-snippet"></code>
+          <button type="button" class="inspector-copy" id="inspector-copy">Copy</button>
+        </div>
+      </div>
+    </div>
 
     <div class="credits">
       <a href="https://github.com/jonasneves" target="_blank" rel="noopener">by Jonas Neves</a>
-    </div>
-
-    <div id="inspector" style="display:none">
-      <div class="inspector-header">
-        <span class="inspector-title">Inspector</span>
-        <button type="button" class="inspector-close" id="inspector-close" aria-label="Deselect part">✕</button>
-      </div>
-      <div class="inspector-part-name" id="inspector-name"></div>
-      <div class="inspector-fields">
-        <div class="inspector-row">
-          <label>X</label>
-          <input type="number" id="inspector-x" step="0.001"/>
-        </div>
-        <div class="inspector-row">
-          <label>Y</label>
-          <input type="number" id="inspector-y" step="0.001"/>
-        </div>
-        <div class="inspector-row">
-          <label>Z</label>
-          <input type="number" id="inspector-z" step="0.001"/>
-        </div>
-        <div class="inspector-row">
-          <label>Sx</label>
-          <input type="number" id="inspector-scale-x" step="0.01" min="0.01" value="1"/>
-        </div>
-        <div class="inspector-row">
-          <label>Sy</label>
-          <input type="number" id="inspector-scale-y" step="0.01" min="0.01" value="1"/>
-        </div>
-        <div class="inspector-row">
-          <label>Sz</label>
-          <input type="number" id="inspector-scale-z" step="0.01" min="0.01" value="1"/>
-        </div>
-      </div>
-      <div class="inspector-snippet-wrap">
-        <code class="inspector-snippet" id="inspector-snippet"></code>
-        <button type="button" class="inspector-copy" id="inspector-copy">Copy</button>
-      </div>
     </div>
   </aside>
 
