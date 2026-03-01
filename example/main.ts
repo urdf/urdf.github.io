@@ -8,6 +8,7 @@ const robotsPanel = document.getElementById('robots')!;
 const loadingEl = document.getElementById('loading')!;
 
 const partLabel = document.getElementById('part-label')!;
+const loadErrorEl = document.getElementById('load-error')!;
 
 const ignoreLimitsEl = document.getElementById('ignore-limits') as HTMLInputElement;
 const showCollisionEl = document.getElementById('show-collision') as HTMLInputElement;
@@ -76,6 +77,12 @@ upAxisEl.value = viewer.up;
 function loadUrl() {
     const url = urlInput.value.trim();
     if (!url) return;
+    const lower = url.toLowerCase();
+    if (!lower.endsWith('.urdf') && !lower.endsWith('.xml')) {
+        loadErrorEl.textContent = 'URL must point to a .urdf (or .xml) file';
+        loadingEl.classList.add('visible', 'error');
+        return;
+    }
     for (const btn of robotsPanel.querySelectorAll<HTMLButtonElement>('.robot-btn')) {
         btn.classList.remove('active');
     }
@@ -200,8 +207,14 @@ viewer.addEventListener('click', () => {
 
 viewer.addEventListener('urdf-change', () => {
     loadingEl.classList.add('visible');
+    loadingEl.classList.remove('error');
     jointsPanel.innerHTML = '';
     selectPart(null);
+});
+
+viewer.addEventListener('urdf-error', (e: Event) => {
+    loadErrorEl.textContent = (e as CustomEvent<string>).detail ?? 'Failed to load robot';
+    loadingEl.classList.add('error');
 });
 
 viewer.addEventListener('urdf-processed', () => {
@@ -285,9 +298,13 @@ viewer.addEventListener('angle-change', (e: Event) => {
     jointsPanel.querySelector<JointEl>(`[data-joint="${name}"]`)?.update?.();
 });
 
+let _labelRaf = 0;
 document.addEventListener('pointermove', (e: PointerEvent) => {
-    partLabel.style.left = (e.clientX + 14) + 'px';
-    partLabel.style.top  = (e.clientY - 32) + 'px';
+    cancelAnimationFrame(_labelRaf);
+    _labelRaf = requestAnimationFrame(() => {
+        partLabel.style.left = (e.clientX + 14) + 'px';
+        partLabel.style.top  = (e.clientY - 32) + 'px';
+    });
 });
 
 viewer.addEventListener('joint-mouseover', (e: Event) => {

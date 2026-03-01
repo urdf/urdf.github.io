@@ -33,6 +33,20 @@ export interface LoaderOptions {
     loadMesh?: (path: string, manager: THREE.LoadingManager) => Promise<THREE.Object3D | null>;
 }
 
+// ─── Shared primitive geometries ─────────────────────────────────────────────
+//
+// Unit geometries reused across all URDF <box>, <sphere>, <cylinder> elements.
+// Sized via mesh.scale at parse time; marked shared so _disposeRobot skips them.
+
+const _sharedBoxGeom = new THREE.BoxGeometry(1, 1, 1);
+_sharedBoxGeom.userData.shared = true;
+
+const _sharedSphereGeom = new THREE.SphereGeometry(1, 32, 32);
+_sharedSphereGeom.userData.shared = true;
+
+const _sharedCylinderGeom = new THREE.CylinderGeometry(1, 1, 1, 32);
+_sharedCylinderGeom.userData.shared = true;
+
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 const _tempQuat = new THREE.Quaternion();
@@ -312,7 +326,7 @@ export class URDFLoader {
 
             if (type === 'box') {
                 const size = parseTuple(geo.getAttribute('size'));
-                const mesh = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), material);
+                const mesh = new THREE.Mesh(_sharedBoxGeom, material);
                 mesh.scale.set(size[0], size[1], size[2]);
                 parent.add(mesh);
                 return;
@@ -320,7 +334,7 @@ export class URDFLoader {
 
             if (type === 'sphere') {
                 const radius = parseFloat(geo.getAttribute('radius') ?? '0');
-                const mesh = new THREE.Mesh(new THREE.SphereGeometry(1, 32, 32), material);
+                const mesh = new THREE.Mesh(_sharedSphereGeom, material);
                 mesh.scale.setScalar(radius);
                 parent.add(mesh);
                 return;
@@ -329,7 +343,7 @@ export class URDFLoader {
             if (type === 'cylinder') {
                 const radius = parseFloat(geo.getAttribute('radius') ?? '0');
                 const length = parseFloat(geo.getAttribute('length') ?? '0');
-                const mesh = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 1, 32), material);
+                const mesh = new THREE.Mesh(_sharedCylinderGeom, material);
                 mesh.scale.set(radius, length, radius);
                 mesh.rotation.set(Math.PI / 2, 0, 0);
                 parent.add(mesh);

@@ -304,6 +304,18 @@
 
     @keyframes spin { to { transform: rotate(360deg); } }
 
+    .load-error {
+      display: none;
+      color: #ef4444;
+      font-size: 13px;
+      text-align: center;
+      padding: 0 24px;
+      max-width: 320px;
+    }
+
+    .loading.error .spinner { display: none; }
+    .loading.error .load-error { display: block; }
+
     /* ── Drop hint ───────────────────────────────────────────────────────── */
 
     .drop-hint {
@@ -547,7 +559,10 @@
   <main>
     <button class="sidebar-toggle" id="sidebar-toggle">☰</button>
     <urdf-viewer id="viewer" up="-Z" display-shadow></urdf-viewer>
-    <div class="loading" id="loading"><div class="spinner"></div></div>
+    <div class="loading" id="loading">
+      <div class="spinner"></div>
+      <div class="load-error" id="load-error"></div>
+    </div>
     <div class="drop-hint">Drop a .urdf file anywhere to load it</div>
   </main>
   <div class="sidebar-backdrop" id="sidebar-backdrop"></div>

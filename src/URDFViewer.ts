@@ -85,6 +85,12 @@ export class URDFViewer extends HTMLElement {
     private _resizeObserver: ResizeObserver;
     private _shadow: ShadowRoot;
 
+    // Reusable scratch objects – avoids per-frame allocations in _updateScene / fitCamera
+    private _bbox = new THREE.Box3();
+    private _center = new THREE.Vector3();
+    private _sphere = new THREE.Sphere();
+    private _lightOffset = new THREE.Vector3();
+
     constructor() {
         super();
 
@@ -104,7 +110,9 @@ export class URDFViewer extends HTMLElement {
 
         this.directionalLight = new THREE.DirectionalLight(0xffffff, Math.PI);
         this.directionalLight.position.set(4, 10, 1);
-        this.directionalLight.shadow.mapSize.set(2048, 2048);
+        // Use a smaller shadow map on touch devices to save GPU memory
+        const shadowMapSize = navigator.maxTouchPoints > 0 ? 1024 : 2048;
+        this.directionalLight.shadow.mapSize.set(shadowMapSize, shadowMapSize);
         this.directionalLight.shadow.normalBias = 0.001;
         this.directionalLight.castShadow = true;
         this.scene.add(this.directionalLight, this.directionalLight.target);
@@ -204,22 +212,22 @@ export class URDFViewer extends HTMLElement {
 
         this.world.updateMatrixWorld();
 
-        const bbox = new THREE.Box3();
+        this._bbox.makeEmpty();
         this.robot.traverse(c => {
-            if ((c as URDFVisual).isURDFVisual) bbox.expandByObject(c);
+            if ((c as URDFVisual).isURDFVisual) this._bbox.expandByObject(c);
         });
 
-        if (bbox.isEmpty()) return;
+        if (this._bbox.isEmpty()) return;
 
-        const sphere = bbox.getBoundingSphere(new THREE.Sphere());
+        this._bbox.getBoundingSphere(this._sphere);
         const fovRad = (this.camera.fov * Math.PI) / 180;
-        const distance = (sphere.radius / Math.sin(fovRad / 2)) * 1.2;
+        const distance = (this._sphere.radius / Math.sin(fovRad / 2)) * 1.2;
 
         const dir = new THREE.Vector3(-1, 0.7, 1).normalize();
-        this.camera.position.copy(sphere.center).addScaledVector(dir, distance);
-        this.controls.target.copy(sphere.center);
+        this.camera.position.copy(this._sphere.center).addScaledVector(dir, distance);
+        this.controls.target.copy(this._sphere.center);
         this.controls.maxDistance = distance * 5;
-        this.controls.minDistance = sphere.radius * 0.1;
+        this.controls.minDistance = this._sphere.radius * 0.1;
         this.controls.update();
         this.redraw();
     }
@@ -308,14 +316,23 @@ export class URDFViewer extends HTMLElement {
             this.fitCamera();
 
             this.dispatchEvent(new CustomEvent('urdf-processed', { bubbles: true }));
-        }).catch(err => console.error('URDFViewer: load error', err));
+        }).catch(err => {
+            console.error('URDFViewer: load error', err);
+            if (id === this._loadId) {
+                this.dispatchEvent(new CustomEvent('urdf-error', {
+                    bubbles: true,
+                    detail: String((err as Error).message ?? err),
+                }));
+            }
+        });
     }
 
     private _disposeRobot(): void {
         if (!this.robot) return;
         this.robot.traverse(c => {
             const mesh = c as THREE.Mesh;
-            mesh.geometry?.dispose();
+            // Skip shared module-level geometries (URDFLoader primitives)
+            if (!mesh.geometry?.userData.shared) mesh.geometry?.dispose();
             if (Array.isArray(mesh.material)) mesh.material.forEach(m => m.dispose());
             else mesh.material?.dispose();
         });
@@ -352,27 +369,27 @@ export class URDFViewer extends HTMLElement {
 
         this.world.updateMatrixWorld();
 
-        const bbox = new THREE.Box3();
+        this._bbox.makeEmpty();
         robot.traverse(c => {
-            if ((c as URDFVisual).isURDFVisual) bbox.expandByObject(c);
+            if ((c as URDFVisual).isURDFVisual) this._bbox.expandByObject(c);
         });
 
-        if (!bbox.isEmpty()) {
-            const center = bbox.getCenter(new THREE.Vector3());
-            this.controls.target.y = center.y;
-            this.shadowPlane.position.y = bbox.min.y - 1e-3;
+        if (!this._bbox.isEmpty()) {
+            this._bbox.getCenter(this._center);
+            this.controls.target.y = this._center.y;
+            this.shadowPlane.position.y = this._bbox.min.y - 1e-3;
 
             const dirLight = this.directionalLight;
             dirLight.castShadow = this.displayShadow;
             if (this.displayShadow) {
-                const sphere = bbox.getBoundingSphere(new THREE.Sphere());
-                const r = sphere.radius;
+                this._bbox.getBoundingSphere(this._sphere);
+                const r = this._sphere.radius;
                 const cam = dirLight.shadow.camera;
                 cam.left = cam.bottom = -r;
                 cam.right = cam.top = r;
-                const offset = dirLight.position.clone().sub(dirLight.target.position);
-                dirLight.target.position.copy(center);
-                dirLight.position.copy(center).add(offset);
+                this._lightOffset.copy(dirLight.position).sub(dirLight.target.position);
+                dirLight.target.position.copy(this._center);
+                dirLight.position.copy(this._center).add(this._lightOffset);
                 cam.updateProjectionMatrix();
             }
         }
