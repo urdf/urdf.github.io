@@ -154,6 +154,8 @@ export class PointerURDFDragControls extends URDFDragControls {
 
     private _raycaster = new Raycaster();
     private _mouse = new Vector2();
+    private _pendingMove: PointerEvent | null = null;
+    private _moveRaf = 0;
 
     private _onDown: (e: PointerEvent) => void;
     private _onMove: (e: PointerEvent) => void;
@@ -178,12 +180,23 @@ export class PointerURDFDragControls extends URDFDragControls {
         };
 
         this._onMove = e => {
-            updateMouse(e);
-            this._raycaster.setFromCamera(this._mouse, camera);
-            this.moveRay(this._raycaster.ray);
+            this._pendingMove = e;
+            if (!this._moveRaf) {
+                this._moveRaf = requestAnimationFrame(() => {
+                    this._moveRaf = 0;
+                    if (!this._pendingMove) return;
+                    updateMouse(this._pendingMove);
+                    this._pendingMove = null;
+                    this._raycaster.setFromCamera(this._mouse, camera);
+                    this.moveRay(this._raycaster.ray);
+                });
+            }
         };
 
         this._onUp = e => {
+            cancelAnimationFrame(this._moveRaf);
+            this._moveRaf = 0;
+            this._pendingMove = null;
             updateMouse(e);
             this._raycaster.setFromCamera(this._mouse, camera);
             this.moveRay(this._raycaster.ray);
@@ -216,6 +229,7 @@ export class PointerURDFDragControls extends URDFDragControls {
     }
 
     dispose(): void {
+        cancelAnimationFrame(this._moveRaf);
         this.domElement.removeEventListener('pointerdown', this._onDown);
         this.domElement.removeEventListener('pointermove', this._onMove);
         this.domElement.removeEventListener('pointerup', this._onUp);

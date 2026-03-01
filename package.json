@@ -50,5 +50,6 @@
     "vitest": "^3.0.4",
     "jsdom": "^26.0.0"
   },
+  "sideEffects": false,
   "dependencies": {}
 }

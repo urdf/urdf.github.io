@@ -428,7 +428,7 @@ export class URDFViewer extends HTMLElement {
             col.traverse(m => {
                 const mesh = m as THREE.Mesh;
                 if (mesh.isMesh) {
-                    mesh.raycast = EMPTY_RAYCAST;
+                    if (mesh.raycast !== EMPTY_RAYCAST) mesh.raycast = EMPTY_RAYCAST;
                     mesh.material = mat;
                     mesh.castShadow = false;
                 }

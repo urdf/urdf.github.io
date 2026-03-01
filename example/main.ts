@@ -145,6 +145,8 @@ function refreshSnippet() {
         `        rpy="${fmt(r.x)} ${fmt(r.y)} ${fmt(r.z)}"/>${scaleLine}`;
 }
 
+let _snippetDebounce = 0;
+
 function applyInspector() {
     if (!selectedJoint || !viewer.robot) return;
     const joint = viewer.robot.joints[selectedJoint];
@@ -160,7 +162,8 @@ function applyInspector() {
     const link = viewer.robot.links[linkNameFor(selectedJoint)];
     if (link) link.scale.set(sx, sy, sz);
     viewer.redraw();
-    refreshSnippet();
+    clearTimeout(_snippetDebounce);
+    _snippetDebounce = window.setTimeout(refreshSnippet, 150);
 }
 
 function selectPart(jointName: string | null) {
@@ -228,7 +231,13 @@ const DEG = Math.PI / 180;
 
 type JointEl = HTMLElement & { update: () => void };
 
+let _jointPanelAbort: AbortController | null = null;
+
 function buildJointPanel() {
+    _jointPanelAbort?.abort();
+    _jointPanelAbort = new AbortController();
+    const { signal } = _jointPanelAbort;
+
     jointsPanel.innerHTML = '';
     if (!viewer.robot) return;
 
@@ -274,12 +283,12 @@ function buildJointPanel() {
 
         slider.addEventListener('input', () => {
             viewer.setJointValue(joint.name, parseFloat(slider.value));
-        });
+        }, { signal });
 
         number.addEventListener('change', () => {
             const scale = isPrismatic ? 1 : DEG;
             viewer.setJointValue(joint.name, parseFloat(number.value) * scale);
-        });
+        }, { signal });
 
         row.append(slider, number);
         el.append(nameEl, row);
@@ -300,7 +309,7 @@ viewer.addEventListener('angle-change', (e: Event) => {
 });
 
 let _labelRaf = 0;
-document.addEventListener('pointermove', (e: PointerEvent) => {
+viewer.addEventListener('pointermove', (e: PointerEvent) => {
     cancelAnimationFrame(_labelRaf);
     _labelRaf = requestAnimationFrame(() => {
         partLabel.style.left = (e.clientX + 14) + 'px';
@@ -325,6 +334,8 @@ viewer.addEventListener('joint-mouseout', (e: Event) => {
 
 // ── Drag and drop ─────────────────────────────────────────────────────────────
 
+let _dropBlobUrl: string | null = null;
+
 document.body.addEventListener('dragover', e => e.preventDefault());
 document.body.addEventListener('drop', e => {
     e.preventDefault();
@@ -333,6 +344,8 @@ document.body.addEventListener('drop', e => {
         for (const btn of robotsPanel.querySelectorAll<HTMLButtonElement>('.robot-btn')) {
             btn.classList.remove('active');
         }
-        viewer.urdf = URL.createObjectURL(file);
+        if (_dropBlobUrl) URL.revokeObjectURL(_dropBlobUrl);
+        _dropBlobUrl = URL.createObjectURL(file);
+        viewer.urdf = _dropBlobUrl;
     }
 });
