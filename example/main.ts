@@ -53,6 +53,7 @@ function loadRobot(robot: (typeof ROBOTS)[number] | { name?: string; urdf: strin
 
 for (const robot of ROBOTS) {
     const btn = document.createElement('button');
+    btn.type = 'button';
     btn.className = 'robot-btn';
     btn.textContent = robot.name;
     btn.dataset.name = robot.name;

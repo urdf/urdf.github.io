@@ -5,12 +5,68 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>URDF Viewer</title>
   <style>
+    /* ── Design tokens ───────────────────────────────────────────────────── */
+
+    :root {
+      --bg:            #0f1117;
+      --surface:       #13151c;
+      --surface-hi:    #1e2130;
+      --surface-hover: #252840;
+      --border:        #2a2d3a;
+      --text-1:        #e5e7eb;
+      --text-2:        #9ca3af;
+      --text-3:        #8b93a0;
+      --blue:          #007aff;
+      --blue-hover:    #0066cc;
+      --blue-bg:       rgba(0, 122, 255, 0.15);
+      --blue-text:     #4da3ff;
+      --shadow:        rgba(0, 0, 0, 0.5);
+      --toggle-bg:     rgba(19, 21, 28, 0.85);
+      --loading-bg:    rgba(15, 17, 23, 0.6);
+      --tooltip-bg:    rgba(13, 15, 20, 0.90);
+    }
+
+    @media (prefers-color-scheme: light) {
+      :root {
+        --bg:            #f2f2f7;
+        --surface:       #ffffff;
+        --surface-hi:    #f2f2f7;
+        --surface-hover: #e5e5ea;
+        --border:        #c6c6c8;
+        --text-1:        #1c1c1e;
+        --text-2:        #3c3c43;
+        --text-3:        #8e8e93;
+        --blue-bg:       rgba(0, 122, 255, 0.1);
+        --blue-text:     #007aff;
+        --shadow:        rgba(0, 0, 0, 0.12);
+        --toggle-bg:     rgba(255, 255, 255, 0.85);
+        --loading-bg:    rgba(242, 242, 247, 0.6);
+        --tooltip-bg:    rgba(255, 255, 255, 0.95);
+      }
+    }
+
+    @media (prefers-contrast: more) {
+      :root {
+        --border:  #6b7280;
+        --text-2:  #d1d5db;
+        --text-3:  #9ca3af;
+      }
+    }
+
+    @media (prefers-color-scheme: light) and (prefers-contrast: more) {
+      :root {
+        --border:  #48484a;
+        --text-2:  #1c1c1e;
+        --text-3:  #3c3c43;
+      }
+    }
+
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
       font-family: system-ui, sans-serif;
-      background: #0f1117;
-      color: #eee;
+      background: var(--bg);
+      color: var(--text-1);
       height: 100dvh;
       overflow: hidden;
     }
@@ -18,8 +74,8 @@
     /* ── Sidebar ─────────────────────────────────────────────────────────── */
 
     aside {
-      background: #13151c;
-      border-right: 1px solid #2a2d3a;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
       display: flex;
       flex-direction: column;
       overflow: hidden;
@@ -31,7 +87,7 @@
       z-index: 200;
       transform: translateX(-100%);
       transition: transform 0.25s ease;
-      box-shadow: 4px 0 24px rgba(0, 0, 0, 0.5);
+      box-shadow: 4px 0 24px var(--shadow);
     }
 
     aside.open { transform: translateX(0); }
@@ -39,15 +95,16 @@
     header {
       display: flex;
       align-items: center;
-      padding: 14px 16px;
-      border-bottom: 1px solid #2a2d3a;
+      padding: 0 16px;
+      min-height: 2.75rem;
+      border-bottom: 1px solid var(--border);
     }
 
     header h1 {
-      font-size: 13px;
+      font-size: 0.8125rem;
       font-weight: 600;
       letter-spacing: 0.08em;
-      color: #6b7280;
+      color: var(--text-3);
       text-transform: uppercase;
     }
 
@@ -55,16 +112,16 @@
 
     .section {
       padding: 10px 12px;
-      border-bottom: 1px solid #2a2d3a;
+      border-bottom: 1px solid var(--border);
       display: flex;
       flex-direction: column;
       gap: 8px;
     }
 
     .section-label {
-      font-size: 11px;
+      font-size: 0.6875rem;
       font-weight: 500;
-      color: #4b5563;
+      color: var(--text-3);
       text-transform: uppercase;
       letter-spacing: 0.06em;
     }
@@ -78,19 +135,20 @@
     }
 
     .robot-btn {
-      background: #1e2130;
-      border: 1px solid #2a2d3a;
+      background: var(--surface-hi);
+      border: 1px solid var(--border);
       border-radius: 5px;
-      color: #9ca3af;
-      font-size: 12px;
-      padding: 4px 10px;
+      color: var(--text-2);
+      font-size: 0.75rem;
+      padding: 0 0.625rem;
+      min-height: 2.75rem;
       cursor: pointer;
       transition: background 0.12s, color 0.12s, border-color 0.12s;
       white-space: nowrap;
     }
 
-    .robot-btn:hover { background: #252840; color: #e5e7eb; }
-    .robot-btn.active { background: #1e3a5f; border-color: #3b82f6; color: #93c5fd; }
+    .robot-btn:hover { background: var(--surface-hover); color: var(--text-1); }
+    .robot-btn.active { background: var(--blue-bg); border-color: var(--blue); color: var(--blue-text); }
 
     /* ── URL input ───────────────────────────────────────────────────────── */
 
@@ -101,31 +159,33 @@
 
     .url-input {
       flex: 1;
-      background: #1e2130;
-      border: 1px solid #2a2d3a;
+      background: var(--surface-hi);
+      border: 1px solid var(--border);
       border-radius: 5px;
-      color: #e5e7eb;
-      font-size: 12px;
-      padding: 5px 8px;
+      color: var(--text-1);
+      font-size: 0.75rem;
+      padding: 0 8px;
+      min-height: 2.75rem;
       min-width: 0;
     }
 
-    .url-input::placeholder { color: #4b5563; }
-    .url-input:focus { outline: none; border-color: #3b82f6; }
+    .url-input::placeholder { color: var(--text-3); }
+    .url-input:focus-visible { outline: none; border-color: var(--blue); }
 
     .url-load-btn {
-      background: #1e3a5f;
-      border: 1px solid #3b82f6;
+      background: var(--blue);
+      border: 1px solid var(--blue);
       border-radius: 5px;
-      color: #93c5fd;
-      font-size: 12px;
-      padding: 5px 10px;
+      color: #fff;
+      font-size: 0.75rem;
+      padding: 0 0.75rem;
+      min-height: 2.75rem;
       cursor: pointer;
       white-space: nowrap;
       transition: background 0.12s;
     }
 
-    .url-load-btn:hover { background: #1d4ed8; color: #fff; }
+    .url-load-btn:hover { background: var(--blue-hover); border-color: var(--blue-hover); }
 
     /* ── Checkboxes ──────────────────────────────────────────────────────── */
 
@@ -133,25 +193,27 @@
       display: flex;
       align-items: center;
       gap: 8px;
-      font-size: 13px;
+      font-size: 0.8125rem;
       cursor: pointer;
       user-select: none;
-      color: #d1d5db;
+      color: var(--text-1);
+      min-height: 2.75rem;
     }
 
-    .option input[type=checkbox] { accent-color: #3b82f6; width: 14px; height: 14px; }
+    .option input[type=checkbox] { accent-color: var(--blue); width: 1rem; height: 1rem; }
 
     select {
-      background: #1e2130;
-      color: #e5e7eb;
-      border: 1px solid #2a2d3a;
+      background: var(--surface-hi);
+      color: var(--text-1);
+      border: 1px solid var(--border);
       border-radius: 5px;
-      padding: 4px 8px;
-      font-size: 12px;
+      padding: 0 8px;
+      min-height: 2.75rem;
+      font-size: 0.75rem;
       flex: 1;
     }
 
-    select:focus { outline: none; border-color: #3b82f6; }
+    select:focus-visible { outline: none; border-color: var(--blue); }
 
     /* ── Joints ──────────────────────────────────────────────────────────── */
 
@@ -161,10 +223,6 @@
       padding: 6px;
     }
 
-    .joints::-webkit-scrollbar { width: 4px; }
-    .joints::-webkit-scrollbar-track { background: transparent; }
-    .joints::-webkit-scrollbar-thumb { background: #2a2d3a; border-radius: 2px; }
-
     .joint {
       padding: 7px 8px;
       border-radius: 6px;
@@ -172,11 +230,11 @@
       transition: background 0.12s;
     }
 
-    .joint[data-hovered] { background: #1e2130; }
+    .joint[data-hovered] { background: var(--surface-hi); }
 
     .joint-name {
-      font-size: 11px;
-      color: #6b7280;
+      font-size: 0.6875rem;
+      color: var(--text-2);
       margin-bottom: 4px;
       white-space: nowrap;
       overflow: hidden;
@@ -191,22 +249,25 @@
 
     .joint-row input[type=range] {
       flex: 1;
-      accent-color: #3b82f6;
+      accent-color: var(--blue);
       height: 4px;
     }
 
     .joint-row input[type=number] {
       width: 58px;
-      background: #1e2130;
-      border: 1px solid #2a2d3a;
+      background: var(--surface-hi);
+      border: 1px solid var(--border);
       border-radius: 4px;
-      color: #e5e7eb;
+      color: var(--text-1);
       padding: 2px 4px;
-      font-size: 11px;
+      font-size: 0.6875rem;
       text-align: right;
     }
 
-    .joint-row input:focus { outline: none; }
+    .joint-row input:focus-visible {
+      outline: 2px solid var(--blue);
+      outline-offset: 1px;
+    }
 
     /* ── Mobile sidebar toggle ───────────────────────────────────────────── */
 
@@ -216,13 +277,13 @@
       top: 12px;
       left: 12px;
       z-index: 100;
-      background: rgba(19, 21, 28, 0.85);
-      border: 1px solid #2a2d3a;
+      background: var(--toggle-bg);
+      border: 1px solid var(--border);
       border-radius: 6px;
-      color: #9ca3af;
-      font-size: 16px;
-      width: 36px;
-      height: 36px;
+      color: var(--text-2);
+      font-size: 1rem;
+      width: 2.75rem;
+      height: 2.75rem;
       cursor: pointer;
       align-items: center;
       justify-content: center;
@@ -230,7 +291,7 @@
       transition: color 0.12s;
     }
 
-    .sidebar-toggle:hover { color: #e5e7eb; }
+    .sidebar-toggle:hover { color: var(--text-1); }
 
     .sidebar-backdrop {
       display: none;
@@ -242,21 +303,23 @@
 
     .sidebar-backdrop.visible { display: block; }
 
-    .sidebar-close,
-    .sidebar-pin {
+    .sidebar-close {
       background: none;
       border: none;
-      color: #4b5563;
-      font-size: 14px;
+      color: var(--text-3);
+      font-size: 0.875rem;
       cursor: pointer;
       line-height: 1;
-      padding: 0 2px;
+      width: 2.75rem;
+      height: 2.75rem;
+      margin-left: auto;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
 
-    .sidebar-close { margin-left: auto; }
-    .sidebar-close:hover,
-    .sidebar-pin:hover { color: #e5e7eb; }
-    .sidebar-pin.active { color: #3b82f6; }
+    .sidebar-close:hover { color: var(--text-1); }
 
     @media (max-width: 768px) {
       .drop-hint { display: none; }
@@ -284,7 +347,7 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      background: rgba(15, 17, 23, 0.6);
+      background: var(--loading-bg);
       backdrop-filter: blur(4px);
       opacity: 0;
       pointer-events: none;
@@ -297,27 +360,15 @@
     }
 
     .spinner {
-      width: 36px;
-      height: 36px;
-      border: 3px solid #2a2d3a;
-      border-top-color: #3b82f6;
+      width: 2.25rem;
+      height: 2.25rem;
+      border: 3px solid var(--border);
+      border-top-color: var(--blue);
       border-radius: 50%;
       animation: spin 0.7s linear infinite;
     }
 
     @keyframes spin { to { transform: rotate(360deg); } }
-
-    .load-error {
-      display: none;
-      color: #ef4444;
-      font-size: 13px;
-      text-align: center;
-      padding: 0 24px;
-      max-width: 320px;
-    }
-
-    .loading.error .spinner { display: none; }
-    .loading.error .load-error { display: block; }
 
     /* ── Drop hint ───────────────────────────────────────────────────────── */
 
@@ -326,8 +377,8 @@
       bottom: 16px;
       left: 50%;
       transform: translateX(-50%);
-      font-size: 12px;
-      color: #4b5563;
+      font-size: 0.75rem;
+      color: var(--text-3);
       pointer-events: none;
       white-space: nowrap;
     }
@@ -336,13 +387,13 @@
 
     .credits {
       padding: 10px 12px;
-      border-top: 1px solid #2a2d3a;
+      border-top: 1px solid var(--border);
       margin-top: auto;
     }
 
     .credits a {
-      font-size: 11px;
-      color: #6b7280;
+      font-size: 0.6875rem;
+      color: var(--text-3);
       text-decoration: underline;
       transition: color 0.12s;
     }
@@ -350,9 +401,9 @@
     /* ── Part Inspector ──────────────────────────────────────────────────── */
 
     #inspector {
-      border-top: 1px solid #2a2d3a;
+      border-top: 1px solid var(--border);
       padding: 10px 12px 12px;
-      background: #13151c;
+      background: var(--surface);
       flex-shrink: 0;
     }
 
@@ -364,9 +415,9 @@
     }
 
     .inspector-title {
-      font-size: 11px;
+      font-size: 0.6875rem;
       font-weight: 500;
-      color: #3b82f6;
+      color: var(--blue);
       text-transform: uppercase;
       letter-spacing: 0.06em;
     }
@@ -374,17 +425,24 @@
     .inspector-close {
       background: none;
       border: none;
-      color: #4b5563;
-      font-size: 14px;
+      color: var(--text-3);
+      font-size: 0.875rem;
       cursor: pointer;
       line-height: 1;
-      padding: 0 2px;
+      width: 2.75rem;
+      height: 2.75rem;
+      margin-right: -0.75rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
     }
-    .inspector-close:hover { color: #e5e7eb; }
+
+    .inspector-close:hover { color: var(--text-1); }
 
     .inspector-part-name {
-      font-size: 12px;
-      color: #e5e7eb;
+      font-size: 0.75rem;
+      color: var(--text-1);
       margin-bottom: 8px;
       white-space: nowrap;
       overflow: hidden;
@@ -400,8 +458,8 @@
     }
 
     .inspector-row label {
-      font-size: 11px;
-      color: #6b7280;
+      font-size: 0.6875rem;
+      color: var(--text-2);
       width: 38px;
       flex-shrink: 0;
     }
@@ -413,25 +471,26 @@
     }
 
     .inspector-row input[type=number] {
-      background: #1e2130;
-      border: 1px solid #2a2d3a;
+      background: var(--surface-hi);
+      border: 1px solid var(--border);
       border-radius: 4px;
-      color: #e5e7eb;
+      color: var(--text-1);
       padding: 3px 5px;
-      font-size: 11px;
+      font-size: 0.6875rem;
       text-align: right;
     }
-    .inspector-row input[type=number]:focus { outline: none; border-color: #3b82f6; }
-    .inspector-row input[type=range] { accent-color: #3b82f6; height: 4px; }
+
+    .inspector-row input[type=number]:focus-visible { outline: none; border-color: var(--blue); }
+    .inspector-row input[type=range] { accent-color: var(--blue); height: 4px; }
 
     .inspector-snippet-wrap { margin-top: 8px; position: relative; }
 
     .inspector-snippet {
       font-family: ui-monospace, monospace;
-      font-size: 10px;
-      color: #9ca3af;
-      background: #0f1117;
-      border: 1px solid #2a2d3a;
+      font-size: 0.6875rem;
+      color: var(--text-2);
+      background: var(--bg);
+      border: 1px solid var(--border);
       border-radius: 4px;
       padding: 6px 8px;
       white-space: pre;
@@ -445,39 +504,50 @@
       position: absolute;
       top: 4px;
       right: 4px;
-      background: #1e2130;
-      border: 1px solid #2a2d3a;
+      background: var(--surface-hi);
+      border: 1px solid var(--border);
       border-radius: 3px;
-      color: #6b7280;
-      font-size: 10px;
+      color: var(--text-3);
+      font-size: 0.6875rem;
       padding: 2px 6px;
+      min-height: 1.75rem;
       cursor: pointer;
     }
-    .inspector-copy:hover { color: #e5e7eb; border-color: #3b82f6; }
+
+    .inspector-copy:hover { color: var(--text-1); border-color: var(--blue); }
 
     /* ── Part hover label ─────────────────────────────────────────────────── */
 
     .part-label {
       position: fixed;
-      background: rgba(13, 15, 20, 0.90);
-      border: 1px solid #2a2d3a;
+      background: var(--tooltip-bg);
+      border: 1px solid var(--border);
       border-radius: 4px;
-      color: #e5e7eb;
-      font-size: 12px;
+      color: var(--text-1);
+      font-size: 0.75rem;
       padding: 3px 8px;
       pointer-events: none;
       white-space: nowrap;
       display: none;
       z-index: 100;
     }
+
+    /* ── Motion & contrast ───────────────────────────────────────────────── */
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
   </style>
 </head>
 <body>
-  <aside>
+  <aside aria-label="Controls">
     <header>
       <h1>URDF Viewer</h1>
-      <button class="sidebar-pin" id="sidebar-pin" title="Keep open">📌</button>
-      <button class="sidebar-close" id="sidebar-close" title="Close">✕</button>
+      <button type="button" class="sidebar-close" id="sidebar-close" aria-label="Close controls">✕</button>
     </header>
 
     <div class="section">
@@ -489,7 +559,7 @@
       <div class="section-label">Load URL</div>
       <div class="url-row">
         <input class="url-input" id="url-input" type="url" placeholder="https://…/robot.urdf" />
-        <button class="url-load-btn" id="url-load">Load</button>
+        <button type="button" class="url-load-btn" id="url-load">Load</button>
       </div>
     </div>
 
@@ -524,7 +594,7 @@
     <div id="inspector" style="display:none">
       <div class="inspector-header">
         <span class="inspector-title">Inspector</span>
-        <button class="inspector-close" id="inspector-close" title="Deselect">✕</button>
+        <button type="button" class="inspector-close" id="inspector-close" aria-label="Deselect part">✕</button>
       </div>
       <div class="inspector-part-name" id="inspector-name"></div>
       <div class="inspector-fields">
@@ -555,18 +625,15 @@
       </div>
       <div class="inspector-snippet-wrap">
         <code class="inspector-snippet" id="inspector-snippet"></code>
-        <button class="inspector-copy" id="inspector-copy">Copy</button>
+        <button type="button" class="inspector-copy" id="inspector-copy">Copy</button>
       </div>
     </div>
   </aside>
 
   <main>
-    <button class="sidebar-toggle" id="sidebar-toggle">☰</button>
+    <button type="button" class="sidebar-toggle" id="sidebar-toggle" aria-label="Open controls">☰</button>
     <urdf-viewer id="viewer" up="-Z" display-shadow></urdf-viewer>
-    <div class="loading" id="loading">
-      <div class="spinner"></div>
-      <div class="load-error" id="load-error"></div>
-    </div>
+    <div class="loading" id="loading"><div class="spinner"></div></div>
     <div class="drop-hint">Drop a .urdf file anywhere to load it</div>
   </main>
   <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
@@ -578,32 +645,18 @@
     const backdrop  = document.getElementById('sidebar-backdrop');
     const toggleBtn = document.getElementById('sidebar-toggle');
     const closeBtn  = document.getElementById('sidebar-close');
-    const pinBtn    = document.getElementById('sidebar-pin');
 
-    let pinned = false;
-
-    function openSidebar()  { sidebar.classList.add('open'); backdrop.classList.toggle('visible', !pinned); }
-    function closeSidebar(force = false) {
-      if (pinned && !force) return;
-      sidebar.classList.remove('open');
-      backdrop.classList.remove('visible');
-    }
+    function openSidebar()  { sidebar.classList.add('open');    backdrop.classList.add('visible'); }
+    function closeSidebar() { sidebar.classList.remove('open'); backdrop.classList.remove('visible'); }
 
     function toggleSidebar() {
-      if (sidebar.classList.contains('open')) closeSidebar(true);
+      if (sidebar.classList.contains('open')) closeSidebar();
       else openSidebar();
     }
 
-    pinBtn.addEventListener('click', () => {
-      pinned = !pinned;
-      pinBtn.classList.toggle('active', pinned);
-      if (pinned) backdrop.classList.remove('visible');
-      else if (sidebar.classList.contains('open')) backdrop.classList.add('visible');
-    });
-
     toggleBtn.addEventListener('click', toggleSidebar);
-    closeBtn.addEventListener('click', () => closeSidebar(true));
-    backdrop.addEventListener('click', () => closeSidebar());
+    closeBtn.addEventListener('click', closeSidebar);
+    backdrop.addEventListener('click', closeSidebar);
 
     if (window.innerWidth > 768) openSidebar();
   </script>
