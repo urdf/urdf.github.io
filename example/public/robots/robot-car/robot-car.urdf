@@ -3,8 +3,13 @@
   Physical Agents OS — 2WD Robot Car
   Dimensions sourced from manufacturer datasheets and verified product listings.
 
-  Coordinate convention (ROS / Z-up):
-    X = forward   Y = left   Z = up
+  Coordinate convention (viewer-oriented, Z-up):
+    -X = forward (bumper / front)   X = rear
+     Y = left                      -Y = right
+     Z = up
+
+  Note: bumper is at -X so it faces the viewer's default camera
+  (Three.js camera dir (-1, 0.7, 1) → URDF -X side is camera-facing).
 
   Component sources:
     Chassis    — 220×150×3 mm acrylic (2WD kit, confirmed multiple sellers)
@@ -25,6 +30,7 @@
   <!-- CHASSIS                                                          -->
   <!-- Clear acrylic base plate: 220 × 150 × 3 mm                     -->
   <!-- Mesh: rounded body + curved front bumper arc (generated STL)   -->
+  <!-- Bumper at -X (front/camera-facing), rear at +X                 -->
   <!-- ─────────────────────────────────────────────────────────────── -->
   <link name="base_link">
     <visual>
@@ -40,7 +46,6 @@
   <!-- ─────────────────────────────────────────────────────────────── -->
   <!-- LEFT DRIVE MOTOR                                                 -->
   <!-- TT gearbox body: 70 × 22 × 18 mm, shaft along +Y               -->
-  <!-- Motor center sits at chassis level; body extends inward          -->
   <!-- ─────────────────────────────────────────────────────────────── -->
   <link name="motor_left">
     <visual>
@@ -55,8 +60,7 @@
   <joint name="motor_left_joint" type="fixed">
     <parent link="base_link"/>
     <child link="motor_left"/>
-    <!-- Y center = chassis_half(75mm) - motor_half_length(35mm) = 40mm from center -->
-    <origin xyz="0.010 0.040 -0.009" rpy="0 0 0"/>
+    <origin xyz="-0.010 0.040 -0.009" rpy="0 0 0"/>
   </joint>
 
   <!-- ─────────────────────────────────────────────────────────────── -->
@@ -75,14 +79,12 @@
   <joint name="motor_right_joint" type="fixed">
     <parent link="base_link"/>
     <child link="motor_right"/>
-    <origin xyz="0.010 -0.040 -0.009" rpy="0 0 0"/>
+    <origin xyz="-0.010 -0.040 -0.009" rpy="0 0 0"/>
   </joint>
 
   <!-- ─────────────────────────────────────────────────────────────── -->
   <!-- LEFT WHEEL                                                       -->
   <!-- Rubber tire: ø65 mm × 25 mm. Joint at motor shaft center.       -->
-  <!-- Shaft tip at chassis_edge(75mm) + shaft_length(10mm) = 85mm     -->
-  <!-- Wheel center at 85mm + hub_half(5mm) = 90mm from chassis center -->
   <!-- ─────────────────────────────────────────────────────────────── -->
   <link name="wheel_left">
     <visual>
@@ -98,7 +100,7 @@
     <parent link="base_link"/>
     <child link="wheel_left"/>
     <!-- rpy rotates cylinder from Z-axis to Y-axis so wheel spins around Y -->
-    <origin xyz="0.010 0.090 -0.002" rpy="1.5708 0 0"/>
+    <origin xyz="-0.010 0.090 -0.002" rpy="1.5708 0 0"/>
     <axis xyz="0 0 1"/>
     <limit effort="2.0" velocity="15.0"/>
   </joint>
@@ -119,7 +121,7 @@
   <joint name="wheel_right_joint" type="continuous">
     <parent link="base_link"/>
     <child link="wheel_right"/>
-    <origin xyz="0.010 -0.090 -0.002" rpy="1.5708 0 0"/>
+    <origin xyz="-0.010 -0.090 -0.002" rpy="1.5708 0 0"/>
     <axis xyz="0 0 1"/>
     <limit effort="2.0" velocity="15.0"/>
   </joint>
@@ -127,7 +129,6 @@
   <!-- ─────────────────────────────────────────────────────────────── -->
   <!-- CASTER WHEEL (rear, center)                                      -->
   <!-- Adafruit #3948: 20 mm total height, 15.7 mm ball                -->
-  <!-- Ball radius ~8 mm; mount at chassis underside rear               -->
   <!-- ─────────────────────────────────────────────────────────────── -->
   <link name="caster_ball">
     <visual>
@@ -142,14 +143,13 @@
   <joint name="caster_joint" type="fixed">
     <parent link="base_link"/>
     <child link="caster_ball"/>
-    <!-- 90mm rear of center, 22mm below chassis center -->
-    <origin xyz="-0.090 0.000 -0.022" rpy="0 0 0"/>
+    <!-- 90mm rear of center (+X), 22mm below chassis center -->
+    <origin xyz="0.090 0.000 -0.022" rpy="0 0 0"/>
   </joint>
 
   <!-- ─────────────────────────────────────────────────────────────── -->
   <!-- L298N DUAL H-BRIDGE MOTOR DRIVER                                 -->
   <!-- PCB + heatsink: 43 × 43 × 27.5 mm (Components101 datasheet)    -->
-  <!-- Mounted top-right of chassis                                     -->
   <!-- ─────────────────────────────────────────────────────────────── -->
   <link name="l298n">
     <visual>
@@ -164,14 +164,13 @@
   <joint name="l298n_joint" type="fixed">
     <parent link="base_link"/>
     <child link="l298n"/>
-    <!-- Chassis top = +1.5mm; l298n half-height = 13.75mm; center at +15.25mm -->
-    <origin xyz="-0.020 0.042 0.0153" rpy="0 0 0"/>
+    <origin xyz="0.020 0.042 0.0153" rpy="0 0 0"/>
   </joint>
 
   <!-- ─────────────────────────────────────────────────────────────── -->
   <!-- ESP32-CAM-MB                                                     -->
   <!-- Board + camera assembly: 40 × 27 × 12 mm (DFRobot DFR0602)     -->
-  <!-- Mounted upright at front-center, lens facing forward             -->
+  <!-- Mounted near front (-X), lens facing forward                    -->
   <!-- ─────────────────────────────────────────────────────────────── -->
   <link name="esp32cam">
     <visual>
@@ -186,13 +185,13 @@
   <joint name="esp32cam_joint" type="fixed">
     <parent link="base_link"/>
     <child link="esp32cam"/>
-    <origin xyz="0.080 0.000 0.0090" rpy="0 0 0"/>
+    <origin xyz="-0.080 0.000 0.0090" rpy="0 0 0"/>
   </joint>
 
   <!-- ─────────────────────────────────────────────────────────────── -->
   <!-- HC-SR04 ULTRASONIC SENSOR                                        -->
   <!-- PCB: 45 × 20 × 15 mm (SparkFun datasheet, confirmed Adafruit)  -->
-  <!-- Mounted at front edge facing forward                             -->
+  <!-- Mounted at bumper tip (-X), facing forward                      -->
   <!-- ─────────────────────────────────────────────────────────────── -->
   <link name="hcsr04">
     <visual>
@@ -207,14 +206,13 @@
   <joint name="hcsr04_joint" type="fixed">
     <parent link="base_link"/>
     <child link="hcsr04"/>
-    <!-- Centered at front; overhangs chassis edge at 110mm from center -->
-    <origin xyz="0.110 0.000 0.0090" rpy="0 0 0"/>
+    <origin xyz="-0.110 0.000 0.0090" rpy="0 0 0"/>
   </joint>
 
   <!-- ─────────────────────────────────────────────────────────────── -->
   <!-- POWER BANK (SIXTHGU)                                             -->
   <!-- Cylindrical: ø35 mm × 92 mm length (estimated; not datasheet)  -->
-  <!-- Lying along X axis on top of chassis, left-rear                  -->
+  <!-- Lying along X axis on top, rear area                            -->
   <!-- ─────────────────────────────────────────────────────────────── -->
   <link name="powerbank">
     <visual>
@@ -230,12 +228,12 @@
     <parent link="base_link"/>
     <child link="powerbank"/>
     <!-- rpy rotates cylinder from Z-axis to X-axis so it lies horizontally -->
-    <origin xyz="-0.025 -0.030 0.0220" rpy="0 1.5708 0"/>
+    <origin xyz="0.025 -0.030 0.0220" rpy="0 1.5708 0"/>
   </joint>
 
   <!-- ─────────────────────────────────────────────────────────────── -->
   <!-- 9V BATTERY PACK                                                  -->
-  <!-- Holder: ~62 × 27 × 22 mm (estimated; mounted underside)         -->
+  <!-- Holder: ~62 × 27 × 22 mm (estimated; mounted underside, rear)  -->
   <!-- ─────────────────────────────────────────────────────────────── -->
   <link name="battery_9v">
     <visual>
@@ -250,8 +248,7 @@
   <joint name="battery_9v_joint" type="fixed">
     <parent link="base_link"/>
     <child link="battery_9v"/>
-    <!-- Mounted on the underside, slightly rear-left -->
-    <origin xyz="-0.050 -0.038 -0.0135" rpy="0 0 0"/>
+    <origin xyz="0.050 -0.038 -0.0135" rpy="0 0 0"/>
   </joint>
 
   <!--
