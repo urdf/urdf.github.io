@@ -102,7 +102,7 @@
     </visual>
     <!-- Yellow hub disc on the inboard face -->
     <visual>
-      <origin xyz="0 0.0078 0" rpy="0 0 0"/>
+      <origin xyz="0 0 -0.0078" rpy="0 0 0"/>
       <geometry>
         <cylinder radius="0.0195" length="0.0104"/>
       </geometry>
@@ -134,7 +134,7 @@
     </visual>
     <!-- Yellow hub disc on the inboard face -->
     <visual>
-      <origin xyz="0 -0.0078 0" rpy="0 0 0"/>
+      <origin xyz="0 0 0.0078" rpy="0 0 0"/>
       <geometry>
         <cylinder radius="0.0195" length="0.0104"/>
       </geometry>
@@ -337,67 +337,76 @@
   </joint>
 
   <!-- ─────────────────────────────────────────────────────────────── -->
-  <!-- FLOATING COMPARISON PIECES (Y = +0.22 m offset, not on car)     -->
-  <!-- Hover over them to see labels; orbit to compare against robot    -->
+  <!-- CATALOG ITEMS — NOT YET INSTALLED                               -->
+  <!-- Floating at Z = +80 mm above chassis, staggered along X        -->
+  <!-- Hover to see label; move to correct position once installed     -->
   <!-- ─────────────────────────────────────────────────────────────── -->
 
-  <!-- Alt caster A: ball-type (W420 / Adafruit #3948, ø15 mm) -->
-  <link name="alt_caster_ball">
+  <!-- MH IR line sensor: 32 × 14 × 5 mm PCB, angled down for line following -->
+  <link name="ir_sensor">
     <visual>
       <geometry>
-        <sphere radius="0.0075"/>
+        <box size="0.032 0.014 0.005"/>
       </geometry>
-      <material name="caster_metal">
-        <color rgba="0.76 0.76 0.78 1.00"/>
+      <material name="pcb_black">
+        <color rgba="0.10 0.10 0.12 1.00"/>
       </material>
     </visual>
   </link>
-  <joint name="alt_caster_ball_joint" type="fixed">
+  <joint name="ir_sensor_joint" type="fixed">
     <parent link="base_link"/>
-    <child link="alt_caster_ball"/>
-    <origin xyz="-0.065 0.220 -0.0135" rpy="0 0 0"/>
+    <child link="ir_sensor"/>
+    <origin xyz="-0.060 0.000 0.080" rpy="0 0 0"/>
   </joint>
 
-  <!-- Alt caster B: oversized wheel (original incorrect size, ø38 mm) -->
-  <link name="alt_caster_original">
+  <!-- Logic level converter: 19 × 14 × 3 mm PCB, between HC-SR04 and ESP32 -->
+  <link name="logic_converter">
     <visual>
       <geometry>
-        <cylinder radius="0.019" length="0.016"/>
+        <box size="0.019 0.014 0.003"/>
       </geometry>
-      <material name="caster_rubber">
-        <color rgba="0.08 0.08 0.08 1.00"/>
+      <material name="pcb_blue2">
+        <color rgba="0.10 0.25 0.70 1.00"/>
       </material>
     </visual>
   </link>
-  <joint name="alt_caster_original_joint" type="fixed">
+  <joint name="logic_converter_joint" type="fixed">
     <parent link="base_link"/>
-    <child link="alt_caster_original"/>
-    <origin xyz="-0.065 0.260 -0.0135" rpy="1.5708 0 0"/>
+    <child link="logic_converter"/>
+    <origin xyz="-0.020 0.000 0.080" rpy="0 0 0"/>
   </joint>
 
-  <!-- Alt wheel: no hub (plain black, 15 mm tread width) -->
-  <link name="alt_wheel_plain">
+  <!-- Encoder disc: ø30 mm × 3 mm, mounts on wheel inner hub -->
+  <link name="encoder_disc_left">
     <visual>
       <geometry>
-        <cylinder radius="0.0325" length="0.015"/>
+        <cylinder radius="0.015" length="0.003"/>
       </geometry>
-      <material name="rubber">
-        <color rgba="0.10 0.10 0.10 1.00"/>
+      <material name="encoder_white">
+        <color rgba="0.90 0.90 0.90 1.00"/>
       </material>
     </visual>
   </link>
-  <joint name="alt_wheel_plain_joint" type="fixed">
+  <joint name="encoder_disc_left_joint" type="fixed">
     <parent link="base_link"/>
-    <child link="alt_wheel_plain"/>
-    <origin xyz="-0.010 0.220 0.011" rpy="1.5708 0 0"/>
+    <child link="encoder_disc_left"/>
+    <origin xyz="0.020 0.000 0.080" rpy="1.5708 0 0"/>
   </joint>
 
-  <!--
-    NOT YET INSTALLED (from physical-agents component catalog):
-      - MH IR sensor (32×14 mm) — front underside, angled down for line following
-      - Logic level converter (19×14 mm) — between HC-SR04 and ESP32
-      - Encoder discs L/R (~30 mm ø × 3 mm) — on wheel inner hubs
-    Add these as fixed links once physically installed.
-  -->
+  <link name="encoder_disc_right">
+    <visual>
+      <geometry>
+        <cylinder radius="0.015" length="0.003"/>
+      </geometry>
+      <material name="encoder_white">
+        <color rgba="0.90 0.90 0.90 1.00"/>
+      </material>
+    </visual>
+  </link>
+  <joint name="encoder_disc_right_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="encoder_disc_right"/>
+    <origin xyz="0.060 0.000 0.080" rpy="1.5708 0 0"/>
+  </joint>
 
 </robot>
