@@ -24,11 +24,12 @@
   <!-- ─────────────────────────────────────────────────────────────── -->
   <!-- CHASSIS                                                          -->
   <!-- Clear acrylic base plate: 220 × 150 × 3 mm                     -->
+  <!-- Mesh: rounded body + curved front bumper arc (generated STL)   -->
   <!-- ─────────────────────────────────────────────────────────────── -->
   <link name="base_link">
     <visual>
       <geometry>
-        <box size="0.220 0.150 0.003"/>
+        <mesh filename="chassis.stl"/>
       </geometry>
       <material name="acrylic">
         <color rgba="0.72 0.91 1.00 0.50"/>
