@@ -242,7 +242,8 @@
 
     .sidebar-backdrop.visible { display: block; }
 
-    .sidebar-close {
+    .sidebar-close,
+    .sidebar-pin {
       background: none;
       border: none;
       color: #4b5563;
@@ -250,10 +251,12 @@
       cursor: pointer;
       line-height: 1;
       padding: 0 2px;
-      margin-left: auto;
     }
 
-    .sidebar-close:hover { color: #e5e7eb; }
+    .sidebar-close { margin-left: auto; }
+    .sidebar-close:hover,
+    .sidebar-pin:hover { color: #e5e7eb; }
+    .sidebar-pin.active { color: #3b82f6; }
 
     @media (max-width: 768px) {
       .drop-hint { display: none; }
@@ -473,6 +476,7 @@
   <aside>
     <header>
       <h1>URDF Viewer</h1>
+      <button class="sidebar-pin" id="sidebar-pin" title="Keep open">📌</button>
       <button class="sidebar-close" id="sidebar-close" title="Close">✕</button>
     </header>
 
@@ -574,18 +578,32 @@
     const backdrop  = document.getElementById('sidebar-backdrop');
     const toggleBtn = document.getElementById('sidebar-toggle');
     const closeBtn  = document.getElementById('sidebar-close');
+    const pinBtn    = document.getElementById('sidebar-pin');
 
-    function openSidebar()  { sidebar.classList.add('open');    backdrop.classList.add('visible'); }
-    function closeSidebar() { sidebar.classList.remove('open'); backdrop.classList.remove('visible'); }
+    let pinned = false;
+
+    function openSidebar()  { sidebar.classList.add('open'); backdrop.classList.toggle('visible', !pinned); }
+    function closeSidebar(force = false) {
+      if (pinned && !force) return;
+      sidebar.classList.remove('open');
+      backdrop.classList.remove('visible');
+    }
 
     function toggleSidebar() {
-      if (sidebar.classList.contains('open')) closeSidebar();
+      if (sidebar.classList.contains('open')) closeSidebar(true);
       else openSidebar();
     }
 
+    pinBtn.addEventListener('click', () => {
+      pinned = !pinned;
+      pinBtn.classList.toggle('active', pinned);
+      if (pinned) backdrop.classList.remove('visible');
+      else if (sidebar.classList.contains('open')) backdrop.classList.add('visible');
+    });
+
     toggleBtn.addEventListener('click', toggleSidebar);
-    closeBtn.addEventListener('click', closeSidebar);
-    backdrop.addEventListener('click', closeSidebar);
+    closeBtn.addEventListener('click', () => closeSidebar(true));
+    backdrop.addEventListener('click', () => closeSidebar());
 
     if (window.innerWidth > 768) openSidebar();
   </script>

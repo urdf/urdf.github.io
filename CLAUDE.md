@@ -45,8 +45,8 @@ print(screen_x(-0.010,  0.090, -0.002))  # wheel_right → positive = screen rig
 
 | Link | X | Y | Z | Notes |
 |------|---|---|---|-------|
-| motor_left | −0.010 | −0.070 | +0.011 | box 70×22×22 mm, body runs along X |
-| motor_right | −0.010 | +0.070 | +0.011 | box 70×22×22 mm |
+| motor_left | +0.040 | −0.057 | −0.011 | box 70×22×22 mm, body runs along X |
+| motor_right | +0.040 | +0.057 | −0.011 | box 70×22×22 mm |
 | wheel_left | −0.010 | −0.090 | +0.011 | r=32.5 mm, w=15 mm, continuous, rpy 1.5708 0 0 |
 | wheel_right | −0.010 | +0.090 | +0.011 | r=32.5 mm, w=15 mm, continuous |
 | caster_plate | −0.065 | 0 | −0.004 | 36×36×4 mm |
