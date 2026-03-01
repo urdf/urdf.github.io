@@ -45,13 +45,13 @@ print(screen_x(-0.010,  0.090, -0.002))  # wheel_right → positive = screen rig
 
 | Link | X | Y | Z | Notes |
 |------|---|---|---|-------|
-| motor_left | −0.010 | −0.040 | −0.009 | |
-| motor_right | −0.010 | +0.040 | −0.009 | |
-| wheel_left | −0.010 | −0.090 | −0.002 | continuous, rpy 1.5708 0 0 |
-| wheel_right | −0.010 | +0.090 | −0.002 | continuous |
-| caster_plate | −0.065 | 0 | −0.004 | |
-| caster_fork | −0.065 | 0 | −0.019 | |
-| caster_wheel | −0.065 | 0 | −0.037 | rpy 1.5708 0 0 |
+| motor_left | −0.010 | −0.070 | +0.011 | box 70×22×22 mm, body runs along X |
+| motor_right | −0.010 | +0.070 | +0.011 | box 70×22×22 mm |
+| wheel_left | −0.010 | −0.090 | +0.011 | r=32.5 mm, w=15 mm, continuous, rpy 1.5708 0 0 |
+| wheel_right | −0.010 | +0.090 | +0.011 | r=32.5 mm, w=15 mm, continuous |
+| caster_plate | −0.065 | 0 | −0.004 | 36×36×4 mm |
+| caster_fork | −0.065 | 0 | −0.009 | 8×16×9 mm |
+| caster_wheel | −0.065 | 0 | −0.014 | sphere r=7.5 mm, continuous axis Y |
 | l298n | +0.020 | +0.042 | +0.0153 | |
 | esp32cam | −0.080 | 0 | +0.009 | |
 | hcsr04 | −0.110 | 0 | +0.009 | |

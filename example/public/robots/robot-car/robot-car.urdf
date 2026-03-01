@@ -47,12 +47,13 @@
 
   <!-- ─────────────────────────────────────────────────────────────── -->
   <!-- LEFT DRIVE MOTOR                                                 -->
-  <!-- TT gearbox body: 70 × 22 × 18 mm, shaft along +Y               -->
+  <!-- TT motor: body 70 × 22 × 22 mm (can runs along X, shaft along Y)-->
+  <!-- Shaft center 9.3 mm above chassis top (verified from datasheet) -->
   <!-- ─────────────────────────────────────────────────────────────── -->
   <link name="motor_left">
     <visual>
       <geometry>
-        <box size="0.022 0.070 0.018"/>
+        <box size="0.070 0.022 0.022"/>
       </geometry>
       <material name="motor">
         <color rgba="0.25 0.25 0.28 1.00"/>
@@ -62,7 +63,7 @@
   <joint name="motor_left_joint" type="fixed">
     <parent link="base_link"/>
     <child link="motor_left"/>
-    <origin xyz="-0.010 -0.040 -0.009" rpy="0 0 0"/>
+    <origin xyz="-0.010 -0.070 0.011" rpy="0 0 0"/>
   </joint>
 
   <!-- ─────────────────────────────────────────────────────────────── -->
@@ -71,7 +72,7 @@
   <link name="motor_right">
     <visual>
       <geometry>
-        <box size="0.022 0.070 0.018"/>
+        <box size="0.070 0.022 0.022"/>
       </geometry>
       <material name="motor">
         <color rgba="0.25 0.25 0.28 1.00"/>
@@ -81,17 +82,18 @@
   <joint name="motor_right_joint" type="fixed">
     <parent link="base_link"/>
     <child link="motor_right"/>
-    <origin xyz="-0.010 0.040 -0.009" rpy="0 0 0"/>
+    <origin xyz="-0.010 0.070 0.011" rpy="0 0 0"/>
   </joint>
 
   <!-- ─────────────────────────────────────────────────────────────── -->
   <!-- LEFT WHEEL                                                       -->
-  <!-- Rubber tire: ø65 mm × 25 mm. Joint at motor shaft center.       -->
+  <!-- Rubber tire: ø65 mm × 15 mm (Adafruit #3763 — datasheet verified)-->
+  <!-- Shaft center at Z=+11 mm so car sits flat with W420 caster      -->
   <!-- ─────────────────────────────────────────────────────────────── -->
   <link name="wheel_left">
     <visual>
       <geometry>
-        <cylinder radius="0.0325" length="0.025"/>
+        <cylinder radius="0.0325" length="0.015"/>
       </geometry>
       <material name="rubber">
         <color rgba="0.10 0.10 0.10 1.00"/>
@@ -102,7 +104,7 @@
     <parent link="base_link"/>
     <child link="wheel_left"/>
     <!-- rpy rotates cylinder from Z-axis to Y-axis so wheel spins around Y -->
-    <origin xyz="-0.010 -0.090 -0.002" rpy="1.5708 0 0"/>
+    <origin xyz="-0.010 -0.090 0.011" rpy="1.5708 0 0"/>
     <axis xyz="0 0 1"/>
     <limit effort="2.0" velocity="15.0"/>
   </joint>
@@ -113,7 +115,7 @@
   <link name="wheel_right">
     <visual>
       <geometry>
-        <cylinder radius="0.0325" length="0.025"/>
+        <cylinder radius="0.0325" length="0.015"/>
       </geometry>
       <material name="rubber">
         <color rgba="0.10 0.10 0.10 1.00"/>
@@ -123,7 +125,7 @@
   <joint name="wheel_right_joint" type="continuous">
     <parent link="base_link"/>
     <child link="wheel_right"/>
-    <origin xyz="-0.010 0.090 -0.002" rpy="1.5708 0 0"/>
+    <origin xyz="-0.010 0.090 0.011" rpy="1.5708 0 0"/>
     <axis xyz="0 0 1"/>
     <limit effort="2.0" velocity="15.0"/>
   </joint>
@@ -151,11 +153,11 @@
     <origin xyz="-0.065 0.000 -0.004" rpy="0 0 0"/>
   </joint>
 
-  <!-- Swivel fork: thin U-bracket ~8×30×26 mm steel -->
+  <!-- Swivel fork: thin U-bracket — sized to span plate→ball (~9 mm) -->
   <link name="caster_fork">
     <visual>
       <geometry>
-        <box size="0.008 0.030 0.026"/>
+        <box size="0.008 0.016 0.009"/>
       </geometry>
       <material name="caster_metal">
         <color rgba="0.76 0.76 0.78 1.00"/>
@@ -165,25 +167,27 @@
   <joint name="caster_fork_joint" type="fixed">
     <parent link="base_link"/>
     <child link="caster_fork"/>
-    <origin xyz="-0.065 0.000 -0.019" rpy="0 0 0"/>
+    <origin xyz="-0.065 0.000 -0.009" rpy="0 0 0"/>
   </joint>
 
-  <!-- Caster wheel: ø38 mm × 16 mm black rubber -->
+  <!-- Ball: ø15 mm steel (W420 / Adafruit #3948, both confirmed 15–15.7 mm) -->
+  <!-- continuous so it visually rolls; axis Y = rolling forward           -->
   <link name="caster_wheel">
     <visual>
       <geometry>
-        <cylinder radius="0.019" length="0.016"/>
+        <sphere radius="0.0075"/>
       </geometry>
-      <material name="caster_rubber">
-        <color rgba="0.08 0.08 0.08 1.00"/>
+      <material name="caster_metal">
+        <color rgba="0.76 0.76 0.78 1.00"/>
       </material>
     </visual>
   </link>
-  <joint name="caster_wheel_joint" type="fixed">
+  <joint name="caster_wheel_joint" type="continuous">
     <parent link="base_link"/>
     <child link="caster_wheel"/>
-    <!-- wheel axis along Y; center at base of fork -->
-    <origin xyz="-0.065 0.000 -0.037" rpy="1.5708 0 0"/>
+    <!-- ball center: chassis_bottom(−1.5 mm) − caster_total(20 mm) + ball_r(7.5 mm) = −14 mm -->
+    <origin xyz="-0.065 0.000 -0.014"/>
+    <axis xyz="0 1 0"/>
   </joint>
 
   <!-- ─────────────────────────────────────────────────────────────── -->
