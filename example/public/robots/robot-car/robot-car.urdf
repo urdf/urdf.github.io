@@ -47,7 +47,7 @@
   <link name="chassis">
     <visual>
       <geometry>
-        <mesh filename="chassis.stl" scale="1.07 1.00 1.00"/>
+        <mesh filename="chassis.stl" scale="1.07 0.90 1.00"/>
       </geometry>
       <material name="acrylic">
         <color rgba="0.72 0.91 1.00 0.50"/>
@@ -74,7 +74,7 @@
   <joint name="motor_left_joint" type="fixed">
     <parent link="base_link"/>
     <child link="motor_left"/>
-    <origin xyz="0.0400 -0.0700 0.0110" rpy="0.0000 0.0000 0.0000"/>
+    <origin xyz="0.0400 -0.0630 -0.0110" rpy="0.0000 0.0000 0.0000"/>
   </joint>
 
   <!-- ─────────────────────────────────────────────────────────────── -->
@@ -94,7 +94,7 @@
   <joint name="motor_right_joint" type="fixed">
     <parent link="base_link"/>
     <child link="motor_right"/>
-    <origin xyz="0.0400 0.0700 0.0110" rpy="0.0000 0.0000 0.0000"/>
+    <origin xyz="0.0400 0.0630 -0.0110" rpy="0.0000 0.0000 0.0000"/>
   </joint>
 
   <!-- ─────────────────────────────────────────────────────────────── -->
@@ -127,7 +127,7 @@
     <parent link="base_link"/>
     <child link="wheel_left"/>
     <!-- rpy rotates cylinder from Z-axis to Y-axis so wheel spins around Y -->
-    <origin xyz="0.0400 -0.0900 0.0110" rpy="1.5708 0.0000 0.0000"/>
+    <origin xyz="0.0400 -0.0810 -0.0110" rpy="1.5708 0.0000 0.0000"/>
     <axis xyz="0 0 1"/>
     <limit effort="2.0" velocity="15.0"/>
   </joint>
@@ -159,7 +159,7 @@
   <joint name="wheel_right_joint" type="continuous">
     <parent link="base_link"/>
     <child link="wheel_right"/>
-    <origin xyz="0.0400 0.0900 0.0110" rpy="1.5708 0.0000 0.0000"/>
+    <origin xyz="0.0400 0.0810 -0.0110" rpy="1.5708 0.0000 0.0000"/>
     <axis xyz="0 0 1"/>
     <limit effort="2.0" velocity="15.0"/>
   </joint>
@@ -192,7 +192,7 @@
   <link name="caster_fork">
     <visual>
       <geometry>
-        <box size="0.008 0.016 0.008"/>
+        <box size="0.008 0.016 0.030"/>
       </geometry>
       <material name="caster_metal">
         <color rgba="0.76 0.76 0.78 1.00"/>
@@ -202,7 +202,7 @@
   <joint name="caster_fork_joint" type="fixed">
     <parent link="base_link"/>
     <child link="caster_fork"/>
-    <origin xyz="-0.0900 0.0000 -0.0095" rpy="0 0 0"/>
+    <origin xyz="-0.0900 0.0000 -0.0180" rpy="0.0000 0.0000 0.0000"/>
   </joint>
 
   <!-- Swivel wheel: rubber; dimensions × 1.21 from inspector calibration -->
@@ -210,7 +210,7 @@
   <link name="caster_wheel">
     <visual>
       <geometry>
-        <cylinder radius="0.0097" length="0.0145"/>
+        <cylinder radius="0.0146" length="0.0145"/>
       </geometry>
       <material name="caster_rubber">
         <color rgba="0.08 0.08 0.08 1.00"/>
@@ -220,7 +220,7 @@
   <joint name="caster_wheel_joint" type="continuous">
     <parent link="base_link"/>
     <child link="caster_wheel"/>
-    <origin xyz="-0.0900 0.0000 -0.0135" rpy="1.5708 0.0000 0.0000"/>
+    <origin xyz="-0.0900 0.0000 -0.0320" rpy="1.5708 0.0000 0.0000"/>
     <axis xyz="0 0 1"/>
   </joint>
 
@@ -231,141 +231,21 @@
   <link name="l298n">
     <visual>
       <geometry>
-        <box size="0.043 0.043 0.0275"/>
+        <box size="0.0434 0.0533 0.0055"/>
       </geometry>
-      <material name="pcb_blue">
-        <color rgba="0.06 0.20 0.78 1.00"/>
+      <material name="pcb_red">
+        <color rgba="0.85 0.08 0.08 1.00"/>
       </material>
     </visual>
   </link>
   <joint name="l298n_joint" type="fixed">
     <parent link="base_link"/>
     <child link="l298n"/>
-    <origin xyz="0.020 0.042 0.0153" rpy="0 0 0"/>
+    <origin xyz="0.0500 0.0000 0.0050" rpy="0.0000 0.0000 0.0000"/>
   </joint>
 
-  <!-- ─────────────────────────────────────────────────────────────── -->
-  <!-- ARDUINO UNO R3                                                   -->
-  <!-- PCB: 68.6 × 53.4 × 11 mm                                       -->
-  <!-- ─────────────────────────────────────────────────────────────── -->
-  <link name="arduino_r3">
-    <visual>
-      <geometry>
-        <box size="0.069 0.054 0.011"/>
-      </geometry>
-      <material name="pcb_arduino">
-        <color rgba="0.10 0.15 0.45 1.00"/>
-      </material>
-    </visual>
-  </link>
-  <joint name="arduino_r3_joint" type="fixed">
-    <parent link="base_link"/>
-    <child link="arduino_r3"/>
-    <!-- center Z: chassis top (1.5 mm) + half board (5.5 mm) = 7 mm -->
-    <origin xyz="0.025 0.000 0.007" rpy="0 0 0"/>
-  </joint>
 
-  <!-- ─────────────────────────────────────────────────────────────── -->
-  <!-- V5.0 SENSOR SHIELD                                               -->
-  <!-- Stacks directly on Arduino R3: ~54 × 54 × 8 mm                 -->
-  <!-- ─────────────────────────────────────────────────────────────── -->
-  <link name="sensor_shield">
-    <visual>
-      <geometry>
-        <box size="0.054 0.054 0.008"/>
-      </geometry>
-      <material name="pcb_shield">
-        <color rgba="0.08 0.20 0.10 1.00"/>
-      </material>
-    </visual>
-  </link>
-  <joint name="sensor_shield_joint" type="fixed">
-    <parent link="base_link"/>
-    <child link="sensor_shield"/>
-    <!-- Z: chassis top + arduino + half shield = 1.5+11+4 = 16.5 mm -->
-    <origin xyz="0.025 0.000 0.017" rpy="0 0 0"/>
-  </joint>
 
-  <!-- ─────────────────────────────────────────────────────────────── -->
-  <!-- SERVO BRACKET (HC-SR04 mount plate)                             -->
-  <!-- White plastic plate: ~40 × 40 × 3 mm                           -->
-  <!-- ─────────────────────────────────────────────────────────────── -->
-  <link name="servo_bracket">
-    <visual>
-      <geometry>
-        <box size="0.040 0.040 0.003"/>
-      </geometry>
-      <material name="plastic_white">
-        <color rgba="0.92 0.92 0.92 1.00"/>
-      </material>
-    </visual>
-  </link>
-  <joint name="servo_bracket_joint" type="fixed">
-    <parent link="base_link"/>
-    <child link="servo_bracket"/>
-    <origin xyz="-0.0900 0.0000 0.0030" rpy="0.0000 0.0000 0.0000"/>
-  </joint>
-
-  <!-- ─────────────────────────────────────────────────────────────── -->
-  <!-- SERVO MOTOR (SG90)                                              -->
-  <!-- Body: 22 × 12 × 22 mm; rotates HC-SR04 bracket                -->
-  <!-- ─────────────────────────────────────────────────────────────── -->
-  <link name="servo_motor">
-    <visual>
-      <geometry>
-        <box size="0.022 0.012 0.022"/>
-      </geometry>
-      <material name="servo_orange">
-        <color rgba="0.78 0.45 0.05 1.00"/>
-      </material>
-    </visual>
-  </link>
-  <joint name="servo_motor_joint" type="fixed">
-    <parent link="base_link"/>
-    <child link="servo_motor"/>
-    <!-- Z: chassis top + bracket (3 mm) + half servo (11 mm) = 15.5 mm -->
-    <origin xyz="-0.0900 0.0000 0.0160" rpy="0.0000 0.0000 0.0000"/>
-  </joint>
-
-  <!-- ─────────────────────────────────────────────────────────────── -->
-  <!-- HC-SR04 ULTRASONIC SENSOR                                        -->
-  <!-- PCB: 45 × 20 × 15 mm; mounted on servo, facing forward (−X)   -->
-  <!-- ─────────────────────────────────────────────────────────────── -->
-  <link name="hcsr04">
-    <visual>
-      <geometry>
-        <box size="0.045 0.020 0.015"/>
-      </geometry>
-      <material name="pcb_teal">
-        <color rgba="0.05 0.48 0.58 1.00"/>
-      </material>
-    </visual>
-    <!-- Two transducer cylinders on the front face -->
-    <visual>
-      <origin xyz="0 -0.010 0.004" rpy="0 1.5708 0"/>
-      <geometry>
-        <cylinder radius="0.008" length="0.010"/>
-      </geometry>
-      <material name="transducer">
-        <color rgba="0.90 0.90 0.90 1.00"/>
-      </material>
-    </visual>
-    <visual>
-      <origin xyz="0  0.010 0.004" rpy="0 1.5708 0"/>
-      <geometry>
-        <cylinder radius="0.008" length="0.010"/>
-      </geometry>
-      <material name="transducer">
-        <color rgba="0.90 0.90 0.90 1.00"/>
-      </material>
-    </visual>
-  </link>
-  <joint name="hcsr04_joint" type="fixed">
-    <parent link="base_link"/>
-    <child link="hcsr04"/>
-    <!-- Z: top of servo (chassis+3+22=26.5 mm) + half HC-SR04 (7.5 mm) = 34 mm -->
-    <origin xyz="-0.0900 0.0000 0.0340" rpy="0.0000 0.0000 0.0000"/>
-  </joint>
 
   <!-- ─────────────────────────────────────────────────────────────── -->
   <!-- AA BATTERY BOX (4×AA)                                           -->
@@ -374,7 +254,7 @@
   <link name="battery_box">
     <visual>
       <geometry>
-        <box size="0.062 0.052 0.022"/>
+        <box size="0.0806 0.0442 0.022"/>
       </geometry>
       <material name="battery">
         <color rgba="0.12 0.12 0.14 1.00"/>
@@ -385,7 +265,7 @@
     <parent link="base_link"/>
     <child link="battery_box"/>
     <!-- Z: chassis bottom (−1.5 mm) − half box (11 mm) = −12.5 mm -->
-    <origin xyz="0.0300 0.0000 -0.0050" rpy="0.0000 0.0000 0.0000"/>
+    <origin xyz="0.0460 0.0000 -0.0120" rpy="0.0000 0.0000 0.0000"/>
   </joint>
 
   <!-- ─────────────────────────────────────────────────────────────── -->
@@ -397,7 +277,7 @@
   <link name="powerbank">
     <visual>
       <geometry>
-        <cylinder radius="0.0096" length="0.138"/>
+        <cylinder radius="0.0115" length="0.141"/>
       </geometry>
       <material name="powerbank_blue">
         <color rgba="0.15 0.45 0.85 1.00"/>
@@ -407,28 +287,9 @@
   <joint name="powerbank_joint" type="fixed">
     <parent link="base_link"/>
     <child link="powerbank"/>
-    <origin xyz="-0.030 0.000 -0.0095" rpy="1.5708 0 0"/>
+    <origin xyz="-0.0300 0.0000 -0.0110" rpy="1.5708 0.0000 0.0000"/>
   </joint>
 
-  <!-- ─────────────────────────────────────────────────────────────── -->
-  <!-- IR RECEIVER MODULE                                               -->
-  <!-- Small PCB: ~10 × 10 × 5 mm; receives remote signals            -->
-  <!-- ─────────────────────────────────────────────────────────────── -->
-  <link name="ir_receiver">
-    <visual>
-      <geometry>
-        <box size="0.010 0.010 0.005"/>
-      </geometry>
-      <material name="pcb_black">
-        <color rgba="0.10 0.10 0.12 1.00"/>
-      </material>
-    </visual>
-  </link>
-  <joint name="ir_receiver_joint" type="fixed">
-    <parent link="base_link"/>
-    <child link="ir_receiver"/>
-    <origin xyz="-0.090 0.030 0.005" rpy="0 0 0"/>
-  </joint>
 
 
 </robot>
