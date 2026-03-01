@@ -4,11 +4,49 @@ customElements.define('urdf-viewer', URDFManipulator);
 
 const viewer = document.getElementById('viewer') as URDFManipulator;
 const jointsPanel = document.getElementById('joints')!;
+const robotsPanel = document.getElementById('robots')!;
 
 const ignoreLimitsEl = document.getElementById('ignore-limits') as HTMLInputElement;
 const showCollisionEl = document.getElementById('show-collision') as HTMLInputElement;
 const displayShadowEl = document.getElementById('display-shadow') as HTMLInputElement;
 const upAxisEl = document.getElementById('up-axis') as HTMLSelectElement;
+
+// ── Available robots ──────────────────────────────────────────────────────────
+
+const ROBOTS = [
+    {
+        name: 'T12',
+        urdf: '/robots/T12/urdf/T12.URDF',
+        up: '-Z',
+    },
+    {
+        name: 'TriATHLETE',
+        urdf: '/robots/TriATHLETE/urdf/TriATHLETE.URDF',
+        up: '-Z',
+    },
+];
+
+function loadRobot(robot: (typeof ROBOTS)[number]) {
+    viewer.up = robot.up;
+    upAxisEl.value = robot.up;
+    viewer.urdf = robot.urdf;
+
+    for (const btn of robotsPanel.querySelectorAll('.robot-btn')) {
+        btn.classList.toggle('active', btn.textContent === robot.name);
+    }
+}
+
+// Build robot picker buttons
+for (const robot of ROBOTS) {
+    const btn = document.createElement('button');
+    btn.className = 'robot-btn';
+    btn.textContent = robot.name;
+    btn.addEventListener('click', () => loadRobot(robot));
+    robotsPanel.appendChild(btn);
+}
+
+// Auto-load the first robot
+loadRobot(ROBOTS[0]);
 
 // ── Controls sync ─────────────────────────────────────────────────────────────
 
@@ -17,14 +55,12 @@ showCollisionEl.addEventListener('change', () => { viewer.showCollision = showCo
 displayShadowEl.addEventListener('change', () => { viewer.displayShadow = displayShadowEl.checked; });
 upAxisEl.addEventListener('change', () => { viewer.up = upAxisEl.value; });
 
-// Sync initial checkbox states from element attributes
 displayShadowEl.checked = viewer.displayShadow;
 upAxisEl.value = viewer.up;
 
 // ── Joint panel ───────────────────────────────────────────────────────────────
 
 const DEG = Math.PI / 180;
-let useRadians = false;
 
 function buildJointPanel() {
     jointsPanel.innerHTML = '';
@@ -57,7 +93,6 @@ function buildJointPanel() {
 
         const update = () => {
             const isPrismatic = joint.jointType === 'prismatic';
-            const scale = (!isPrismatic && !useRadians) ? DEG : 1;
             const lo = viewer.ignoreLimits ? -6.28 : joint.limit.lower;
             const hi = viewer.ignoreLimits ? 6.28 : joint.limit.upper;
 
@@ -65,9 +100,10 @@ function buildJointPanel() {
             slider.max = String(hi);
             slider.value = String(joint.angle);
 
-            number.min = String(lo / scale);
-            number.max = String(hi / scale);
-            number.value = String(+(joint.angle / scale).toPrecision(4));
+            const displayScale = isPrismatic ? 1 : (1 / DEG);
+            number.min = String(+(lo * displayScale).toFixed(3));
+            number.max = String(+(hi * displayScale).toFixed(3));
+            number.value = String(+(joint.angle * displayScale).toPrecision(4));
         };
 
         slider.addEventListener('input', () => {
@@ -76,7 +112,7 @@ function buildJointPanel() {
 
         number.addEventListener('change', () => {
             const isPrismatic = joint.jointType === 'prismatic';
-            const scale = (!isPrismatic && !useRadians) ? DEG : 1;
+            const scale = isPrismatic ? 1 : DEG;
             viewer.setJointValue(joint.name, parseFloat(number.value) * scale);
         });
 
@@ -93,6 +129,10 @@ function buildJointPanel() {
 
 viewer.addEventListener('urdf-processed', buildJointPanel);
 
+viewer.addEventListener('urdf-change', () => {
+    jointsPanel.innerHTML = '';
+});
+
 viewer.addEventListener('angle-change', (e: Event) => {
     const name = (e as CustomEvent<string>).detail;
     const el = jointsPanel.querySelector(`[data-joint="${name}"]`) as
@@ -102,24 +142,24 @@ viewer.addEventListener('angle-change', (e: Event) => {
 
 viewer.addEventListener('joint-mouseover', (e: Event) => {
     const name = (e as CustomEvent<string>).detail;
-    const el = jointsPanel.querySelector(`[data-joint="${name}"]`);
-    el?.setAttribute('data-hovered', '');
+    jointsPanel.querySelector(`[data-joint="${name}"]`)?.setAttribute('data-hovered', '');
 });
 
 viewer.addEventListener('joint-mouseout', (e: Event) => {
     const name = (e as CustomEvent<string>).detail;
-    const el = jointsPanel.querySelector(`[data-joint="${name}"]`);
-    el?.removeAttribute('data-hovered');
+    jointsPanel.querySelector(`[data-joint="${name}"]`)?.removeAttribute('data-hovered');
 });
 
-// ── Load a robot ──────────────────────────────────────────────────────────────
-// Drop a URDF onto the page or set viewer.urdf / viewer.package programmatically.
+// ── Drag and drop a custom URDF ───────────────────────────────────────────────
 
 document.body.addEventListener('dragover', e => e.preventDefault());
 document.body.addEventListener('drop', e => {
     e.preventDefault();
     const file = e.dataTransfer?.files[0];
-    if (file && file.name.endsWith('.urdf')) {
+    if (file?.name.toLowerCase().endsWith('.urdf')) {
+        for (const btn of robotsPanel.querySelectorAll('.robot-btn')) {
+            btn.classList.remove('active');
+        }
         viewer.urdf = URL.createObjectURL(file);
     }
 });
