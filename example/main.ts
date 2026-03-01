@@ -17,13 +17,21 @@ const urlLoadBtn = document.getElementById('url-load') as HTMLButtonElement;
 // ── Available robots ──────────────────────────────────────────────────────────
 
 const ROBOTS = [
-    { name: 'T12',           urdf: '/robots/T12/urdf/T12.URDF',                       up: '-Z' },
-    { name: 'TriATHLETE',    urdf: '/robots/TriATHLETE/urdf/TriATHLETE.URDF',         up: '-Z' },
-    { name: 'Laikago',       urdf: '/robots/laikago/urdf/laikago.urdf',               up: '+Z' },
+    { name: 'T12',                urdf: '/robots/T12/urdf/T12.URDF',                       up: '-Z' },
+    { name: 'TriATHLETE',         urdf: '/robots/TriATHLETE/urdf/TriATHLETE.URDF',         up: '-Z' },
+    { name: 'Laikago',            urdf: '/robots/laikago/urdf/laikago.urdf',               up: '+Z' },
     {
         name: 'Open Manipulator X',
         urdf: '/robots/open_manipulator_x/open_manipulator_x.urdf',
         package: 'open_manipulator_description: /robots/open_manipulator_x',
+        up: '+Z',
+    },
+    { name: 'SO-ARM100',          urdf: '/robots/so_arm100/so100.urdf',                    up: '+Z' },
+    { name: 'Simple Humanoid',    urdf: '/robots/simple_humanoid/simple_humanoid.urdf',    up: '+Z' },
+    {
+        name: 'Spryped',
+        urdf: '/robots/spryped/urdf/spryped.urdf',
+        package: 'spryped_urdf_rev06: /robots/spryped',
         up: '+Z',
     },
 ];

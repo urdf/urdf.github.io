@@ -1,7 +1,17 @@
 {
   "permissions": {
     "allow": [
-      "WebSearch"
+      "WebSearch",
+      "WebFetch(domain:media.digikey.com)",
+      "WebFetch(domain:cdn.sparkfun.com)",
+      "WebFetch(domain:www.adafruit.com)",
+      "WebFetch(domain:www.handsontec.com)",
+      "WebFetch(domain:www.pololu.com)",
+      "WebFetch(domain:components101.com)",
+      "WebFetch(domain:www.edn.com)",
+      "WebFetch(domain:www.dfrobot.com)",
+      "WebFetch(domain:abra-electronics.com)",
+      "WebFetch(domain:www.waveshare.com)"
     ]
   }
 }
