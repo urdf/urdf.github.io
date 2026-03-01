@@ -7,6 +7,8 @@ const jointsPanel = document.getElementById('joints')!;
 const robotsPanel = document.getElementById('robots')!;
 const loadingEl = document.getElementById('loading')!;
 
+const partLabel = document.getElementById('part-label')!;
+
 const ignoreLimitsEl = document.getElementById('ignore-limits') as HTMLInputElement;
 const showCollisionEl = document.getElementById('show-collision') as HTMLInputElement;
 const displayShadowEl = document.getElementById('display-shadow') as HTMLInputElement;
@@ -170,14 +172,29 @@ viewer.addEventListener('angle-change', (e: Event) => {
     (jointsPanel.querySelector<JointEl>(`[data-joint="${name}"]`))?.update?.();
 });
 
+function toLabel(jointName: string): string {
+    return jointName
+        .replace(/_joint$/, '')
+        .replace(/_/g, ' ')
+        .replace(/\b\w/g, c => c.toUpperCase());
+}
+
+document.addEventListener('pointermove', (e: PointerEvent) => {
+    partLabel.style.left = (e.clientX + 14) + 'px';
+    partLabel.style.top  = (e.clientY - 32) + 'px';
+});
+
 viewer.addEventListener('joint-mouseover', (e: Event) => {
     const name = (e as CustomEvent<string>).detail;
     jointsPanel.querySelector(`[data-joint="${name}"]`)?.setAttribute('data-hovered', '');
+    partLabel.textContent = toLabel(name);
+    partLabel.style.display = 'block';
 });
 
 viewer.addEventListener('joint-mouseout', (e: Event) => {
     const name = (e as CustomEvent<string>).detail;
     jointsPanel.querySelector(`[data-joint="${name}"]`)?.removeAttribute('data-hovered');
+    partLabel.style.display = 'none';
 });
 
 // ── Drag and drop ─────────────────────────────────────────────────────────────
