@@ -87,16 +87,27 @@
 
   <!-- ─────────────────────────────────────────────────────────────── -->
   <!-- LEFT WHEEL                                                       -->
-  <!-- Rubber tire: ø65 mm × 15 mm (Adafruit #3763 — datasheet verified)-->
-  <!-- Shaft center at Z=+11 mm so car sits flat with W420 caster      -->
+  <!-- Rubber tire: ø65 mm × 26 mm (Adafruit #3763, full width w/ hub) -->
+  <!-- Yellow hub disc on inner face matches kit appearance             -->
+  <!-- Shaft center at Z=+11 mm so car sits flat with swivel caster    -->
   <!-- ─────────────────────────────────────────────────────────────── -->
   <link name="wheel_left">
     <visual>
       <geometry>
-        <cylinder radius="0.0325" length="0.015"/>
+        <cylinder radius="0.0325" length="0.026"/>
       </geometry>
       <material name="rubber">
         <color rgba="0.10 0.10 0.10 1.00"/>
+      </material>
+    </visual>
+    <!-- Yellow hub disc on the inboard face -->
+    <visual>
+      <origin xyz="0 0.0078 0" rpy="0 0 0"/>
+      <geometry>
+        <cylinder radius="0.0195" length="0.0104"/>
+      </geometry>
+      <material name="hub_yellow">
+        <color rgba="1.00 0.85 0.00 1.00"/>
       </material>
     </visual>
   </link>
@@ -115,10 +126,20 @@
   <link name="wheel_right">
     <visual>
       <geometry>
-        <cylinder radius="0.0325" length="0.015"/>
+        <cylinder radius="0.0325" length="0.026"/>
       </geometry>
       <material name="rubber">
         <color rgba="0.10 0.10 0.10 1.00"/>
+      </material>
+    </visual>
+    <!-- Yellow hub disc on the inboard face -->
+    <visual>
+      <origin xyz="0 -0.0078 0" rpy="0 0 0"/>
+      <geometry>
+        <cylinder radius="0.0195" length="0.0104"/>
+      </geometry>
+      <material name="hub_yellow">
+        <color rgba="1.00 0.85 0.00 1.00"/>
       </material>
     </visual>
   </link>
@@ -153,11 +174,12 @@
     <origin xyz="-0.065 0.000 -0.004" rpy="0 0 0"/>
   </joint>
 
-  <!-- Swivel fork: thin U-bracket — sized to span plate→ball (~9 mm) -->
+  <!-- Swivel fork: thin U-bracket, spans plate bottom → wheel center  -->
+  <!-- Height 8 mm: from plate bottom (−5 mm) to wheel center (−13.5 mm)-->
   <link name="caster_fork">
     <visual>
       <geometry>
-        <box size="0.008 0.016 0.009"/>
+        <box size="0.008 0.016 0.008"/>
       </geometry>
       <material name="caster_metal">
         <color rgba="0.76 0.76 0.78 1.00"/>
@@ -167,27 +189,27 @@
   <joint name="caster_fork_joint" type="fixed">
     <parent link="base_link"/>
     <child link="caster_fork"/>
-    <origin xyz="-0.065 0.000 -0.009" rpy="0 0 0"/>
+    <origin xyz="-0.065 0.000 -0.0095" rpy="0 0 0"/>
   </joint>
 
-  <!-- Ball: ø15 mm steel (W420 / Adafruit #3948, both confirmed 15–15.7 mm) -->
-  <!-- continuous so it visually rolls; axis Y = rolling forward           -->
+  <!-- Swivel wheel: ø16 mm × 12 mm rubber (sized so bottom = drive-wheel ground) -->
+  <!-- continuous so it visually rolls when car moves                         -->
   <link name="caster_wheel">
     <visual>
       <geometry>
-        <sphere radius="0.0075"/>
+        <cylinder radius="0.008" length="0.012"/>
       </geometry>
-      <material name="caster_metal">
-        <color rgba="0.76 0.76 0.78 1.00"/>
+      <material name="caster_rubber">
+        <color rgba="0.08 0.08 0.08 1.00"/>
       </material>
     </visual>
   </link>
   <joint name="caster_wheel_joint" type="continuous">
     <parent link="base_link"/>
     <child link="caster_wheel"/>
-    <!-- ball center: chassis_bottom(−1.5 mm) − caster_total(20 mm) + ball_r(7.5 mm) = −14 mm -->
-    <origin xyz="-0.065 0.000 -0.014"/>
-    <axis xyz="0 1 0"/>
+    <!-- wheel center Z: ground(−21.5 mm) + radius(8 mm) = −13.5 mm -->
+    <origin xyz="-0.065 0.000 -0.0135" rpy="1.5708 0 0"/>
+    <axis xyz="0 0 1"/>
   </joint>
 
   <!-- ─────────────────────────────────────────────────────────────── -->
@@ -245,6 +267,25 @@
         <color rgba="0.05 0.48 0.58 1.00"/>
       </material>
     </visual>
+    <!-- Two transducer cylinders on the front face -->
+    <visual>
+      <origin xyz="0 -0.010 0.008" rpy="0 1.5708 0"/>
+      <geometry>
+        <cylinder radius="0.008" length="0.010"/>
+      </geometry>
+      <material name="transducer">
+        <color rgba="0.90 0.90 0.90 1.00"/>
+      </material>
+    </visual>
+    <visual>
+      <origin xyz="0  0.010 0.008" rpy="0 1.5708 0"/>
+      <geometry>
+        <cylinder radius="0.008" length="0.010"/>
+      </geometry>
+      <material name="transducer">
+        <color rgba="0.90 0.90 0.90 1.00"/>
+      </material>
+    </visual>
   </link>
   <joint name="hcsr04_joint" type="fixed">
     <parent link="base_link"/>
@@ -293,6 +334,62 @@
     <parent link="base_link"/>
     <child link="battery_9v"/>
     <origin xyz="0.050 -0.038 -0.0135" rpy="0 0 0"/>
+  </joint>
+
+  <!-- ─────────────────────────────────────────────────────────────── -->
+  <!-- FLOATING COMPARISON PIECES (Y = +0.22 m offset, not on car)     -->
+  <!-- Hover over them to see labels; orbit to compare against robot    -->
+  <!-- ─────────────────────────────────────────────────────────────── -->
+
+  <!-- Alt caster A: ball-type (W420 / Adafruit #3948, ø15 mm) -->
+  <link name="alt_caster_ball">
+    <visual>
+      <geometry>
+        <sphere radius="0.0075"/>
+      </geometry>
+      <material name="caster_metal">
+        <color rgba="0.76 0.76 0.78 1.00"/>
+      </material>
+    </visual>
+  </link>
+  <joint name="alt_caster_ball_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="alt_caster_ball"/>
+    <origin xyz="-0.065 0.220 -0.0135" rpy="0 0 0"/>
+  </joint>
+
+  <!-- Alt caster B: oversized wheel (original incorrect size, ø38 mm) -->
+  <link name="alt_caster_original">
+    <visual>
+      <geometry>
+        <cylinder radius="0.019" length="0.016"/>
+      </geometry>
+      <material name="caster_rubber">
+        <color rgba="0.08 0.08 0.08 1.00"/>
+      </material>
+    </visual>
+  </link>
+  <joint name="alt_caster_original_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="alt_caster_original"/>
+    <origin xyz="-0.065 0.260 -0.0135" rpy="1.5708 0 0"/>
+  </joint>
+
+  <!-- Alt wheel: no hub (plain black, 15 mm tread width) -->
+  <link name="alt_wheel_plain">
+    <visual>
+      <geometry>
+        <cylinder radius="0.0325" length="0.015"/>
+      </geometry>
+      <material name="rubber">
+        <color rgba="0.10 0.10 0.10 1.00"/>
+      </material>
+    </visual>
+  </link>
+  <joint name="alt_wheel_plain_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="alt_wheel_plain"/>
+    <origin xyz="-0.010 0.220 0.011" rpy="1.5708 0 0"/>
   </joint>
 
   <!--
