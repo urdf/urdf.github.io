@@ -22,7 +22,10 @@ import { URDFRobot, URDFVisual, URDFCollider } from './URDFClasses.js';
 //   angle-change     – fired (detail = jointName) when a joint value changes
 
 const STYLE = `
-:host { display: block; }
+:host {
+    display: block;
+    background: linear-gradient(160deg, #0f1117 0%, #1a1f2e 100%);
+}
 canvas { width: 100%; height: 100%; display: block; }
 `;
 
@@ -195,6 +198,32 @@ export class URDFViewer extends HTMLElement {
 
     // ── Public API ────────────────────────────────────────────────────────
 
+    /** Repositions the camera to frame the loaded robot. */
+    fitCamera(): void {
+        if (!this.robot) return;
+
+        this.world.updateMatrixWorld();
+
+        const bbox = new THREE.Box3();
+        this.robot.traverse(c => {
+            if ((c as URDFVisual).isURDFVisual) bbox.expandByObject(c);
+        });
+
+        if (bbox.isEmpty()) return;
+
+        const sphere = bbox.getBoundingSphere(new THREE.Sphere());
+        const fovRad = (this.camera.fov * Math.PI) / 180;
+        const distance = (sphere.radius / Math.sin(fovRad / 2)) * 1.2;
+
+        const dir = new THREE.Vector3(-1, 0.7, 1).normalize();
+        this.camera.position.copy(sphere.center).addScaledVector(dir, distance);
+        this.controls.target.copy(sphere.center);
+        this.controls.maxDistance = distance * 5;
+        this.controls.minDistance = sphere.radius * 0.1;
+        this.controls.update();
+        this.redraw();
+    }
+
     redraw(): void {
         this._dirty = true;
     }
@@ -268,7 +297,7 @@ export class URDFViewer extends HTMLElement {
             this._prepareMeshes(robot);
             this._applyIgnoreLimits(this.ignoreLimits);
             this._updateCollision();
-            this.redraw();
+            this.fitCamera();
 
             this.dispatchEvent(new CustomEvent('urdf-processed', { bubbles: true }));
         }).catch(err => console.error('URDFViewer: load error', err));
