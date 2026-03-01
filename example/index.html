@@ -95,9 +95,10 @@
     header {
       display: flex;
       align-items: center;
-      padding: 0 16px;
-      min-height: 2.75rem;
+      padding: 0 8px 0 14px;
+      height: 36px;
       border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
     }
 
     header h1 {
@@ -111,11 +112,11 @@
     /* ── Section blocks ──────────────────────────────────────────────────── */
 
     .section {
-      padding: 10px 12px;
+      padding: 8px 12px;
       border-bottom: 1px solid var(--border);
       display: flex;
       flex-direction: column;
-      gap: 8px;
+      gap: 5px;
     }
 
     .section-label {
@@ -137,11 +138,11 @@
     .robot-btn {
       background: var(--surface-hi);
       border: 1px solid var(--border);
-      border-radius: 5px;
+      border-radius: 4px;
       color: var(--text-2);
       font-size: 0.75rem;
-      padding: 0 0.625rem;
-      min-height: 2.75rem;
+      padding: 0 8px;
+      height: 22px;
       cursor: pointer;
       transition: background 0.12s, color 0.12s, border-color 0.12s;
       white-space: nowrap;
@@ -161,11 +162,11 @@
       flex: 1;
       background: var(--surface-hi);
       border: 1px solid var(--border);
-      border-radius: 5px;
+      border-radius: 4px;
       color: var(--text-1);
       font-size: 0.75rem;
-      padding: 0 8px;
-      min-height: 2.75rem;
+      padding: 0 7px;
+      height: 24px;
       min-width: 0;
     }
 
@@ -175,11 +176,11 @@
     .url-load-btn {
       background: var(--blue);
       border: 1px solid var(--blue);
-      border-radius: 5px;
+      border-radius: 4px;
       color: #fff;
       font-size: 0.75rem;
-      padding: 0 0.75rem;
-      min-height: 2.75rem;
+      padding: 0 10px;
+      height: 24px;
       cursor: pointer;
       white-space: nowrap;
       transition: background 0.12s;
@@ -192,23 +193,23 @@
     .option {
       display: flex;
       align-items: center;
-      gap: 8px;
-      font-size: 0.8125rem;
+      gap: 7px;
+      font-size: 0.75rem;
       cursor: pointer;
       user-select: none;
       color: var(--text-1);
-      min-height: 2.75rem;
+      height: 22px;
     }
 
-    .option input[type=checkbox] { accent-color: var(--blue); width: 1rem; height: 1rem; }
+    .option input[type=checkbox] { accent-color: var(--blue); width: 13px; height: 13px; flex-shrink: 0; }
 
     select {
       background: var(--surface-hi);
       color: var(--text-1);
       border: 1px solid var(--border);
-      border-radius: 5px;
-      padding: 0 8px;
-      min-height: 2.75rem;
+      border-radius: 4px;
+      padding: 0 6px;
+      height: 24px;
       font-size: 0.75rem;
       flex: 1;
     }
@@ -277,16 +278,16 @@
     .sidebar-toggle {
       display: flex;
       position: absolute;
-      top: 12px;
-      left: 12px;
+      top: 10px;
+      left: 10px;
       z-index: 100;
       background: var(--toggle-bg);
       border: 1px solid var(--border);
-      border-radius: 6px;
+      border-radius: 5px;
       color: var(--text-2);
-      font-size: 1rem;
-      width: 2.75rem;
-      height: 2.75rem;
+      font-size: 0.875rem;
+      width: 30px;
+      height: 30px;
       cursor: pointer;
       align-items: center;
       justify-content: center;
@@ -312,13 +313,17 @@
       border: none;
       color: var(--text-3);
       cursor: pointer;
-      width: 2.75rem;
-      height: 2.75rem;
+      width: 26px;
+      height: 26px;
       flex-shrink: 0;
       display: flex;
       align-items: center;
       justify-content: center;
+      border-radius: 4px;
     }
+
+    .sidebar-pin:focus-visible,
+    .sidebar-close:focus-visible { outline: 2px solid var(--blue); outline-offset: 1px; }
 
     .sidebar-pin  { margin-left: auto; }
     .sidebar-pin:hover,
@@ -433,16 +438,16 @@
       background: none;
       border: none;
       color: var(--text-3);
-      font-size: 0.875rem;
+      font-size: 0.75rem;
       cursor: pointer;
       line-height: 1;
-      width: 2.75rem;
-      height: 2.75rem;
-      margin-right: -0.75rem;
+      width: 20px;
+      height: 20px;
       display: flex;
       align-items: center;
       justify-content: center;
       flex-shrink: 0;
+      border-radius: 3px;
     }
 
     .inspector-close:hover { color: var(--text-1); }
@@ -517,7 +522,6 @@
       color: var(--text-3);
       font-size: 0.6875rem;
       padding: 2px 6px;
-      min-height: 1.75rem;
       cursor: pointer;
     }
 
