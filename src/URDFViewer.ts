@@ -284,7 +284,14 @@ export class URDFViewer extends HTMLElement {
         loader.packages = this._resolvePackages(this.package);
         loader.parseCollision = true;
         const baseMeshLoader = (this.loadMesh ?? loader.loadMesh).bind(loader);
-        loader.loadMesh = (path, mgr) => baseMeshLoader(path, mgr).then(obj => { this.redraw(); return obj; });
+        let meshManagerHooked = false;
+        loader.loadMesh = (path, mgr) => {
+            if (!meshManagerHooked) {
+                meshManagerHooked = true;
+                mgr.onLoad = () => { if (id === this._loadId) this.fitCamera(); };
+            }
+            return baseMeshLoader(path, mgr).then(obj => { this.redraw(); return obj; });
+        };
 
         loader.load(this.urdf).then(robot => {
             if (id !== this._loadId) {
