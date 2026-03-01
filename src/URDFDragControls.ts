@@ -3,22 +3,12 @@ import { URDFJoint } from './URDFClasses.js';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function nearestJoint(object: Object3D): URDFJoint | null {
+function findAncestorJoint(object: Object3D, includeFixed: boolean): URDFJoint | null {
     let curr: Object3D | null = object;
     while (curr) {
-        if ((curr as URDFJoint).isURDFJoint && (curr as URDFJoint).jointType !== 'fixed') {
-            return curr as URDFJoint;
-        }
-        curr = curr.parent;
-    }
-    return null;
-}
-
-function nearestAnyJoint(object: Object3D): URDFJoint | null {
-    let curr: Object3D | null = object;
-    while (curr) {
-        if ((curr as URDFJoint).isURDFJoint) {
-            return curr as URDFJoint;
+        const joint = curr as URDFJoint;
+        if (joint.isURDFJoint && (includeFixed || joint.jointType !== 'fixed')) {
+            return joint;
         }
         curr = curr.parent;
     }
@@ -59,8 +49,8 @@ export class URDFDragControls {
         const hits = this.raycaster.intersectObject(this.scene, true);
         const hit = hits[0];
 
-        const hoveredJoint = hit ? nearestJoint(hit.object) : null;
-        const hoveredAnyJoint = hit ? nearestAnyJoint(hit.object) : null;
+        const hoveredJoint = hit ? findAncestorJoint(hit.object, false) : null;
+        const hoveredAnyJoint = hit ? findAncestorJoint(hit.object, true) : null;
         if (hit) {
             this.hitDistance = hit.distance;
             this.initialGrabPoint.copy(hit.point);

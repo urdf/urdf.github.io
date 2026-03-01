@@ -42,7 +42,7 @@ const ROBOTS = [
 function loadRobot(robot: (typeof ROBOTS)[number] | { name?: string; urdf: string; up: string; package?: string }) {
     viewer.up = robot.up;
     upAxisEl.value = robot.up;
-    viewer.package = ('package' in robot && robot.package) ? robot.package : '';
+    viewer.package = robot.package ?? '';
     viewer.urdf = robot.urdf;
 
     for (const btn of robotsPanel.querySelectorAll<HTMLButtonElement>('.robot-btn')) {
@@ -84,6 +84,19 @@ function loadUrl() {
 
 urlLoadBtn.addEventListener('click', loadUrl);
 urlInput.addEventListener('keydown', e => { if (e.key === 'Enter') loadUrl(); });
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function toLabel(jointName: string): string {
+    return jointName
+        .replace(/_joint$/, '')
+        .replace(/_/g, ' ')
+        .replace(/\b\w/g, c => c.toUpperCase());
+}
+
+function linkNameFor(jointName: string): string {
+    return jointName.replace(/_joint$/, '');
+}
 
 // ── Part Inspector ────────────────────────────────────────────────────────────
 
@@ -136,8 +149,7 @@ function applyInspector() {
     const sx = parseFloat(inspectorScaleX.value) || 1;
     const sy = parseFloat(inspectorScaleY.value) || 1;
     const sz = parseFloat(inspectorScaleZ.value) || 1;
-    const linkName = selectedJoint.replace(/_joint$/, '');
-    const link = viewer.robot.links[linkName];
+    const link = viewer.robot.links[linkNameFor(selectedJoint)];
     if (link) link.scale.set(sx, sy, sz);
     viewer.redraw();
     refreshSnippet();
@@ -157,8 +169,7 @@ function selectPart(jointName: string | null) {
     inspectorY.value = fmt(p.y);
     inspectorZ.value = fmt(p.z);
 
-    const linkName = jointName.replace(/_joint$/, '');
-    const link = viewer.robot.links[linkName];
+    const link = viewer.robot.links[linkNameFor(jointName)];
     inspectorScaleX.value = String(link ? link.scale.x : 1);
     inspectorScaleY.value = String(link ? link.scale.y : 1);
     inspectorScaleZ.value = String(link ? link.scale.z : 1);
@@ -166,12 +177,9 @@ function selectPart(jointName: string | null) {
     refreshSnippet();
 }
 
-inspectorX.addEventListener('input', applyInspector);
-inspectorY.addEventListener('input', applyInspector);
-inspectorZ.addEventListener('input', applyInspector);
-inspectorScaleX.addEventListener('input', applyInspector);
-inspectorScaleY.addEventListener('input', applyInspector);
-inspectorScaleZ.addEventListener('input', applyInspector);
+for (const el of [inspectorX, inspectorY, inspectorZ, inspectorScaleX, inspectorScaleY, inspectorScaleZ]) {
+    el.addEventListener('input', applyInspector);
+}
 
 inspectorClose.addEventListener('click', () => selectPart(null));
 
@@ -199,7 +207,6 @@ viewer.addEventListener('urdf-change', () => {
 viewer.addEventListener('urdf-processed', () => {
     loadingEl.classList.remove('visible');
 });
-
 
 // ── Joint panel ───────────────────────────────────────────────────────────────
 
@@ -275,15 +282,8 @@ viewer.addEventListener('ignore-limits-change', () => {
 
 viewer.addEventListener('angle-change', (e: Event) => {
     const name = (e as CustomEvent<string>).detail;
-    (jointsPanel.querySelector<JointEl>(`[data-joint="${name}"]`))?.update?.();
+    jointsPanel.querySelector<JointEl>(`[data-joint="${name}"]`)?.update?.();
 });
-
-function toLabel(jointName: string): string {
-    return jointName
-        .replace(/_joint$/, '')
-        .replace(/_/g, ' ')
-        .replace(/\b\w/g, c => c.toUpperCase());
-}
 
 document.addEventListener('pointermove', (e: PointerEvent) => {
     partLabel.style.left = (e.clientX + 14) + 'px';
