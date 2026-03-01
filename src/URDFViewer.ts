@@ -283,7 +283,8 @@ export class URDFViewer extends HTMLElement {
         const loader = new URDFLoader();
         loader.packages = this._resolvePackages(this.package);
         loader.parseCollision = true;
-        if (this.loadMesh) loader.loadMesh = this.loadMesh;
+        const baseMeshLoader = (this.loadMesh ?? loader.loadMesh).bind(loader);
+        loader.loadMesh = (path, mgr) => baseMeshLoader(path, mgr).then(obj => { this.redraw(); return obj; });
 
         loader.load(this.urdf).then(robot => {
             if (id !== this._loadId) {
