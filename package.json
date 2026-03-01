@@ -1,0 +1,54 @@
+{
+  "name": "@urdf/loader",
+  "version": "1.0.0",
+  "description": "Parse and render URDF robot models in the browser",
+  "type": "module",
+  "main": "dist/urdf-loader.cjs",
+  "module": "dist/urdf-loader.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/urdf-loader.js",
+      "require": "./dist/urdf-loader.cjs",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "build:site": "vite build --config vite.site.config.ts",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "lint": "tsc --noEmit"
+  },
+  "keywords": [
+    "urdf",
+    "ros",
+    "robotics",
+    "threejs",
+    "3d",
+    "browser",
+    "webcomponent"
+  ],
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/urdf/urdf.github.io.git"
+  },
+  "peerDependencies": {
+    "three": ">=0.160.0"
+  },
+  "devDependencies": {
+    "@types/three": "^0.164.0",
+    "three": "^0.164.0",
+    "typescript": "^5.4.0",
+    "vite": "^6.2.0",
+    "vite-plugin-dts": "^4.5.4",
+    "vitest": "^3.0.4",
+    "jsdom": "^26.0.0"
+  },
+  "dependencies": {}
+}
