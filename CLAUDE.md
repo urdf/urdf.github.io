@@ -70,12 +70,15 @@ Bumper arc: circle center (25, 0) mm, R = 85 mm. X-flipped at generation so bump
 
 ## Sidebar UI conventions
 
-The sidebar (`example/index.html`) is a **desktop developer-tool panel** in the genre of
-VS Code, Chrome DevTools, and the Three.js editor — not a mobile or touch UI.
+The sidebar (`example/index.html`) is a **hybrid panel** — it overlays the 3D viewport and
+is used on both desktop (mouse) and mobile (touch). Style it accordingly:
 
-When styling it, use that genre as the reference, not Apple HIG or Material Design.
-That means compact, information-dense controls with small font sizes and tight spacing.
-Apple HIG touch target minimums (44pt) do not apply and will make the panel look bloated.
+- The reference genre is desktop developer-tool (VS Code, Chrome DevTools, Three.js editor):
+  compact, information-dense, small fonts, subdued chrome.
+- Controls should be comfortably tappable on touch without looking like a mobile app.
+  A good mental model is an iPad productivity app, not an iPhone app.
+- Apple HIG 44pt touch targets are too large for this context and make it look bloated.
+  The full 44pt rule is for primary mobile UI; secondary tool panels use smaller targets.
 
 CSS variables for all colors and theme values live in `:root` at the top of the `<style>` block.
 The sidebar has `overflow: hidden`; the scrollable region is `.sidebar-scroll` (flex: 1, overflow-y: auto),
