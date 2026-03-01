@@ -8,9 +8,9 @@
   "types": "dist/index.d.ts",
   "exports": {
     ".": {
+      "types": "./dist/index.d.ts",
       "import": "./dist/urdf-loader.js",
-      "require": "./dist/urdf-loader.cjs",
-      "types": "./dist/index.d.ts"
+      "require": "./dist/urdf-loader.cjs"
     }
   },
   "files": [
@@ -20,7 +20,7 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "build:site": "vite build --config vite.site.config.ts",
-    "preview": "vite preview",
+    "preview": "vite preview --config vite.site.config.ts",
     "test": "vitest run",
     "lint": "tsc --noEmit"
   },

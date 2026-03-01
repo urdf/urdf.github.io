@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := help
 
-.PHONY: dev build build-site lint clean help
+.PHONY: dev build build-site preview lint clean help
 
 help:
 	@echo ""
@@ -10,6 +10,7 @@ help:
 	@echo "\033[2m# Build\033[0m"
 	@echo "  \033[36mbuild\033[0m        Build the npm library (dist/)"
 	@echo "  \033[36mbuild-site\033[0m   Build the demo site (docs/)"
+	@echo "  \033[36mpreview\033[0m      Preview the built library locally"
 	@echo ""
 	@echo "\033[2m# Quality\033[0m"
 	@echo "  \033[36mlint\033[0m         Type-check with tsc"
@@ -29,6 +30,9 @@ build-site:
 	npm install
 	npm run build:site
 	@printf "\n\033[1;36m  Demo site built to docs/\033[0m\n\n"
+
+preview:
+	npm run preview
 
 lint:
 	npm run lint
