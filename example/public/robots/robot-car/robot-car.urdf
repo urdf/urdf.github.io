@@ -127,24 +127,61 @@
   </joint>
 
   <!-- ─────────────────────────────────────────────────────────────── -->
-  <!-- CASTER WHEEL (rear, center)                                      -->
-  <!-- Adafruit #3948: 20 mm total height, 15.7 mm ball                -->
+  <!-- CASTER WHEEL ASSEMBLY (front-center, -X side)                   -->
+  <!-- Swivel caster: square mount plate + steel fork + rubber wheel   -->
+  <!-- Three parts share X/Y; stacked down from chassis underside      -->
   <!-- ─────────────────────────────────────────────────────────────── -->
-  <link name="caster_ball">
+
+  <!-- Mount plate: ~36×36×4 mm clear/steel -->
+  <link name="caster_plate">
     <visual>
       <geometry>
-        <sphere radius="0.0079"/>
+        <box size="0.036 0.036 0.004"/>
       </geometry>
-      <material name="steel">
-        <color rgba="0.78 0.78 0.78 1.00"/>
+      <material name="caster_metal">
+        <color rgba="0.76 0.76 0.78 1.00"/>
       </material>
     </visual>
   </link>
-  <joint name="caster_joint" type="fixed">
+  <joint name="caster_plate_joint" type="fixed">
     <parent link="base_link"/>
-    <child link="caster_ball"/>
-    <!-- 90mm rear of center (+X), 22mm below chassis center -->
-    <origin xyz="0.090 0.000 -0.022" rpy="0 0 0"/>
+    <child link="caster_plate"/>
+    <origin xyz="-0.065 0.000 -0.004" rpy="0 0 0"/>
+  </joint>
+
+  <!-- Swivel fork: thin U-bracket ~8×30×26 mm steel -->
+  <link name="caster_fork">
+    <visual>
+      <geometry>
+        <box size="0.008 0.030 0.026"/>
+      </geometry>
+      <material name="caster_metal">
+        <color rgba="0.76 0.76 0.78 1.00"/>
+      </material>
+    </visual>
+  </link>
+  <joint name="caster_fork_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="caster_fork"/>
+    <origin xyz="-0.065 0.000 -0.019" rpy="0 0 0"/>
+  </joint>
+
+  <!-- Caster wheel: ø38 mm × 16 mm black rubber -->
+  <link name="caster_wheel">
+    <visual>
+      <geometry>
+        <cylinder radius="0.019" length="0.016"/>
+      </geometry>
+      <material name="caster_rubber">
+        <color rgba="0.08 0.08 0.08 1.00"/>
+      </material>
+    </visual>
+  </link>
+  <joint name="caster_wheel_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="caster_wheel"/>
+    <!-- wheel axis along Y; center at base of fork -->
+    <origin xyz="-0.065 0.000 -0.037" rpy="1.5708 0 0"/>
   </joint>
 
   <!-- ─────────────────────────────────────────────────────────────── -->
