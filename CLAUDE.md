@@ -70,23 +70,12 @@ Bumper arc: circle center (25, 0) mm, R = 85 mm. X-flipped at generation so bump
 
 ## Sidebar UI conventions
 
-The sidebar (`example/index.html`) is a **desktop developer-tool panel**, not a mobile UI.
-Follow the sizing conventions of VS Code, Chrome DevTools, and the Three.js editor —
-not Apple HIG iOS touch targets (44pt minimum does not apply here).
+The sidebar (`example/index.html`) is a **desktop developer-tool panel** in the genre of
+VS Code, Chrome DevTools, and the Three.js editor — not a mobile or touch UI.
 
-| Control | Correct size | Wrong (mobile) |
-|---|---|---|
-| App header | 36px | 44px |
-| Icon buttons (pin, close) | 26px | 44px |
-| Chip/tag buttons (robot picker) | 22px height | 44px |
-| Text inputs | 24px height | 44px |
-| Primary action button | 24px height | 44px |
-| Checkbox rows | 22px height | 44px |
-| Select dropdown | 24px height | 44px |
-| Floating viewport toggle | 30px | 44px |
-| Section gap | 5px | 8px+ |
-
-Font sizes: 11px (`0.6875rem`) for labels/secondary, 12px (`0.75rem`) for controls and body.
+When styling it, use that genre as the reference, not Apple HIG or Material Design.
+That means compact, information-dense controls with small font sizes and tight spacing.
+Apple HIG touch target minimums (44pt) do not apply and will make the panel look bloated.
 
 CSS variables for all colors and theme values live in `:root` at the top of the `<style>` block.
 The sidebar has `overflow: hidden`; the scrollable region is `.sidebar-scroll` (flex: 1, overflow-y: auto),
