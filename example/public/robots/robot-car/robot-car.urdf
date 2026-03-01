@@ -251,23 +251,24 @@
   <!-- ─────────────────────────────────────────────────────────────── -->
   <!-- POWER BANK (SIXTHGU)                                             -->
   <!-- Cylindrical: ø35 mm × 92 mm length (estimated; not datasheet)  -->
-  <!-- Lying along X axis on top, rear area                            -->
+  <!-- Mounted under chassis, spanning Y axis, centered                -->
   <!-- ─────────────────────────────────────────────────────────────── -->
   <link name="powerbank">
     <visual>
       <geometry>
         <cylinder radius="0.0175" length="0.092"/>
       </geometry>
-      <material name="silver">
-        <color rgba="0.62 0.63 0.65 1.00"/>
+      <material name="powerbank_blue">
+        <color rgba="0.15 0.45 0.85 1.00"/>
       </material>
     </visual>
   </link>
   <joint name="powerbank_joint" type="fixed">
     <parent link="base_link"/>
     <child link="powerbank"/>
-    <!-- rpy rotates cylinder from Z-axis to X-axis so it lies horizontally -->
-    <origin xyz="0.025 -0.030 0.0220" rpy="0 1.5708 0"/>
+    <!-- rpy rotates cylinder from Z-axis to Y-axis so it spans left-right -->
+    <!-- Z: chassis bottom face −1.5 mm minus cylinder radius 17.5 mm = −19 mm -->
+    <origin xyz="0.025 0.000 -0.019" rpy="1.5708 0 0"/>
   </joint>
 
   <!-- ─────────────────────────────────────────────────────────────── -->

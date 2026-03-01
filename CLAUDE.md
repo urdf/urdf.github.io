@@ -55,7 +55,7 @@ print(screen_x(-0.010,  0.090, -0.002))  # wheel_right → positive = screen rig
 | l298n | +0.020 | +0.042 | +0.0153 | |
 | esp32cam | −0.080 | 0 | +0.009 | |
 | hcsr04 | −0.110 | 0 | +0.009 | |
-| powerbank | +0.025 | −0.030 | +0.022 | rpy 0 1.5708 0 |
+| powerbank | +0.025 | 0 | −0.019 | rpy 1.5708 0 0, under chassis spanning Y |
 | battery_9v | +0.050 | −0.038 | −0.0135 | |
 
 ## Hover labels
