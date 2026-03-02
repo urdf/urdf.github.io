@@ -62,10 +62,13 @@ export function generateChassis(p: ChassisParams): ArrayBuffer {
     s.lineTo(-rearHW, rearY - rearR);
     s.quadraticCurveTo(-rearHW, rearY, -rearHW + rearR, rearY);
 
-    // Motor pass-through cutouts — positioned 20 mm from rear edge
+    // Motor pass-through cutouts — in rear zone (y > stepY=0.080) where boundary=rearHW.
+    // y=0.093, h=0.014 → spans y=0.086–0.100, clear of mounting holes at y=0.083.
+    // DO NOT place holes at y<0.080: in the body zone boundary is bodyHW, and
+    // motorX (rearHW-based) exceeds it, causing earcut phantom geometry.
     const motorX = rearHW - 0.020;
-    s.holes.push(rectH(-motorX, 0.070, 0.012, 0.018, 0.001));
-    s.holes.push(rectH( motorX, 0.070, 0.012, 0.018, 0.001));
+    s.holes.push(rectH(-motorX, 0.093, 0.012, 0.014, 0.001));
+    s.holes.push(rectH( motorX, 0.093, 0.012, 0.014, 0.001));
 
     // Center cutout
     const pc = new THREE.Path();
