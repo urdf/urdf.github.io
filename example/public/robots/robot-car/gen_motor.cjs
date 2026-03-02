@@ -2,9 +2,9 @@
 // Run from the repo root:  node example/public/robots/robot-car/gen_motor.cjs
 //
 // TT Gearmotor geometry (matches Adafruit #3777 photo):
-//   Gearbox  — 36×22×18 mm box, centered at origin
+//   Gearbox  — 36×22×18 mm box, BOTTOM at Z=0 (URDF joint sits at chassis level)
 //   Shaft    — ø6 mm nub exits at +Y face (toward wheel)
-//   DC can   — ø20 mm × 28 mm cylinder, pointing +Z (upward) off gearbox top
+//   DC can   — ø20 mm × 22 mm cylinder, from Z=0.018 to Z=0.040
 //   Cap      — small tapered nub on top of DC can
 //
 // In the URDF visual:
@@ -20,28 +20,30 @@ const geometries = [];
 const matrices   = [];
 
 // 1. Gearbox body — 36(X) × 22(Y, shaft axis) × 18(Z) mm
+//    Origin at gearbox BOTTOM so URDF joint at Z=0 sits at the chassis plate.
+const gearMat = new THREE.Matrix4();
+gearMat.setPosition(0, 0, 0.009); // box center is half-height above origin
 geometries.push(new THREE.BoxGeometry(0.036, 0.022, 0.018));
-matrices.push(new THREE.Matrix4()); // centered at origin
+matrices.push(gearMat);
 
-// 2. Shaft nub — ø6 mm × 8 mm, exits at +Y face
+// 2. Shaft nub — ø6 mm × 8 mm, exits at +Y face at gearbox mid-height
 //    CylinderGeometry is along Y by default — no rotation needed
 const nubMat = new THREE.Matrix4();
-nubMat.setPosition(0, 0.015, 0); // Y = gearbox half (0.011) + nub half (0.004)
+nubMat.setPosition(0, 0.015, 0.009); // Y: half-box (0.011) + half-nub (0.004); Z: gearbox center
 geometries.push(new THREE.CylinderGeometry(0.003, 0.003, 0.008, 16));
 matrices.push(nubMat);
 
-// 3. DC motor can — ø20 mm × 28 mm, along +Z (upward)
+// 3. DC motor can — ø20 mm × 22 mm, along +Z (upward)
 //    rotateX(+PI/2) rotates the cylinder's Y axis onto +Z
 const canMat = new THREE.Matrix4().makeRotationX(Math.PI / 2);
-// Center: Z = gearbox half-height (0.009) + can half-length (0.014) = 0.023
-// X offset of +0.006 matches where the can attaches on the real motor
-canMat.setPosition(0.006, 0, 0.023);
-geometries.push(new THREE.CylinderGeometry(0.010, 0.010, 0.028, 24));
+// Center: gearbox top (0.018) + can half-length (0.011) = 0.029
+canMat.setPosition(0.006, 0, 0.029);
+geometries.push(new THREE.CylinderGeometry(0.010, 0.010, 0.022, 24));
 matrices.push(canMat);
 
-// 4. Cap nub — tapered tip at top of DC can
+// 4. Cap nub — tapered tip at top of DC can (top = 0.018 + 0.022 = 0.040)
 const capMat = new THREE.Matrix4().makeRotationX(Math.PI / 2);
-capMat.setPosition(0.006, 0, 0.023 + 0.014 + 0.002); // top of can + half cap
+capMat.setPosition(0.006, 0, 0.042); // 0.040 + half-cap (0.002)
 geometries.push(new THREE.CylinderGeometry(0.004, 0.007, 0.004, 16));
 matrices.push(capMat);
 
