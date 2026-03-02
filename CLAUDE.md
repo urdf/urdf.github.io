@@ -60,10 +60,9 @@ print(screen_x(-0.010,  0.090, -0.002))  # wheel_right → positive = screen rig
 
 ## robot-car URDF assembly
 
-**Never edit `robot-car.urdf` directly.** It is assembled from part files by a Vite plugin
-on every `make dev` / `make build-site` run, overwriting any direct edits.
-
-Edit the source parts in `example/public/robots/robot-car/parts/`:
+The URDF is assembled in the browser from part files in `example/public/robots/robot-car/parts/`.
+`robot-car.urdf` is not used — the browser fetches a `.parts.json` manifest, loads all part files
+in parallel, and assembles them via a blob URL. Edit the source parts directly:
 
 | File | Contents |
 |------|----------|

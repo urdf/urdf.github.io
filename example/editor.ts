@@ -4,7 +4,6 @@ const LOCAL_PROXY        = 'http://127.0.0.1:7337/claude';
 const MODEL              = 'claude-sonnet-4-6';
 const RENDER_DEBOUNCE_MS = 600;
 const MAX_XML_CHARS      = 30_000;
-const IS_DEV             = import.meta.env.DEV;
 
 const TOOL_FULL_URDF = {
     name: 'update_urdf',
@@ -23,8 +22,7 @@ const TOOL_UPDATE_PART = {
     description:
         'Write or create a URDF part file (e.g. "05-motor-driver.xml"). ' +
         'Send the complete content of that part — link + joint elements only, no <robot> wrapper. ' +
-        'Use a new filename like "07-lidar.xml" to add a new component. ' +
-        'The assembler rebuilds the full URDF and re-renders immediately.',
+        'Use a new filename like "07-lidar.xml" to add a new component.',
     input_schema: {
         type: 'object',
         properties: {
@@ -389,6 +387,26 @@ export class URDFEditorController {
             this._partsList.map(p => `<option value="${p}">${p}</option>`).join('');
     }
 
+    private _partUrl(filename: string): string {
+        return this._sourceUrl!.replace(/[^/]+\.urdf(\?.*)?$/, `parts/${filename}`);
+    }
+
+    private _assembleFromCache(): string {
+        const sorted = this._partsList
+            .map(f => [f, this._partCache.get(this._partUrl(f)) ?? ''] as [string, string])
+            .sort(([a], [b]) => a.localeCompare(b));
+        const intro = sorted.filter(([k]) => k.startsWith('00')).map(([, v]) => v.trimEnd()).join('\n');
+        const body  = sorted.filter(([k]) => !k.startsWith('00')).map(([, v]) => v.trimEnd()).join('\n\n');
+        return `<?xml version="1.0"?>\n${intro}\n<robot name="${this._robotName}">\n\n${body}\n\n</robot>\n`;
+    }
+
+    private _applyPartsRender(): void {
+        const xml = this._assembleFromCache();
+        if (this._ownBlobUrl) URL.revokeObjectURL(this._ownBlobUrl);
+        this._ownBlobUrl = URL.createObjectURL(new Blob([xml], { type: 'application/xml' }));
+        this._viewer.urdf = this._ownBlobUrl;
+    }
+
     private async _loadPartsManifest(): Promise<void> {
         if (!this._sourceUrl) return;
         const manifestUrl = this._sourceUrl.replace(/\.urdf(\?.*)?$/, '.parts.json');
@@ -396,6 +414,21 @@ export class URDFEditorController {
             const data = await fetch(manifestUrl).then(r => r.json()) as { robot: string; parts: string[] };
             this._robotName = data.robot;
             this._partsList = data.parts;
+
+            // Eagerly load all parts into cache in parallel
+            await Promise.all(data.parts.map(async f => {
+                const url = this._partUrl(f);
+                if (!this._partCache.has(url)) {
+                    const text = await fetch(url).then(r => r.text());
+                    this._partCache.set(url, text);
+                }
+            }));
+
+            this._urdfFetched = true;
+            if (!this._partSelEl.value) {
+                this._textareaEl.value = this._assembleFromCache();
+                this._updateLineNums();
+            }
             this._rebuildPartOptions();
             this._partSelEl.hidden = false;
             this._renderTabs();
@@ -405,15 +438,15 @@ export class URDFEditorController {
     private async _onPartChange(): Promise<void> {
         const filename = this._partSelEl.value;
         if (filename) {
-            const partUrl = this._sourceUrl!.replace(/[^/]+\.urdf(\?.*)?$/, `parts/${filename}`);
+            const url = this._partUrl(filename);
             try {
-                const cached = this._partCache.get(partUrl);
-                const text = cached !== undefined
-                    ? cached
-                    : await fetch(partUrl).then(r => r.text());
-                this._partCache.set(partUrl, text);
+                const cached = this._partCache.get(url);
+                const text = cached !== undefined ? cached : await fetch(url).then(r => r.text());
+                this._partCache.set(url, text);
                 this._setEditorContent(text);
             } catch { /* ignore */ }
+        } else if (this._partsList.length > 0) {
+            this._setEditorContent(this._assembleFromCache());
         } else if (this._sourceUrl) {
             this._highlights.clear();
             await this._fetchAndPopulate(this._sourceUrl);
@@ -667,7 +700,7 @@ Be concise. Use tools proactively.${briefNote}`;
     }
 
     private _buildTools(): readonly object[] {
-        const canEditParts = IS_DEV && this._partSelEl.value && this._partsList.length > 0;
+        const canEditParts = this._partsList.length > 0;
         const editTool = canEditParts ? TOOL_UPDATE_PART : TOOL_FULL_URDF;
         return [editTool, TOOL_HIGHLIGHT, TOOL_SCROLL];
     }
@@ -800,20 +833,17 @@ Be concise. Use tools proactively.${briefNote}`;
         switch (name) {
             case 'update_part': {
                 const { filename, xml } = args as { filename: string; xml: string };
-                const res = await fetch('/urdf-write-part', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ robot: this._robotName, filename, content: xml }),
-                });
-                if (!res.ok) return { error: await res.text() };
+                if (!/^[\w-]+\.xml$/.test(filename)) return { error: 'invalid filename' };
+                this._partCache.set(this._partUrl(filename), xml);
+                if (!this._partsList.includes(filename)) {
+                    this._partsList = [...this._partsList, filename].sort();
+                    this._rebuildPartOptions();
+                    this._renderTabs();
+                }
                 this._setEditorContent(xml);
-                await this._loadPartsManifest();
                 this._partSelEl.value = filename;
                 this._updateActiveTab();
-                if (this._sourceUrl) {
-                    const base = this._sourceUrl.split('?')[0];
-                    this._viewer.urdf = `${base}?t=${Date.now()}`;
-                }
+                this._applyPartsRender();
                 return { ok: true, lines: xml.split('\n').length };
             }
             case 'update_urdf': {

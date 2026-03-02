@@ -32,13 +32,35 @@ const upAxisEl = document.getElementById('up-axis') as HTMLSelectElement;
 interface RobotConfig {
     name: string;
     label: string;
-    urdf: string;
+    urdf?: string;
+    parts?: string;  // base path for browser-assembled robots, e.g. '/robots/robot-car/robot-car'
     up: string;
     package?: string;
 }
 
+function assembleURDF(robotName: string, partMap: Map<string, string>): string {
+    const sorted = [...partMap.entries()].sort(([a], [b]) => a.localeCompare(b));
+    const intro  = sorted.filter(([k]) => k.startsWith('00')).map(([, v]) => v.trimEnd()).join('\n');
+    const body   = sorted.filter(([k]) => !k.startsWith('00')).map(([, v]) => v.trimEnd()).join('\n\n');
+    return `<?xml version="1.0"?>\n${intro}\n<robot name="${robotName}">\n\n${body}\n\n</robot>\n`;
+}
+
+let _partsBlobUrl: string | null = null;
+
+async function loadViaBrowserAssembly(robot: RobotConfig): Promise<void> {
+    const base     = robot.parts!;
+    const manifest = await fetch(`${base}.parts.json`).then(r => r.json()) as { robot: string; parts: string[] };
+    const dir      = base.replace(/\/[^/]+$/, '');
+    const texts    = await Promise.all(manifest.parts.map(f => fetch(`${dir}/parts/${f}`).then(r => r.text())));
+    const partMap  = new Map(manifest.parts.map((f, i) => [f, texts[i]] as [string, string]));
+    const xml      = assembleURDF(manifest.robot, partMap);
+    if (_partsBlobUrl) URL.revokeObjectURL(_partsBlobUrl);
+    _partsBlobUrl  = URL.createObjectURL(new Blob([xml], { type: 'application/xml' }));
+    viewer.urdf    = _partsBlobUrl;
+}
+
 const ROBOTS: RobotConfig[] = [
-    { name: 'Robot Car',          label: 'Car',      urdf: '/robots/robot-car/robot-car.urdf',                 up: '+Z' },
+    { name: 'Robot Car',          label: 'Car',      parts: '/robots/robot-car/robot-car',                     up: '+Z' },
     { name: 'T12',                label: 'T12',      urdf: '/robots/T12/urdf/T12.URDF',                       up: '-Z' },
     { name: 'TriATHLETE',         label: 'Tri',      urdf: '/robots/TriATHLETE/urdf/TriATHLETE.URDF',         up: '-Z' },
     { name: 'Laikago',            label: 'Laikago',  urdf: '/robots/laikago/urdf/laikago.urdf',               up: '+Z' },
@@ -89,7 +111,15 @@ function loadRobot(robot: RobotConfig, index: number): void {
     viewer.up = robot.up;
     upAxisEl.value = robot.up;
     viewer.package = robot.package ?? '';
-    viewer.urdf = robot.urdf;
+
+    // Derive a stable source URL for the editor regardless of loading method
+    const sourceUrl = robot.parts ? `${robot.parts}.urdf` : robot.urdf!;
+
+    if (robot.parts) {
+        void loadViaBrowserAssembly(robot).catch(() => {});
+    } else {
+        viewer.urdf = robot.urdf!;
+    }
 
     clearActiveRobot();
     const btn = robot.name
@@ -99,7 +129,7 @@ function loadRobot(robot: RobotConfig, index: number): void {
         btn.classList.add('active');
         moveSliderTo(btn);
     }
-    editorCtrl.setSourceUrl(robot.urdf);
+    editorCtrl.setSourceUrl(sourceUrl);
 }
 
 for (let i = 0; i < ROBOTS.length; i++) {
