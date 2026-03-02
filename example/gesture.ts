@@ -185,15 +185,13 @@ export class GestureController {
 
                 this._handleWristRoll(lms);
 
-                if (name === 'Pointing_Up') {
-                    this._handleOrbitAndDwell(ctx, lms);
-                    this.palmResetStart = 0;
-                } else if (name === 'Open_Palm') {
+                if (name === 'Open_Palm') {
                     this._handlePalmReset(ctx, lms);
                     this._resetDwell();
                     this.prevIndexTip = null;
                 } else {
-                    this._resetOneHandTimers();
+                    this._handleOrbitAndDwell(ctx, lms);
+                    this.palmResetStart = 0;
                 }
             }
         }
