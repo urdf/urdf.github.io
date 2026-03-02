@@ -55,11 +55,11 @@ function circH(cx, cy, r) {
 
 
 // Motor pass-through cutouts
-// h capped at 0.018 so top (0.079) stays below stepY (0.080);
-// above the step the outer boundary narrows to bodyHW=0.062 which is
-// inside the hole x-range (0.069–0.081), causing phantom side-wall geometry.
-s.holes.push(rectH(-0.075, 0.070, 0.012, 0.018, 0.001));
-s.holes.push(rectH( 0.075, 0.070, 0.012, 0.018, 0.001));
+// Centered at y=0.093 (rear zone, y>stepY=0.080) so the full hole stays within
+// rearHW=0.095; at y=0.070 (body zone) bodyHW=0.062 < hole x-extent=0.081,
+// which put the holes entirely outside the shape and caused earcut phantom geometry.
+s.holes.push(rectH(-0.075, 0.093, 0.012, 0.014, 0.001));
+s.holes.push(rectH( 0.075, 0.093, 0.012, 0.014, 0.001));
 
 // Large center cutout
 ;(function () {
