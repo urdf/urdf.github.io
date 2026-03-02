@@ -84,6 +84,182 @@ CSS variables for all colors and theme values live in `:root` at the top of the 
 The sidebar has `overflow: hidden`; the scrollable region is `.sidebar-scroll` (flex: 1, overflow-y: auto),
 which contains the joints list and inspector. Credits are a pinned footer via `flex-shrink: 0`.
 
+## Gesture mode (`example/gesture.ts`)
+
+Hand-tracking via MediaPipe `@mediapipe/tasks-vision` loaded from CDN at runtime.
+The module is lazy-loaded on first button click (separate Vite chunk, no bundle impact).
+
+### Gesture dispatch — one gesture, one job
+
+| Gesture | MediaPipe label | Action |
+|---------|----------------|--------|
+| ✌️ Victory | `Victory` | Orbit camera (wrist lm[0] delta) |
+| ☝️ Pointing Up | `Pointing_Up` | Hover highlight + dwell select (fingertip lm[8]) |
+| 🖐️ Open Palm | `Open_Palm` | Reset all joints (hold 1 s) |
+| Any + joint selected | any | Wrist roll drives joint angle |
+| Two hands | — | Pinch/spread zoom |
+| Anything else | — | Explicitly clears hover, no action |
+
+Each branch clears the state owned by every other branch — no bleed-through on gesture transitions.
+
+### MediaPipe configuration rationale
+
+```typescript
+minHandDetectionConfidence: 0.7   // 0.5 default causes false detections in cluttered scenes
+minHandPresenceConfidence:  0.7   // higher = more stable Victory vs Pointing_Up classification
+minTrackingConfidence:      0.5   // keep lower — fast moves must not drop tracking
+cannedGesturesClassifierOptions: { scoreThreshold: 0.65 }  // gates classifier; cuts ambiguous transition frames
+// NO delegate: 'GPU' — gesture subgraph contains CPU-only ops (mediapipe issue #4712);
+// GPU flag is silently ignored and requires a dedicated uninitialized canvas
+```
+
+### Recognition loop pattern
+
+```typescript
+// Guard: camera ~30fps, rAF ~60fps — skip duplicate frames
+if (video.currentTime !== this._lastVideoTime) {
+    this._lastVideoTime = video.currentTime;
+    const result = recognizer.recognizeForVideo(video, performance.now());
+    // performance.now() is correct for live camera (not video.currentTime * 1000)
+}
+```
+
+### Signal smoothing: One Euro Filter
+
+Raw MediaPipe landmarks jitter 5–10mm at arm-extended distances. We use the **One Euro Filter**
+(Casiez et al., CHI 2012) on the wrist position before computing orbit deltas. Unlike simple EMA,
+it adapts cutoff frequency to velocity: stationary hand → heavy smoothing; fast movement → low
+latency. Two parameters: `f_min` (1.0 Hz) controls smoothing when still; `β` (0.007) controls
+how quickly the filter opens up with speed.
+
+### Orbit smoothing
+
+Wrist position is EMA-smoothed before computing delta (`WRIST_ALPHA = 0.4`).
+The smoothed value is stored in `prevHandPos`; delta = smoothed_current − smoothed_prev.
+Camera targets (`targetTheta/Phi/Radius`) are lerped toward at `CAM_LERP = 0.14` each rAF frame,
+decoupling MediaPipe input rate from camera animation rate.
+
+### Key landmark indices
+
+| Index | Landmark |
+|-------|---------|
+| 0 | Wrist |
+| 5 | Index MCP |
+| 8 | Index fingertip |
+| 12 | Middle fingertip |
+
+## Gesture design: research backing
+
+This section documents the research behind every design decision in gesture mode so
+future changes can be evaluated against the same evidence.
+
+### Gesture vocabulary
+
+**Size limit:** Working memory capacity for mid-air gestures is 3–5 items
+(IJHCI 2024). We use 5 primary gestures — at the upper limit. Do not add more without
+removing one.
+
+**Iconicity over emblems:** Prefer gestures whose form mirrors their meaning
+(fist=grab, open palm=release) over symbolic/cultural emblems (thumbs up, peace sign).
+Iconic gestures are discovered without training; emblems require learning and carry
+cultural risk.
+
+**Cultural sensitivity:** The ✌️ Victory sign is offensive in the UK, Australia, and
+New Zealand when shown palm-inward (which is the typical webcam angle). Do not use Victory
+as a primary command in an international tool. Closed_Fist has no known cultural conflict
+and maps directly to the grab-and-drag orbit metaphor.
+
+Sources: Wobbrock et al., CHI 2009; Matsumoto & Hwang, *Journal of Nonverbal Behavior* 2013;
+IJHCI 2024 working memory study.
+
+### Camera orbit: grab-and-drag / arcball metaphor
+
+The dominant research-backed metaphor for 3D camera rotation is the **arcball (virtual
+trackball)**: the user grabs the virtual sphere (Closed_Fist) and moves their hand; the
+camera orbits along the corresponding great-circle arc. This is the same model Three.js
+OrbitControls uses with the mouse.
+
+Evidence: gesture elicitation studies consistently produce grab-and-drag as the user's
+first-choice gesture for rotation. A VR controller study (CHI EA 2023) showed arcball
+completed tasks faster and was preferred over alternative mappings.
+
+Sources: Shoemake 1992 arcball; Ortega et al., ISMAR 2017 elicitation study; CHI EA 2023.
+
+### Dwell selection: 800ms
+
+Dwell (hold pointing gesture still over target for N ms) is the most robust selection
+technique when no physical click mechanism is available. Key thresholds from research:
+
+- **< 400ms:** unacceptable Midas Touch false-positive rate (Pactolo Bar, Sensors 2023)
+- **700–900ms:** research sweet spot — low error rate, acceptable speed (CHI 2007, ETRA 2021)
+- **> 1000ms:** unnecessarily slow; gaze systems that need 1000–1200ms do so because eye
+  gaze is noisier than hand pointing
+
+We use **800ms**. The 30px movement reset threshold prevents accidental trigger while
+allowing intentional repositioning.
+
+Sources: Müller & Tomfelde, HCI 2007; Mutasim et al., ETRA 2021 (pinch/click/dwell
+comparison); Pactolo Bar, Sensors 2023.
+
+### Wrist roll for joint control
+
+Forearm pronation/supination (wrist roll) for continuous 1D value control is the
+best-performing mid-air gesture for this use case: it was rated most preferred, most
+flexible across finger combinations, and lowest workload in a CHI 2018 study of six
+rotation gesture types.
+
+**Comfortable working range:** ±30–40° from neutral (the middle portion of the ~155°
+anatomical range). Full joint traversal should not require the user to reach end-of-range.
+Our delta-based approach (map roll delta per frame rather than absolute angle to joint
+value) naturally handles this — there is no mapping limit, just accumulation.
+
+Source: Buschek, Roppelt, Alt, *Extending Keyboard Shortcuts with Arm and Wrist Rotation
+Gestures*, CHI 2018.
+
+### Gorilla arm fatigue
+
+Mid-air gesture interfaces suffer from upper-limb fatigue within minutes of sustained use.
+The **Consumed Endurance (CE)** metric (Hincapié-Ramos et al., CHI 2014) quantifies
+this: shoulder torque, not just duration, determines fatigue onset. Arms raised to shoulder
+height with full extension reach CE=1.0 (exhaustion) within 2–5 minutes.
+
+Design mitigations already in place:
+- Gestures are brief and transient (fist+move, not fist+hold)
+- Webcam is typically at desk height — arms mostly at waist level
+- Keyboard/mouse fallback always available
+
+Known violation: **Open_Palm hold for 1s** requires a sustained static pose. Ultraleap
+guidelines explicitly say "never require users to hold a pose for extended periods." This
+is a known trade-off — the 1s timer acts as a deliberate confirmation barrier to avoid
+accidental joint reset. If this causes fatigue complaints, consider replacing with a
+deliberate dynamic gesture (e.g., fist → open snap) instead.
+
+Sources: Hincapié-Ramos et al., CHI 2014; Hansberger et al., VAMR 2017;
+Ultraleap XR Design Guidelines.
+
+### Signal smoothing: One Euro Filter
+
+Raw MediaPipe landmarks jitter 5–10mm at typical webcam distances. Simple EMA smoothing
+reduces noise but introduces constant lag regardless of movement speed. The **One Euro
+Filter** (Casiez et al., CHI 2012) is the canonical HCI solution: it adapts cutoff
+frequency to velocity, applying strong smoothing when stationary and minimal smoothing
+during fast movement.
+
+Parameters in use: `f_min=1.0` Hz (smoothing at rest), `β=0.007` (speed coefficient).
+Applied to wrist X and Y before computing orbit deltas.
+
+Source: Casiez, Roussel, Vogel, *1€ Filter: A Simple Speed-based Low-pass Filter for
+Noisy Input in Interactive Systems*, CHI 2012.
+
+### What we deliberately did not implement
+
+| Pattern | Why not |
+|---------|---------|
+| Pinch-to-select (thumb+index distance) | Not a native MediaPipe class; requires custom landmark geometry detection. Better if selection frequency is high — worth adding if dwell feels too slow. |
+| Two-hand zoom | Research: no clear advantage over one-hand in mid-air; adds coordination overhead and bimanual fatigue. We keep it for now (it's optional and infrequently used). |
+| Snap clutch (explicit mode activation) | Would eliminate Midas Touch entirely, but adds friction for casual use. Hand-out-of-frame already acts as an implicit off-switch. |
+| One Euro Filter on fingertip (hover) | Hover raycasting already benefits from stable fingertip position; adding filter would lag the visual ring behind the actual finger. Left as raw. |
+
 ## Commands
 
 ```sh

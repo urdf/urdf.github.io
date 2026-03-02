@@ -25,6 +25,38 @@ const WASM_CDN = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.21/w
 // Lerp factor per rAF frame (~60fps). Higher = snappier, lower = smoother.
 const CAM_LERP = 0.14;
 
+// One Euro Filter for wrist landmark smoothing.
+// Casiez et al., CHI 2012 — adaptive cutoff: heavy smoothing when still, low latency when moving.
+// β (speed coefficient) controls how quickly lag reduces with velocity.
+// f_min (minimum cutoff Hz) controls smoothing strength when stationary.
+class OneEuroFilter {
+    private x_prev = NaN;
+    private dx_prev = 0;
+    private t_prev = NaN;
+    constructor(
+        private readonly f_min = 1.0,
+        private readonly beta = 0.007,
+        private readonly d_cutoff = 1.0,
+    ) {}
+    private alpha(cutoff: number, dt: number) {
+        const r = 2 * Math.PI * cutoff * dt;
+        return r / (r + 1);
+    }
+    filter(x: number, t: number): number {
+        if (isNaN(this.t_prev)) { this.t_prev = t; this.x_prev = x; return x; }
+        const dt = Math.max((t - this.t_prev) / 1000, 1e-6);
+        this.t_prev = t;
+        const dx = (x - this.x_prev) / dt;
+        const dx_hat = dx * this.alpha(this.d_cutoff, dt) + this.dx_prev * (1 - this.alpha(this.d_cutoff, dt));
+        this.dx_prev = dx_hat;
+        const cutoff = this.f_min + this.beta * Math.abs(dx_hat);
+        const x_hat = x * this.alpha(cutoff, dt) + this.x_prev * (1 - this.alpha(cutoff, dt));
+        this.x_prev = x_hat;
+        return x_hat;
+    }
+    reset() { this.x_prev = NaN; this.t_prev = NaN; this.dx_prev = 0; }
+}
+
 export class GestureController {
     private viewer: URDFManipulator;
     private canvas: HTMLCanvasElement;
@@ -48,7 +80,11 @@ export class GestureController {
     private targetPhi = Math.PI / 3;
     private targetRadius = 0;
 
-    // Dwell select state — prevHandPos tracks the wrist (lm[0]) for orbit stability
+    // One Euro Filters for wrist x/y — adaptive smoothing, low latency when moving fast
+    private _wristFilterX = new OneEuroFilter(1.0, 0.007);
+    private _wristFilterY = new OneEuroFilter(1.0, 0.007);
+
+    // Dwell select state — prevHandPos tracks the smoothed wrist (lm[0]) for orbit
     private prevHandPos: { x: number; y: number } | null = null;
     private dwellStart = 0;
     private dwellMoved = false;
@@ -56,7 +92,9 @@ export class GestureController {
     private dwellScreenY = 0;
     private dwellStartScreenX = 0;
     private dwellStartScreenY = 0;
-    private readonly DWELL_MS = 1200;
+    // 800ms: research sweet spot (700-900ms) that avoids Midas Touch (>400ms minimum)
+    // while being faster than the 1000-1200ms range used for gaze-only systems.
+    private readonly DWELL_MS = 800;
 
     // Open-palm reset state
     private palmResetStart = 0;
@@ -67,6 +105,9 @@ export class GestureController {
 
     // Zoom state
     private prevZoomDist = 0;
+
+    // Last processed video timestamp — guard against duplicate recognizeForVideo calls
+    private _lastVideoTime = -1;
 
     // Raycaster for hit-testing the robot
     private _raycaster = new THREE.Raycaster();
@@ -92,15 +133,19 @@ export class GestureController {
         const vision = await FilesetResolver.forVisionTasks(WASM_CDN);
         this.recognizer = await GestureRecognizer.createFromOptions(vision, {
             baseOptions: {
+                // GPU delegate is silently ignored for the gesture subgraph (mediapipe issue #4712)
+                // and requires a dedicated uninitialized canvas — CPU is both correct and simpler.
                 modelAssetPath:
                     'https://storage.googleapis.com/mediapipe-models/gesture_recognizer/gesture_recognizer/float16/1/gesture_recognizer.task',
-                delegate: 'GPU',
             },
             runningMode: 'VIDEO',
             numHands: 2,
-            minHandDetectionConfidence: 0.6,
-            minHandPresenceConfidence: 0.6,
-            minTrackingConfidence: 0.5,
+            minHandDetectionConfidence: 0.7,  // was 0.6 — reduces false initial detections
+            minHandPresenceConfidence: 0.7,   // was 0.6 — stabilises Victory vs Pointing_Up
+            minTrackingConfidence: 0.5,        // keep lower so fast moves don't drop tracking
+            cannedGesturesClassifierOptions: {
+                scoreThreshold: 0.65,          // Victory/Pointing_Up confusion is a known model weakness
+            },
         });
 
         this.stream = await navigator.mediaDevices.getUserMedia({
@@ -150,6 +195,7 @@ export class GestureController {
         this.stream = null;
         this.recognizer?.close();
         this.recognizer = null;
+        this._lastVideoTime = -1;
 
         // Re-enable OrbitControls
         const ctrl = (this.viewer as unknown as { controls: { enabled: boolean } }).controls;
@@ -181,7 +227,11 @@ export class GestureController {
         this.rafId = requestAnimationFrame(this._loop);
 
         // ── Gesture recognition ──────────────────────────────────────────────
-        if (this.recognizer && this.video.readyState >= 2) {
+        // Guard: camera delivers ~30fps; rAF runs at ~60fps. Only call
+        // recognizeForVideo when the video has advanced to a new frame.
+        if (this.recognizer && this.video.readyState >= 2 &&
+                this.video.currentTime !== this._lastVideoTime) {
+            this._lastVideoTime = this.video.currentTime;
             const result = this.recognizer.recognizeForVideo(this.video, performance.now());
             const hands    = result.landmarks ?? [];
             const gestures = result.gestures ?? [];
@@ -207,7 +257,7 @@ export class GestureController {
                     this.prevHandPos = null;
                     this._clearHover();
                     this.palmResetStart = 0;
-                } else if (name === 'Victory') {
+                } else if (name === 'Closed_Fist') {
                     this._handleOrbit(lms);
                     this._resetDwell();
                     this._clearHover();
@@ -307,10 +357,11 @@ export class GestureController {
         this._dragCtrl.update();
     }
 
-    // ✌️ Victory — orbit only, no hover or dwell
+    // ✊ Closed_Fist — orbit only, no hover or dwell (grab-and-drag / arcball metaphor)
     private _handleOrbit(lms: NormalizedLandmark[]): void {
-        const wristX = 1 - lms[0].x;
-        const wristY = lms[0].y;
+        const t = performance.now();
+        const wristX = this._wristFilterX.filter(1 - lms[0].x, t);
+        const wristY = this._wristFilterY.filter(lms[0].y, t);
 
         if (this.prevHandPos === null) {
             this.prevHandPos = { x: wristX, y: wristY };
@@ -466,9 +517,11 @@ export class GestureController {
     private _resetTimers(): void {
         this._resetDwell();
         this.palmResetStart  = 0;
-        this.prevHandPos    = null;
+        this.prevHandPos     = null;
         this.prevWristAngle  = Infinity;
         this.prevZoomDist    = 0;
+        this._wristFilterX.reset();
+        this._wristFilterY.reset();
         this._clearHover();
     }
 
