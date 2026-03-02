@@ -299,7 +299,7 @@ export class URDFViewer extends HTMLElement {
         this._lastLoadKey = key;
 
         this._introAnim = null;
-        this._startExit(); // slide current robot out before disposing
+        this._startExit();
         this._disposeRobot(); // no-op if _startExit transferred the robot
         this.world.position.setScalar(0);
         this.world.visible = false;

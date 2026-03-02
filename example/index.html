@@ -158,7 +158,6 @@
 
     .tab-btn:hover { color: var(--text-1); }
 
-    /* Robot tab: active by default */
     .tab-btn[data-tab="robot"] { color: var(--blue-text); border-bottom-color: var(--blue); }
     body.editor-open .tab-btn[data-tab="robot"] { color: var(--text-2); border-bottom-color: transparent; }
     body.editor-open .tab-btn[data-tab="editor"] { color: var(--blue-text); border-bottom-color: var(--blue); }
@@ -197,7 +196,6 @@
       overflow: hidden;
     }
 
-    /* Robot tab shown by default */
     .tab-body[data-tab="robot"] { display: flex; }
     body.editor-open .tab-body[data-tab="robot"] { display: none; }
     body.editor-open .tab-body[data-tab="editor"] { display: flex; }
@@ -1128,7 +1126,6 @@
       aria-valuemax="700"
       tabindex="0"
     ></div>
-    <!-- Panel header: tabs + gesture toggle + close -->
     <div class="panel-header">
       <div class="panel-tabs">
         <button type="button" class="tab-btn" data-tab="robot" id="tab-robot">Robot</button>
@@ -1147,7 +1144,6 @@
       </div>
     </div>
 
-    <!-- Robot tab -->
     <div class="tab-body" data-tab="robot">
       <div class="section options-bar">
         <label class="option"><input type="checkbox" id="ignore-limits" /> Ignore limits</label>
@@ -1262,7 +1258,6 @@
 
     </div>
 
-    <!-- Editor tab -->
     <div class="tab-body" data-tab="editor" id="editor-panel">
       <div class="editor-part-bar">
         <select id="part-select" hidden aria-label="Edit part file"></select>
@@ -1366,13 +1361,11 @@
       try { localStorage.setItem(PANEL_W_KEY, panel.offsetWidth); } catch {}
     }
 
-    // Restore saved width (desktop only)
     if (isDesktop()) {
       const saved = parseInt(localStorage.getItem(PANEL_W_KEY), 10);
       if (saved >= MIN_W) applyWidth(saved);
     }
 
-    // Drag
     resizeHandle.addEventListener('pointerdown', e => {
       e.preventDefault();
       const startX = e.clientX;
@@ -1383,7 +1376,7 @@
 
       function onMove(ev) {
         let w = startW + startX - ev.clientX;
-        if (Math.abs(w - PANEL_W_DEFAULT) <= SNAP_RADIUS) w = PANEL_W_DEFAULT; // magnet snap
+        if (Math.abs(w - PANEL_W_DEFAULT) <= SNAP_RADIUS) w = PANEL_W_DEFAULT;
         const applied = applyWidth(w);
         widthTooltip.textContent = Math.round(applied) + 'px';
         widthTooltip.style.left    = (ev.clientX + 12) + 'px';
@@ -1407,7 +1400,6 @@
       saveWidth();
     });
 
-    // Keyboard: Arrow Left widens, Arrow Right narrows (16 px/step); Home = min, End = max
     resizeHandle.addEventListener('keydown', e => {
       const cur = panel.offsetWidth;
       let next;
@@ -1423,7 +1415,7 @@
       saveWidth();
     });
 
-    // Clamp on window resize. Do not overwrite stored value, only re-clamp if overflowing.
+    // Do not overwrite stored value; only re-clamp if overflowing.
     let _wResizeTimer = 0;
     window.addEventListener('resize', () => {
       clearTimeout(_wResizeTimer);

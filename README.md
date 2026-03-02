@@ -108,8 +108,6 @@ robot.links                            // Record<string, URDFLink>
 robot.frames                           // all named frames
 
 robot.setJointValue(name, value)       // → boolean (changed?)
-robot.setJointValues({ name: value })  // batch
-robot.getFrame(name)                   // → URDFBase | undefined
 ```
 
 ### `URDFJoint`
@@ -150,7 +148,6 @@ viewer.robot        // URDFRobot | null
 viewer.loadMesh     // override mesh loader
 viewer.fitCamera()  // reframe camera to robot bounds
 viewer.setJointValue(name, value)
-viewer.setJointValues({ name: value })
 ```
 
 ### `URDFManipulator` (extends `URDFViewer`)
