@@ -1554,6 +1554,11 @@
       }, 50);
     });
 
+    // Convert vertical wheel scroll to horizontal on the editor tab bar
+    document.getElementById('editor-tabs').addEventListener('wheel', (e) => {
+      if (e.deltaY !== 0) { e.preventDefault(); e.currentTarget.scrollLeft += e.deltaY; }
+    }, { passive: false });
+
   </script>
 </body>
 </html>
