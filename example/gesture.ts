@@ -341,9 +341,14 @@ export class GestureController {
         const cam = this.viewer.camera as THREE.PerspectiveCamera;
         if (!cam) return false;
 
+        // screenX/Y are in overlay canvas space (full window dimensions).
+        // The Three.js renderer viewport is the viewer element, which may be offset —
+        // e.g. sidebar pinned open shifts <main> left: 260px. Compute NDC relative to
+        // the actual viewer bounds so the raycaster aligns with what's on screen.
+        const rect = this.viewer.getBoundingClientRect();
         const ndc = new THREE.Vector2(
-            (screenX / this.canvas.width) * 2 - 1,
-            -(screenY / this.canvas.height) * 2 + 1,
+            ((screenX - rect.left) / rect.width) * 2 - 1,
+            -((screenY - rect.top) / rect.height) * 2 + 1,
         );
 
         // Drive the drag controls' raycaster so it fires onHover/onUnhover,
@@ -400,6 +405,12 @@ export class GestureController {
         const screenY = tipY * sh;
 
         this._overRobot = this._updateHoverState(screenX, screenY);
+
+        // Dispatch synthetic pointermove so main.ts positions the part-label tooltip
+        // at the fingertip rather than at the last real mouse position.
+        this.viewer.dispatchEvent(new PointerEvent('pointermove', {
+            clientX: screenX, clientY: screenY, bubbles: true, pointerId: 1,
+        }));
 
         ctx.beginPath();
         ctx.arc(screenX, screenY, 8, 0, 2 * Math.PI);
