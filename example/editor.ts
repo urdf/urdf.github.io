@@ -401,7 +401,9 @@ export class URDFEditorController {
     }
 
     private _applyPartsRender(): void {
-        const xml = this._assembleFromCache();
+        const robotDir = this._sourceUrl!.replace(/\/[^/]+\.urdf(\?.*)?$/, '');
+        const xml = this._assembleFromCache()
+            .replace(/filename="([^/"]+)"/g, `filename="${robotDir}/$1"`);
         if (this._ownBlobUrl) URL.revokeObjectURL(this._ownBlobUrl);
         this._ownBlobUrl = URL.createObjectURL(new Blob([xml], { type: 'application/xml' }));
         this._viewer.urdf = this._ownBlobUrl;

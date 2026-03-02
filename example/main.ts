@@ -53,7 +53,9 @@ async function loadViaBrowserAssembly(robot: RobotConfig): Promise<void> {
     const dir      = base.replace(/\/[^/]+$/, '');
     const texts    = await Promise.all(manifest.parts.map(f => fetch(`${dir}/parts/${f}`).then(r => r.text())));
     const partMap  = new Map(manifest.parts.map((f, i) => [f, texts[i]] as [string, string]));
-    const xml      = assembleURDF(manifest.robot, partMap);
+    // Rewrite relative mesh filenames to absolute paths — blob URLs have no usable base
+    const xml      = assembleURDF(manifest.robot, partMap)
+        .replace(/filename="([^/"]+)"/g, `filename="${dir}/$1"`);
     if (_partsBlobUrl) URL.revokeObjectURL(_partsBlobUrl);
     _partsBlobUrl  = URL.createObjectURL(new Blob([xml], { type: 'application/xml' }));
     viewer.urdf    = _partsBlobUrl;
