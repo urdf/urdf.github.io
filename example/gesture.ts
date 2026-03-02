@@ -347,8 +347,8 @@ export class GestureController {
         this.dwellScreenY = screenY;
 
         if (Math.abs(dx) >= 0.004 || Math.abs(dy) >= 0.004) {
-            this.targetTheta -= dx * 4.0;
-            this.targetPhi = Math.max(0.05, Math.min(Math.PI - 0.05, this.targetPhi - dy * 4.0));
+            this.targetTheta -= dx * 6.0;
+            this.targetPhi = Math.max(0.05, Math.min(Math.PI - 0.05, this.targetPhi - dy * 6.0));
         }
 
         const elapsed = performance.now() - this.dwellStart;
