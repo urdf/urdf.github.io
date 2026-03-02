@@ -1,0 +1,59 @@
+  <!-- ─────────────────────────────────────────────────────────────── -->
+  <!-- CASTER WHEEL ASSEMBLY (front-center, -X side)                   -->
+  <!-- Swivel caster: square mount plate + steel fork + rubber wheel   -->
+  <!-- Three parts share X/Y; stacked down from chassis underside      -->
+  <!-- ─────────────────────────────────────────────────────────────── -->
+
+  <!-- Mount plate: ~36×36×4 mm clear/steel -->
+  <link name="caster_plate">
+    <visual>
+      <geometry>
+        <box size="0.036 0.036 0.004"/>
+      </geometry>
+      <material name="caster_metal">
+        <color rgba="0.76 0.76 0.78 1.00"/>
+      </material>
+    </visual>
+  </link>
+  <joint name="caster_plate_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="caster_plate"/>
+    <origin xyz="-0.0900 0.0000 -0.0040" rpy="0 0 0"/>
+  </joint>
+
+  <!-- Swivel fork: thin U-bracket, spans plate bottom → wheel center  -->
+  <!-- Height 8 mm: from plate bottom (−5 mm) to wheel center (−13.5 mm)-->
+  <link name="caster_fork">
+    <visual>
+      <geometry>
+        <box size="0.008 0.016 0.030"/>
+      </geometry>
+      <material name="caster_metal">
+        <color rgba="0.76 0.76 0.78 1.00"/>
+      </material>
+    </visual>
+  </link>
+  <joint name="caster_fork_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="caster_fork"/>
+    <origin xyz="-0.0900 0.0000 -0.0180" rpy="0.0000 0.0000 0.0000"/>
+  </joint>
+
+  <!-- Swivel wheel: rubber; dimensions × 1.21 from inspector calibration -->
+  <!-- continuous so it visually rolls when car moves                     -->
+  <link name="caster_wheel">
+    <visual>
+      <geometry>
+        <cylinder radius="0.0146" length="0.0145"/>
+      </geometry>
+      <material name="caster_rubber">
+        <color rgba="0.08 0.08 0.08 1.00"/>
+      </material>
+    </visual>
+  </link>
+  <joint name="caster_wheel_joint" type="continuous">
+    <parent link="base_link"/>
+    <child link="caster_wheel"/>
+    <origin xyz="-0.0900 0.0000 -0.0320" rpy="1.5708 0.0000 0.0000"/>
+    <axis xyz="0 0 1"/>
+  </joint>

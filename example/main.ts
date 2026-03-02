@@ -1,4 +1,5 @@
 import { URDFManipulator } from '../src/index.js';
+import { URDFEditorController } from './editor.js';
 
 customElements.define('urdf-viewer', URDFManipulator);
 
@@ -14,6 +15,21 @@ const gestureOverlay   = document.getElementById('gesture-overlay') as HTMLCanva
 const gestureVideo     = document.getElementById('gesture-video') as HTMLVideoElement;
 const gestureSectionEl = document.getElementById('gesture-section')!;
 const gestureHeaderEl  = document.getElementById('gesture-section-header')!;
+
+const editorPanelEl   = document.getElementById('editor-panel')!;
+const editorToggleBtn = document.getElementById('editor-toggle') as HTMLButtonElement;
+
+const editorCtrl = new URDFEditorController(viewer, editorPanelEl);
+
+document.getElementById('editor-close')!.addEventListener('click', () => {
+    editorCtrl.close();
+    editorToggleBtn.classList.remove('active');
+});
+
+editorToggleBtn.addEventListener('click', () => {
+    editorCtrl.toggle();
+    editorToggleBtn.classList.toggle('active', editorCtrl.isOpen);
+});
 
 const ignoreLimitsEl = document.getElementById('ignore-limits') as HTMLInputElement;
 const showCollisionEl = document.getElementById('show-collision') as HTMLInputElement;
@@ -62,6 +78,7 @@ function loadRobot(robot: { name?: string; urdf: string; up: string; package?: s
         robotsPanel.querySelector<HTMLButtonElement>(`.robot-btn[data-name="${robot.name}"]`)
             ?.classList.add('active');
     }
+    editorCtrl.setSourceUrl(robot.urdf);
 }
 
 for (const robot of ROBOTS) {
@@ -95,6 +112,7 @@ function loadUrl(): void {
     if (!lower.endsWith('.urdf') && !lower.endsWith('.xml')) return;
     clearActiveRobot();
     viewer.urdf = url;
+    editorCtrl.setSourceUrl(url);
 }
 
 urlLoadBtn.addEventListener('click', loadUrl);
@@ -349,6 +367,7 @@ document.body.addEventListener('drop', e => {
         if (_dropBlobUrl) URL.revokeObjectURL(_dropBlobUrl);
         _dropBlobUrl = URL.createObjectURL(file);
         viewer.urdf = _dropBlobUrl;
+        editorCtrl.setSourceUrl(_dropBlobUrl);
     }
 });
 

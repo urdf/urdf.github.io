@@ -4,6 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>URDF Viewer</title>
+  <link rel="preload" href="https://cdn.jsdelivr.net/npm/marked@15/marked.min.js" as="script">
+  <link rel="preload" href="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js" as="script">
   <style>
     /* ── Design tokens ───────────────────────────────────────────────────── */
 
@@ -283,7 +285,7 @@
       z-index: 100;
       background: var(--toggle-bg);
       border: 1px solid var(--border);
-      border-radius: 5px;
+      border-radius: 50%;
       color: var(--text-2);
       font-size: 0.875rem;
       width: 36px;
@@ -335,8 +337,10 @@
       position: fixed;
       inset: 0;
       overflow: hidden;
-      transition: left 0.25s ease;
+      transition: left 0.25s ease, right 0.25s ease;
     }
+
+    body.editor-open main { right: 420px; }
 
     aside.open.pinned ~ main { left: 260px; }
     aside.open.pinned ~ main .sidebar-toggle { display: none; }
@@ -585,6 +589,383 @@
       50%       { box-shadow: 0 0 0 6px rgba(0, 122, 255, 0); }
     }
 
+    /* ── Editor toggle button ───────────────────────────────────────────── */
+
+    #editor-toggle {
+      display: flex;
+      position: absolute;
+      top: 10px; right: 54px; z-index: 100;
+      background: var(--toggle-bg);
+      border: 1px solid var(--border); border-radius: 50%;
+      color: var(--text-2);
+      width: 36px; height: 36px; cursor: pointer;
+      align-items: center; justify-content: center;
+      backdrop-filter: blur(4px);
+      transition: color 0.12s, background 0.12s, border-color 0.12s;
+    }
+
+    #editor-toggle:hover { color: var(--text-1); }
+
+    #editor-toggle.active {
+      background: var(--blue-bg); border-color: var(--blue); color: var(--blue-text);
+    }
+
+    /* ── Editor panel ────────────────────────────────────────────────────── */
+
+    #editor-panel {
+      position: fixed;
+      right: 0; top: 0;
+      height: 100dvh;
+      width: 420px;
+      background: var(--surface);
+      border-left: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      z-index: 250;
+      transform: translateX(100%);
+      transition: transform 0.25s ease;
+      overflow: hidden;
+    }
+
+    #editor-panel.open { transform: translateX(0); }
+
+    .editor-panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 8px 0 14px;
+      height: 40px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .editor-panel-title {
+      font-size: 0.8125rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      color: var(--text-3);
+      text-transform: uppercase;
+    }
+
+    .editor-panel-close {
+      background: none; border: none;
+      color: var(--text-3); cursor: pointer;
+      width: 30px; height: 30px;
+      display: flex; align-items: center; justify-content: center;
+      border-radius: 4px; font-size: 0.75rem;
+    }
+
+    .editor-panel-close:hover { color: var(--text-1); }
+
+    #part-select {
+      flex: 1;
+      max-width: 180px;
+      background: var(--surface-hi);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      color: var(--text-2);
+      font-size: 0.6875rem;
+      padding: 0 4px;
+      height: 24px;
+    }
+
+    #part-select:focus-visible { outline: none; border-color: var(--blue); }
+
+    .editor-pane {
+      display: flex;
+      flex-direction: row;
+      height: 55%;
+      overflow: hidden;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .editor-line-nums {
+      width: 36px;
+      flex-shrink: 0;
+      background: var(--bg);
+      border-right: 1px solid var(--border);
+      overflow: hidden;
+      font-family: ui-monospace, monospace;
+      font-size: 0.6875rem;
+      line-height: 19px;
+      padding: 8px 0;
+      user-select: none;
+    }
+
+    .editor-line-nums .lnum {
+      text-align: right;
+      padding-right: 6px;
+      color: var(--text-3);
+    }
+
+    .editor-line-nums .lnum.hl {
+      color: var(--blue-text);
+      background: var(--blue-bg);
+    }
+
+    #editor-textarea {
+      flex: 1;
+      background: var(--bg);
+      color: var(--text-1);
+      border: none;
+      outline: none;
+      resize: none;
+      font-family: ui-monospace, monospace;
+      font-size: 0.6875rem;
+      line-height: 19px;
+      padding: 8px;
+      overflow: auto;
+      white-space: pre;
+      tab-size: 2;
+    }
+
+    .editor-split-handle {
+      height: 5px;
+      background: var(--border);
+      cursor: ns-resize;
+      flex-shrink: 0;
+      transition: background 0.12s;
+    }
+
+    .editor-split-handle:hover { background: var(--blue); }
+
+    .chat-pane {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .chat-messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      min-height: 0;
+    }
+
+    /* ── User bubble ─────────────────────────────────────────────────────── */
+
+    .chat-msg-user {
+      align-self: flex-end;
+      max-width: 88%;
+      background: var(--blue-bg);
+      border: 1px solid var(--blue);
+      border-radius: 10px 10px 3px 10px;
+      padding: 6px 12px;
+      font-size: 0.8125rem;
+      color: var(--text-1);
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    /* ── Assistant message — no bubble, markdown content ─────────────────── */
+
+    .chat-msg-assistant {
+      align-self: flex-start;
+      max-width: 100%;
+      font-size: 0.8125rem;
+      color: var(--text-1);
+      line-height: 1.6;
+    }
+
+    .chat-msg-assistant p { margin: 4px 0; }
+    .chat-msg-assistant p:first-child { margin-top: 0; }
+    .chat-msg-assistant p:last-child  { margin-bottom: 0; }
+
+    .chat-msg-assistant code {
+      font-family: ui-monospace, 'JetBrains Mono', monospace;
+      font-size: 0.6875rem;
+      background: var(--surface-hi);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 1px 4px;
+    }
+
+    .chat-msg-assistant pre {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 8px 12px;
+      margin: 6px 0;
+      overflow-x: auto;
+      font-size: 0.6875rem;
+      line-height: 1.55;
+    }
+
+    .chat-msg-assistant pre code { background: none; border: none; padding: 0; }
+
+    .chat-msg-assistant h1, .chat-msg-assistant h2, .chat-msg-assistant h3 {
+      font-size: 0.875rem; font-weight: 600; margin: 8px 0 4px;
+    }
+
+    .chat-msg-assistant ul, .chat-msg-assistant ol { margin: 4px 0; padding-left: 18px; }
+    .chat-msg-assistant li { margin: 2px 0; }
+    .chat-msg-assistant strong { font-weight: 600; }
+
+    .chat-msg-assistant blockquote {
+      border-left: 3px solid var(--border);
+      margin: 6px 0; padding-left: 10px; color: var(--text-2);
+    }
+
+    /* ── Tool card ────────────────────────────────────────────────────────── */
+
+    .chat-tool-card {
+      align-self: flex-start;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--surface);
+      display: flex; align-items: center; gap: 8px;
+      padding: 4px 10px;
+      font-family: ui-monospace, monospace;
+      font-size: 0.6875rem;
+    }
+
+    .chat-tool-card-name { color: var(--text-2); font-weight: 500; }
+
+    .chat-tool-card-status {
+      width: 14px; height: 14px;
+      display: flex; align-items: center; justify-content: center;
+      position: relative;
+    }
+
+    .chat-tool-card-status:not(.ok):not(.err)::before {
+      content: '';
+      position: absolute; width: 10px; height: 10px;
+      border: 1.5px solid var(--border);
+      border-top-color: var(--text-2);
+      border-radius: 50%;
+      animation: tool-spin 0.7s linear infinite;
+    }
+
+    @keyframes tool-spin { to { transform: rotate(360deg); } }
+    .chat-tool-card-status.ok  { color: var(--blue-text); font-size: 0.75rem; }
+    .chat-tool-card-status.err { color: #f44; font-size: 0.75rem; }
+
+    /* ── Thinking spinner ─────────────────────────────────────────────────── */
+
+    .chat-spinner {
+      display: flex; gap: 4px; padding: 4px 2px;
+      align-items: center; align-self: flex-start;
+    }
+
+    .chat-spinner span {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: var(--text-3);
+      animation: chat-bounce 1.2s ease-in-out infinite;
+    }
+
+    .chat-spinner span:nth-child(2) { animation-delay: 0.2s; }
+    .chat-spinner span:nth-child(3) { animation-delay: 0.4s; }
+
+    @keyframes chat-bounce {
+      0%, 80%, 100% { transform: scale(1);   opacity: 0.4; }
+      40%           { transform: scale(1.4); opacity: 1;   }
+    }
+
+    /* ── Entrance animation ───────────────────────────────────────────────── */
+
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(5px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .chat-msg-user, .chat-msg-assistant, .chat-tool-card, .chat-spinner {
+      animation: fadeInUp 0.18s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+    }
+
+    /* ── Command autocomplete ────────────────────────────────────────────── */
+
+    .cmd-ac {
+      position: absolute;
+      bottom: 100%;
+      left: 0; right: 0;
+      margin-bottom: 5px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 4px 16px var(--shadow);
+      z-index: 10;
+    }
+
+    .cmd-ac-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 12px;
+      cursor: pointer;
+      font-size: 0.8125rem;
+      transition: background 0.08s;
+    }
+
+    .cmd-ac-item.selected, .cmd-ac-item:hover { background: var(--surface-hover); }
+
+    .cmd-ac-name { font-family: ui-monospace, monospace; font-weight: 600; color: var(--blue-text); }
+    .cmd-ac-arg  { font-family: ui-monospace, monospace; color: var(--text-3); font-size: 0.6875rem; }
+    .cmd-ac-desc { color: var(--text-3); font-size: 0.75rem; margin-left: auto; }
+
+    /* ── Pill input ───────────────────────────────────────────────────────── */
+
+    .chat-input-area {
+      position: relative;
+      border-top: 1px solid var(--border);
+      padding: 8px;
+      flex-shrink: 0;
+    }
+
+    .chat-input-wrap {
+      position: relative;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: var(--surface-hi);
+      transition: border-color 0.12s;
+    }
+
+    .chat-input-wrap:focus-within { border-color: var(--blue); }
+
+    #chat-input {
+      width: 100%;
+      padding: 9px 44px 9px 16px;
+      font-size: 0.8125rem;
+      font-family: system-ui, sans-serif;
+      border: none;
+      border-radius: 999px;
+      background: transparent;
+      color: var(--text-1);
+      resize: none;
+      line-height: 1.4;
+      display: block;
+      overflow-y: hidden;
+      max-height: 120px;
+    }
+
+    #chat-input::placeholder { color: var(--text-3); }
+    #chat-input:focus-visible { outline: none; }
+
+    .chat-send-btn, .chat-abort-btn {
+      position: absolute;
+      top: 50%; right: 5px;
+      transform: translateY(-50%);
+      width: 30px; height: 30px;
+      border-radius: 50%; border: none;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: background 0.12s, transform 0.1s;
+    }
+
+    .chat-send-btn { background: var(--blue); color: #fff; }
+    .chat-send-btn:hover { background: var(--blue-hover); }
+    .chat-send-btn:active { transform: translateY(-50%) scale(0.88); }
+    .chat-send-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+    .chat-abort-btn { background: var(--surface-hover); color: var(--text-2); }
+    .chat-abort-btn:hover { background: #c0392b; color: #fff; }
+    .chat-abort-btn:active { transform: translateY(-50%) scale(0.88); }
+
     /* ── Gesture cheat sheet ─────────────────────────────────────────────── */
 
     #gesture-section { border-bottom: 1px solid var(--border); }
@@ -744,6 +1125,11 @@
 
   <main>
     <button type="button" class="sidebar-toggle" id="sidebar-toggle" aria-label="Open controls">☰</button>
+    <button type="button" id="editor-toggle" aria-label="Toggle URDF editor" title="URDF Editor">
+      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>
+      </svg>
+    </button>
     <button type="button" id="gesture-toggle" aria-label="Toggle gesture mode" title="Gesture mode">
       <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
         <path d="M18 11V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2"/>
@@ -758,9 +1144,56 @@
     <canvas id="gesture-overlay"></canvas>
     <video id="gesture-video" playsinline muted></video>
   </main>
+  <div id="editor-panel" aria-label="URDF Editor">
+    <div class="editor-panel-header">
+      <span class="editor-panel-title">URDF Editor</span>
+      <select id="part-select" hidden aria-label="Edit part file"></select>
+      <button type="button" class="editor-panel-close" id="editor-close" aria-label="Close editor">✕</button>
+    </div>
+    <div class="editor-pane">
+      <div class="editor-line-nums" id="editor-line-nums" aria-hidden="true"></div>
+      <textarea
+        id="editor-textarea"
+        spellcheck="false"
+        autocomplete="off"
+        autocorrect="off"
+        autocapitalize="off"
+        wrap="off"
+        aria-label="URDF source code"
+      ></textarea>
+    </div>
+    <div class="editor-split-handle" role="separator" aria-orientation="horizontal" aria-label="Resize editor and chat"></div>
+    <div class="chat-pane">
+      <div class="chat-messages" id="chat-messages" aria-live="polite" aria-label="AI conversation"></div>
+      <div class="chat-input-area">
+        <div id="cmd-ac" class="cmd-ac" hidden role="listbox" aria-label="Commands"></div>
+        <div class="chat-input-wrap">
+          <textarea
+            id="chat-input"
+            placeholder="Ask AI about this URDF…"
+            aria-label="Chat with AI"
+            rows="1"
+          ></textarea>
+          <button type="button" id="chat-send" class="chat-send-btn" aria-label="Send message" title="Send (Enter)">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+              <path d="M8 13V3M3.5 7.5L8 3l4.5 4.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <button type="button" id="chat-abort" class="chat-abort-btn" hidden aria-label="Stop generating" title="Stop">
+            <svg width="10" height="10" viewBox="0 0 11 11" aria-hidden="true">
+              <rect width="11" height="11" rx="2" fill="currentColor"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
   <div class="part-label" id="part-label"></div>
 
+  <script src="https://cdn.jsdelivr.net/npm/marked@15/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js"></script>
   <script type="module" src="./main.ts"></script>
   <script>
     const sidebar   = document.querySelector('aside');
