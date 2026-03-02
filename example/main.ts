@@ -16,50 +16,62 @@ const gestureVideo     = document.getElementById('gesture-video') as HTMLVideoEl
 const gestureSectionEl = document.getElementById('gesture-section')!;
 const gestureHeaderEl  = document.getElementById('gesture-section-header')!;
 
-const editorPanelEl   = document.getElementById('editor-panel')!;
-const editorToggleBtn = document.getElementById('editor-toggle') as HTMLButtonElement;
+const editorPanelEl = document.getElementById('editor-panel')!;
 
 const editorCtrl = new URDFEditorController(viewer, editorPanelEl);
 
-document.getElementById('editor-close')!.addEventListener('click', () => {
-    editorCtrl.close();
-    editorToggleBtn.classList.remove('active');
-});
-
-editorToggleBtn.addEventListener('click', () => {
-    editorCtrl.toggle();
-    editorToggleBtn.classList.toggle('active', editorCtrl.isOpen);
-});
+document.getElementById('tab-robot')!.addEventListener('click', () => editorCtrl.close());
+document.getElementById('tab-editor')!.addEventListener('click', () => editorCtrl.open());
 
 const ignoreLimitsEl = document.getElementById('ignore-limits') as HTMLInputElement;
 const showCollisionEl = document.getElementById('show-collision') as HTMLInputElement;
 const displayShadowEl = document.getElementById('display-shadow') as HTMLInputElement;
 const upAxisEl = document.getElementById('up-axis') as HTMLSelectElement;
-const urlInput = document.getElementById('url-input') as HTMLInputElement;
-const urlLoadBtn = document.getElementById('url-load') as HTMLButtonElement;
 
 // ── Available robots ──────────────────────────────────────────────────────────
 
 const ROBOTS = [
-    { name: 'Robot Car',          urdf: '/robots/robot-car/robot-car.urdf',                 up: '+Z' },
-    { name: 'T12',                urdf: '/robots/T12/urdf/T12.URDF',                       up: '-Z' },
-    { name: 'TriATHLETE',         urdf: '/robots/TriATHLETE/urdf/TriATHLETE.URDF',         up: '-Z' },
-    { name: 'Laikago',            urdf: '/robots/laikago/urdf/laikago.urdf',               up: '+Z' },
+    { name: 'Robot Car',          label: 'Car',      urdf: '/robots/robot-car/robot-car.urdf',                 up: '+Z' },
+    { name: 'T12',                label: 'T12',      urdf: '/robots/T12/urdf/T12.URDF',                       up: '-Z' },
+    { name: 'TriATHLETE',         label: 'Tri',      urdf: '/robots/TriATHLETE/urdf/TriATHLETE.URDF',         up: '-Z' },
+    { name: 'Laikago',            label: 'Laikago',  urdf: '/robots/laikago/urdf/laikago.urdf',               up: '+Z' },
     {
         name: 'Open Manipulator X',
+        label: 'OM-X',
         urdf: '/robots/open_manipulator_x/open_manipulator_x.urdf',
         package: 'open_manipulator_description: /robots/open_manipulator_x',
         up: '+Z',
     },
-    { name: 'SO-ARM100',          urdf: '/robots/so_arm100/so100.urdf',                    up: '+Z' },
-    { name: 'Simple Humanoid',    urdf: '/robots/simple_humanoid/simple_humanoid.urdf',    up: '+Z' },
+    { name: 'SO-ARM100',          label: 'SO-100',   urdf: '/robots/so_arm100/so100.urdf',                    up: '+Z' },
+    { name: 'Simple Humanoid',    label: 'Humanoid', urdf: '/robots/simple_humanoid/simple_humanoid.urdf',    up: '+Z' },
     {
         name: 'Spryped',
+        label: 'Spryped',
         urdf: '/robots/spryped/urdf/spryped.urdf',
         package: 'spryped_urdf_rev06: /robots/spryped',
         up: '+Z',
     },
 ];
+
+let currentRobotIndex = 0;
+
+// ── Robot track slider ─────────────────────────────────────────────────────────
+
+const robotTrackSlider = document.getElementById('robot-track-slider') as HTMLElement;
+
+function moveSliderTo(btn: HTMLButtonElement): void {
+    const trackRect  = robotsPanel.getBoundingClientRect();
+    const btnRect    = btn.getBoundingClientRect();
+    robotTrackSlider.style.width  = `${btnRect.width}px`;
+    robotTrackSlider.style.height = `${btnRect.height}px`;
+    robotTrackSlider.style.left   = `${btnRect.left - trackRect.left}px`;
+    robotTrackSlider.style.top    = `${btnRect.top  - trackRect.top}px`;
+}
+
+function moveSliderToActive(): void {
+    const active = robotsPanel.querySelector<HTMLButtonElement>('.robot-btn.active');
+    if (active) moveSliderTo(active);
+}
 
 function clearActiveRobot(): void {
     for (const btn of robotsPanel.querySelectorAll<HTMLButtonElement>('.robot-btn')) {
@@ -67,7 +79,8 @@ function clearActiveRobot(): void {
     }
 }
 
-function loadRobot(robot: { name?: string; urdf: string; up: string; package?: string }): void {
+function loadRobot(robot: { name?: string; urdf: string; up: string; package?: string }, index: number): void {
+    currentRobotIndex = index;
     viewer.up = robot.up;
     upAxisEl.value = robot.up;
     viewer.package = robot.package ?? '';
@@ -75,23 +88,45 @@ function loadRobot(robot: { name?: string; urdf: string; up: string; package?: s
 
     clearActiveRobot();
     if (robot.name) {
-        robotsPanel.querySelector<HTMLButtonElement>(`.robot-btn[data-name="${robot.name}"]`)
-            ?.classList.add('active');
+        const btn = robotsPanel.querySelector<HTMLButtonElement>(`.robot-btn[data-name="${robot.name}"]`);
+        btn?.classList.add('active');
+        if (btn) moveSliderTo(btn);
     }
     editorCtrl.setSourceUrl(robot.urdf);
 }
 
-for (const robot of ROBOTS) {
+for (let i = 0; i < ROBOTS.length; i++) {
+    const robot = ROBOTS[i];
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'robot-btn';
-    btn.textContent = robot.name;
+    btn.textContent = robot.label;
+    btn.title = robot.name;
     btn.dataset.name = robot.name;
-    btn.addEventListener('click', () => loadRobot(robot));
+    btn.addEventListener('click', () => loadRobot(robot, i));
     robotsPanel.appendChild(btn);
 }
 
-loadRobot(ROBOTS[0]);
+// Keep slider in sync when panel is pinned and viewport resizes
+new ResizeObserver(moveSliderToActive).observe(robotsPanel);
+
+// Snap to initial position without animation, then enable transitions
+robotTrackSlider.style.transition = 'none';
+loadRobot(ROBOTS[0], 0);
+requestAnimationFrame(() => requestAnimationFrame(() => {
+    robotTrackSlider.style.transition = '';
+}));
+
+// ── Keyboard robot navigation (← →) ──────────────────────────────────────────
+
+document.addEventListener('keydown', (e) => {
+    if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+    const el = document.activeElement as HTMLElement;
+    if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable) return;
+    const dir = e.key === 'ArrowRight' ? 1 : -1;
+    const idx = (currentRobotIndex + dir + ROBOTS.length) % ROBOTS.length;
+    loadRobot(ROBOTS[idx], idx);
+});
 
 // ── Controls ──────────────────────────────────────────────────────────────────
 
@@ -102,21 +137,6 @@ upAxisEl.addEventListener('change', () => { viewer.up = upAxisEl.value; });
 
 displayShadowEl.checked = viewer.displayShadow;
 upAxisEl.value = viewer.up;
-
-// ── URL loader ────────────────────────────────────────────────────────────────
-
-function loadUrl(): void {
-    const url = urlInput.value.trim();
-    if (!url) return;
-    const lower = url.toLowerCase();
-    if (!lower.endsWith('.urdf') && !lower.endsWith('.xml')) return;
-    clearActiveRobot();
-    viewer.urdf = url;
-    editorCtrl.setSourceUrl(url);
-}
-
-urlLoadBtn.addEventListener('click', loadUrl);
-urlInput.addEventListener('keydown', e => { if (e.key === 'Enter') loadUrl(); });
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -354,26 +374,14 @@ viewer.addEventListener('joint-mouseout', (e: Event) => {
     partLabel.style.display = 'none';
 });
 
-// ── Drag and drop ─────────────────────────────────────────────────────────────
-
-let _dropBlobUrl: string | null = null;
-
-document.body.addEventListener('dragover', e => e.preventDefault());
-document.body.addEventListener('drop', e => {
-    e.preventDefault();
-    const file = e.dataTransfer?.files[0];
-    if (file?.name.toLowerCase().endsWith('.urdf')) {
-        clearActiveRobot();
-        if (_dropBlobUrl) URL.revokeObjectURL(_dropBlobUrl);
-        _dropBlobUrl = URL.createObjectURL(file);
-        viewer.urdf = _dropBlobUrl;
-        editorCtrl.setSourceUrl(_dropBlobUrl);
-    }
-});
 
 // ── Gesture mode ───────────────────────────────────────────────────────────────
 
 function onDwellSelect(clientX: number, clientY: number): void {
+    // If finger is over a robot button, select it
+    const robotBtn = document.elementFromPoint(clientX, clientY)?.closest<HTMLButtonElement>('.robot-btn');
+    if (robotBtn) { robotBtn.click(); return; }
+    // Otherwise: 3D joint selection
     const opts: PointerEventInit = { clientX, clientY, bubbles: true, pointerId: 1 };
     viewer.dispatchEvent(new PointerEvent('pointerdown', opts));
     viewer.dispatchEvent(new PointerEvent('pointerup', opts));
@@ -388,9 +396,16 @@ gestureToggleBtn.addEventListener('click', async () => {
     gestureCtrl = new GestureController({
         viewer, overlayCanvas: gestureOverlay, videoEl: gestureVideo,
         onDwellSelect,
+        onPointerMove(clientX, clientY) {
+            const btn = document.elementFromPoint(clientX, clientY)?.closest<HTMLButtonElement>('.robot-btn');
+            if (btn) moveSliderTo(btn);
+            else moveSliderToActive();
+        },
+        onPointerLeave() { moveSliderToActive(); },
         onStop() {
             gestureCtrl = null;
             gestureToggleBtn.classList.remove('active');
+            moveSliderToActive();
         },
     });
     gestureCtrl.start()

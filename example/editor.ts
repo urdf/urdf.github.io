@@ -118,12 +118,12 @@ export class URDFEditorController {
         this._panelEl      = panelEl;
         this._textareaEl   = panelEl.querySelector<HTMLTextAreaElement>('#editor-textarea')!;
         this._lineNumsEl   = panelEl.querySelector<HTMLElement>('#editor-line-nums')!;
-        this._chatMsgsEl   = panelEl.querySelector<HTMLElement>('#chat-messages')!;
-        this._chatInputEl  = panelEl.querySelector<HTMLTextAreaElement>('#chat-input')!;
-        this._sendBtn      = panelEl.querySelector<HTMLButtonElement>('#chat-send')!;
-        this._abortBtn     = panelEl.querySelector<HTMLButtonElement>('#chat-abort')!;
+        this._chatMsgsEl   = document.getElementById('chat-messages') as HTMLElement;
+        this._chatInputEl  = document.getElementById('chat-input') as HTMLTextAreaElement;
+        this._sendBtn      = document.getElementById('chat-send') as HTMLButtonElement;
+        this._abortBtn     = document.getElementById('chat-abort') as HTMLButtonElement;
         this._editorPaneEl = panelEl.querySelector<HTMLElement>('.editor-pane')!;
-        this._cmdAcEl      = panelEl.querySelector<HTMLElement>('#cmd-ac')!;
+        this._cmdAcEl      = document.getElementById('cmd-ac') as HTMLElement;
         this._partSelEl    = panelEl.querySelector<HTMLSelectElement>('#part-select')!;
 
         this._partSelEl.addEventListener('change', () => void this._onPartChange());
@@ -182,7 +182,7 @@ export class URDFEditorController {
 
         // Global: route printable keys to chat input when panel open and no input focused
         document.addEventListener('keydown', (e) => {
-            if (!this.isOpen) return;
+            if (!this._panelEl.closest('aside')?.classList.contains('open')) return;
             const active = document.activeElement as HTMLElement | null;
             if (active && /^(INPUT|TEXTAREA|SELECT)$/.test(active.tagName)) return;
             if (active?.isContentEditable) return;
@@ -337,14 +337,16 @@ export class URDFEditorController {
     }
 
     private _wireResizeHandle(): void {
-        const handle = this._panelEl.querySelector<HTMLElement>('.editor-split-handle')!;
+        const handle   = document.querySelector<HTMLElement>('.editor-split-handle')!;
+        const chatPane = document.querySelector<HTMLElement>('.chat-pane')!;
         let dragging = false;
         handle.addEventListener('pointerdown', (e) => { dragging = true; handle.setPointerCapture(e.pointerId); });
         handle.addEventListener('pointermove', (e) => {
             if (!dragging) return;
-            const rect  = this._panelEl.getBoundingClientRect();
-            const ratio = (e.clientY - rect.top) / rect.height;
-            this._editorPaneEl.style.height = `${Math.min(80, Math.max(15, ratio * 100))}%`;
+            const aside = handle.parentElement!;
+            const rect  = aside.getBoundingClientRect();
+            const pct   = ((rect.bottom - e.clientY) / rect.height) * 100;
+            chatPane.style.height = `${Math.min(80, Math.max(15, pct))}%`;
         });
         handle.addEventListener('pointerup', () => { dragging = false; });
     }

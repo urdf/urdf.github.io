@@ -7,6 +7,8 @@ interface GestureControllerOptions {
     overlayCanvas: HTMLCanvasElement;
     videoEl: HTMLVideoElement;
     onDwellSelect(clientX: number, clientY: number): void;
+    onPointerMove?(clientX: number, clientY: number): void;
+    onPointerLeave?(): void;
     onStop(): void;
 }
 
@@ -62,6 +64,8 @@ export class GestureController {
     private canvas: HTMLCanvasElement;
     private video: HTMLVideoElement;
     private onDwellSelect: (x: number, y: number) => void;
+    private onPointerMove: ((x: number, y: number) => void) | undefined;
+    private onPointerLeave: (() => void) | undefined;
     private onStop: () => void;
 
     private recognizer: GestureRecognizer | null = null;
@@ -126,6 +130,8 @@ export class GestureController {
         this.canvas = opts.overlayCanvas;
         this.video = opts.videoEl;
         this.onDwellSelect = opts.onDwellSelect;
+        this.onPointerMove = opts.onPointerMove;
+        this.onPointerLeave = opts.onPointerLeave;
         this.onStop = opts.onStop;
     }
 
@@ -405,6 +411,7 @@ export class GestureController {
         const screenY = tipY * sh;
 
         this._overRobot = this._updateHoverState(screenX, screenY);
+        const overTrack = !!document.elementFromPoint(screenX, screenY)?.closest('[data-gesture-track]');
 
         // Dispatch synthetic pointermove so main.ts positions the part-label tooltip
         // at the fingertip rather than at the last real mouse position.
@@ -412,13 +419,18 @@ export class GestureController {
             clientX: screenX, clientY: screenY, bubbles: true, pointerId: 1,
         }));
 
+        // Notify main.ts of pointer position (robot track slider preview)
+        this.onPointerMove?.(screenX, screenY);
+
+        const overTarget = this._overRobot || overTrack;
+
         ctx.beginPath();
         ctx.arc(screenX, screenY, 8, 0, 2 * Math.PI);
-        ctx.strokeStyle = this._overRobot ? 'rgba(0,122,255,0.9)' : 'rgba(255,255,255,0.3)';
+        ctx.strokeStyle = overTarget ? 'rgba(0,122,255,0.9)' : 'rgba(255,255,255,0.3)';
         ctx.lineWidth = 2;
         ctx.stroke();
 
-        if (!this._overRobot) {
+        if (!overTarget) {
             this._resetDwell();
             return;
         }
@@ -549,6 +561,7 @@ export class GestureController {
         this._wristFilterX.reset();
         this._wristFilterY.reset();
         this._clearHover();
+        this.onPointerLeave?.();
     }
 
     private _resetOneHandTimers(): void {

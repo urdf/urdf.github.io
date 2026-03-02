@@ -64,52 +64,114 @@
     }
 
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    [hidden] { display: none !important; }
 
     body {
       font-family: system-ui, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
       background: var(--bg);
       color: var(--text-1);
       height: 100dvh;
       overflow: hidden;
+      user-select: none;
+      -webkit-user-select: none;
     }
 
-    /* ── Sidebar ─────────────────────────────────────────────────────────── */
+    input, textarea, select { user-select: text; -webkit-user-select: text; }
+
+    /* ── Right panel ─────────────────────────────────────────────────────── */
 
     aside {
       background: var(--surface);
-      border-right: 1px solid var(--border);
+      border-left: 1px solid var(--border);
       display: flex;
       flex-direction: column;
       overflow: hidden;
       position: fixed;
-      left: 0;
+      right: 0;
       top: 0;
       height: 100dvh;
-      width: 260px;
+      width: 380px;
       z-index: 200;
-      transform: translateX(-100%);
+      transform: translateX(100%);
       transition: transform 0.25s ease;
-      box-shadow: 4px 0 24px var(--shadow);
+      box-shadow: -4px 0 24px var(--shadow);
     }
 
     aside.open { transform: translateX(0); }
 
-    header {
+    /* ── Panel header (tabs + actions) ───────────────────────────────────── */
+
+    .panel-header {
+      display: flex;
+      align-items: stretch;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+      height: 40px;
+    }
+
+    .panel-tabs { display: flex; flex: 1; }
+
+    .tab-btn {
+      flex: 1;
+      background: none;
+      border: none;
+      border-bottom: 2px solid transparent;
+      padding: 0;
+      height: 100%;
+      font-size: 0.8125rem;
+      font-weight: 500;
+      color: var(--text-2);
+      cursor: pointer;
+      transition: color 0.12s, border-color 0.12s;
+    }
+
+    .tab-btn:hover { color: var(--text-1); }
+
+    /* Robot tab: active by default */
+    .tab-btn[data-tab="robot"] { color: var(--blue-text); border-bottom-color: var(--blue); }
+    body.editor-open .tab-btn[data-tab="robot"] { color: var(--text-2); border-bottom-color: transparent; }
+    body.editor-open .tab-btn[data-tab="editor"] { color: var(--blue-text); border-bottom-color: var(--blue); }
+
+    .panel-header-actions {
       display: flex;
       align-items: center;
-      padding: 0 8px 0 14px;
-      height: 40px;
-      border-bottom: 1px solid var(--border);
+      padding: 0 4px;
+      gap: 2px;
       flex-shrink: 0;
     }
 
-    header h1 {
-      font-size: 0.8125rem;
-      font-weight: 600;
-      letter-spacing: 0.08em;
+    .panel-close {
+      background: none;
+      border: none;
       color: var(--text-3);
-      text-transform: uppercase;
+      cursor: pointer;
+      width: 30px;
+      height: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 4px;
+      font-size: 0.75rem;
     }
+
+    .panel-close:focus-visible { outline: 2px solid var(--blue); outline-offset: 1px; }
+    .panel-close:hover { color: var(--text-1); }
+
+    /* ── Tab bodies ──────────────────────────────────────────────────────── */
+
+    .tab-body {
+      display: none;
+      flex-direction: column;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    /* Robot tab shown by default */
+    .tab-body[data-tab="robot"] { display: flex; }
+    body.editor-open .tab-body[data-tab="robot"] { display: none; }
+    body.editor-open .tab-body[data-tab="editor"] { display: flex; }
 
     /* ── Section blocks ──────────────────────────────────────────────────── */
 
@@ -129,81 +191,133 @@
       letter-spacing: 0.06em;
     }
 
-    /* ── Robot picker ────────────────────────────────────────────────────── */
+    /* ── Robot picker (mode-selector style) ─────────────────────────────── */
 
-    .robot-grid {
+    .robot-shell {
+      position: absolute;
+      top: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 100;
+      background: var(--toggle-bg);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      box-shadow: 0 8px 32px var(--shadow);
+      padding: 4px;
+      max-width: calc(100% - 100px);
+    }
+
+    .robot-track {
+      position: relative;
       display: flex;
-      flex-wrap: wrap;
-      gap: 5px;
+      flex-wrap: nowrap;
+      padding: 3px;
+      border-radius: 8px;
+      background: rgba(0, 0, 0, 0.2);
+    }
+
+    .robot-track-slider {
+      position: absolute;
+      border-radius: 5px;
+      background: linear-gradient(135deg, rgba(0, 122, 255, 0.4), rgba(100, 60, 255, 0.4));
+      box-shadow: 0 2px 10px rgba(0, 122, 255, 0.2);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      pointer-events: none;
+      will-change: left, width;
+      transition: left 0.3s ease-out, width 0.3s ease-out;
     }
 
     .robot-btn {
-      background: var(--surface-hi);
-      border: 1px solid var(--border);
-      border-radius: 4px;
+      position: relative;
+      z-index: 1;
+      flex: 0 0 auto;
+      background: none;
+      border: none;
+      padding: 5px 12px;
+      font-size: 0.6875rem;
+      font-weight: 500;
       color: var(--text-2);
-      font-size: 0.75rem;
-      padding: 0 9px;
-      height: 28px;
       cursor: pointer;
-      transition: background 0.12s, color 0.12s, border-color 0.12s;
+      transition: color 0.15s;
       white-space: nowrap;
+      text-align: center;
+      border-radius: 5px;
     }
 
-    .robot-btn:hover { background: var(--surface-hover); color: var(--text-1); }
-    .robot-btn.active { background: var(--blue-bg); border-color: var(--blue); color: var(--blue-text); }
-
-    /* ── URL input ───────────────────────────────────────────────────────── */
-
-    .url-row {
-      display: flex;
-      gap: 6px;
-    }
-
-    .url-input {
-      flex: 1;
-      background: var(--surface-hi);
-      border: 1px solid var(--border);
-      border-radius: 4px;
-      color: var(--text-1);
-      font-size: 0.75rem;
-      padding: 0 7px;
-      height: 30px;
-      min-width: 0;
-    }
-
-    .url-input::placeholder { color: var(--text-3); }
-    .url-input:focus-visible { outline: none; border-color: var(--blue); }
-
-    .url-load-btn {
-      background: var(--blue);
-      border: 1px solid var(--blue);
-      border-radius: 4px;
-      color: #fff;
-      font-size: 0.75rem;
-      padding: 0 10px;
-      height: 30px;
-      cursor: pointer;
-      white-space: nowrap;
-      transition: background 0.12s;
-    }
-
-    .url-load-btn:hover { background: var(--blue-hover); border-color: var(--blue-hover); }
+    .robot-btn:hover { color: var(--text-1); }
+    .robot-btn:active { transform: scale(0.94); }
+    .robot-btn.active { color: #fff; }
 
     /* ── Checkboxes ──────────────────────────────────────────────────────── */
 
     .option {
       display: flex;
       align-items: center;
-      gap: 7px;
+      gap: 6px;
       font-size: 0.75rem;
       cursor: pointer;
       user-select: none;
-      color: var(--text-1);
-      height: 28px;
+      color: var(--text-2);
     }
 
-    .option input[type=checkbox] { accent-color: var(--blue); width: 13px; height: 13px; flex-shrink: 0; }
+    /* Compact inline options bar — overrides .section column layout */
+    .options-bar {
+      flex-direction: row;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 4px 16px;
+      padding: 7px 12px;
+    }
+
+    .options-bar select {
+      flex: 0 0 auto;
+      width: auto;
+      height: 22px;
+      padding: 0 18px 0 5px;
+      font-size: 0.6875rem;
+    }
+
+    .option input[type=checkbox] {
+      appearance: none;
+      -webkit-appearance: none;
+      width: 13px;
+      height: 13px;
+      flex-shrink: 0;
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      background: var(--surface-hi);
+      transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
+      position: relative;
+      cursor: pointer;
+    }
+
+    .option input[type=checkbox]:hover:not(:checked) {
+      border-color: rgba(100, 116, 139, 0.7);
+    }
+
+    .option input[type=checkbox]:focus-visible {
+      outline: none;
+      box-shadow: 0 0 0 2px rgba(0, 122, 255, 0.4);
+    }
+
+    .option input[type=checkbox]:checked {
+      background: var(--blue);
+      border-color: var(--blue);
+    }
+
+    .option input[type=checkbox]:checked::after {
+      content: '';
+      position: absolute;
+      left: 3px;
+      top: 1px;
+      width: 5px;
+      height: 8px;
+      border: 2px solid #fff;
+      border-width: 0 2px 2px 0;
+      transform: rotate(45deg);
+    }
 
     select {
       background: var(--surface-hi);
@@ -213,7 +327,6 @@
       padding: 0 6px;
       height: 30px;
       font-size: 0.75rem;
-      flex: 1;
     }
 
     select:focus-visible { outline: none; border-color: var(--blue); }
@@ -223,6 +336,20 @@
     .sidebar-scroll {
       flex: 1;
       overflow-y: auto;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(100, 116, 139, 0.4) transparent;
+    }
+
+    .sidebar-scroll::-webkit-scrollbar { width: 6px; }
+    .sidebar-scroll::-webkit-scrollbar-track { background: transparent; }
+    .sidebar-scroll::-webkit-scrollbar-thumb {
+      background-color: rgba(100, 116, 139, 0.4);
+      border-radius: 9999px;
+      border: 2px solid transparent;
+      background-clip: content-box;
+    }
+    .sidebar-scroll::-webkit-scrollbar-thumb:hover {
+      background-color: rgba(100, 116, 139, 0.7);
     }
 
     .joints {
@@ -275,13 +402,13 @@
       outline-offset: 1px;
     }
 
-    /* ── Mobile sidebar toggle ───────────────────────────────────────────── */
+    /* ── Panel toggle (floating button to open/close panel) ──────────────── */
 
-    .sidebar-toggle {
+    .panel-toggle {
       display: flex;
       position: absolute;
       top: 10px;
-      left: 10px;
+      right: 10px;
       z-index: 100;
       background: var(--toggle-bg);
       border: 1px solid var(--border);
@@ -297,7 +424,7 @@
       transition: color 0.12s;
     }
 
-    .sidebar-toggle:hover { color: var(--text-1); }
+    .panel-toggle:hover { color: var(--text-1); }
 
     .sidebar-backdrop {
       display: none;
@@ -309,26 +436,8 @@
 
     .sidebar-backdrop.visible { display: block; }
 
-    .sidebar-close {
-      background: none;
-      border: none;
-      color: var(--text-3);
-      cursor: pointer;
-      width: 30px;
-      height: 30px;
-      flex-shrink: 0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      border-radius: 4px;
-      margin-left: auto;
-    }
-
-    .sidebar-close:focus-visible { outline: 2px solid var(--blue); outline-offset: 1px; }
-    .sidebar-close:hover { color: var(--text-1); }
-
     @media (max-width: 768px) {
-      .drop-hint { display: none; }
+
     }
 
     /* ── Viewer area ─────────────────────────────────────────────────────── */
@@ -337,13 +446,10 @@
       position: fixed;
       inset: 0;
       overflow: hidden;
-      transition: left 0.25s ease, right 0.25s ease;
+      transition: right 0.25s ease;
     }
 
-    body.editor-open main { right: 420px; }
-
-    aside.open.pinned ~ main { left: 260px; }
-    aside.open.pinned ~ main .sidebar-toggle { display: none; }
+    aside.open.pinned ~ main { right: 380px; }
 
     urdf-viewer {
       width: 100%;
@@ -374,41 +480,28 @@
     .spinner {
       width: 2.25rem;
       height: 2.25rem;
-      border: 3px solid var(--border);
-      border-top-color: var(--blue);
-      border-radius: 50%;
-      animation: spin 0.7s linear infinite;
+      animation: spin 0.75s linear infinite;
+      filter: drop-shadow(0 0 6px rgba(0, 122, 255, 0.4));
     }
 
     @keyframes spin { to { transform: rotate(360deg); } }
 
-    /* ── Drop hint ───────────────────────────────────────────────────────── */
-
-    .drop-hint {
-      position: absolute;
-      bottom: 16px;
-      left: 50%;
-      transform: translateX(-50%);
-      font-size: 0.75rem;
-      color: var(--text-3);
-      pointer-events: none;
-      white-space: nowrap;
-    }
 
     /* ── Author credits ──────────────────────────────────────────────────── */
 
-    .credits {
-      padding: 10px 12px;
-      border-top: 1px solid var(--border);
-      flex-shrink: 0;
-    }
-
-    .credits a {
+    .viewport-credit {
+      position: absolute;
+      bottom: 12px;
+      left: 14px;
       font-size: 0.6875rem;
       color: var(--text-3);
-      text-decoration: underline;
+      text-decoration: none;
+      pointer-events: auto;
       transition: color 0.12s;
+      z-index: 10;
     }
+
+    .viewport-credit:hover { color: var(--text-2); }
 
     /* ── Part Inspector ──────────────────────────────────────────────────── */
 
@@ -563,21 +656,23 @@
       width: 160px; height: 90px; opacity: 0; pointer-events: none;
     }
 
-    /* ── Gesture toggle button ───────────────────────────────────────────── */
+    /* ── Gesture toggle button (in panel header) ─────────────────────────── */
 
     #gesture-toggle {
-      display: flex; position: absolute;
-      top: 10px; right: 10px; z-index: 100;
-      background: var(--toggle-bg);
-      border: 1px solid var(--border); border-radius: 50%;
-      color: var(--text-2); font-size: 1rem;
-      width: 36px; height: 36px; cursor: pointer;
-      align-items: center; justify-content: center;
-      backdrop-filter: blur(4px);
+      display: flex;
+      background: none;
+      border: 1px solid transparent;
+      border-radius: 5px;
+      color: var(--text-2);
+      width: 30px;
+      height: 30px;
+      cursor: pointer;
+      align-items: center;
+      justify-content: center;
       transition: color 0.12s, background 0.12s, border-color 0.12s;
     }
 
-    #gesture-toggle:hover { color: var(--text-1); }
+    #gesture-toggle:hover { color: var(--text-1); background: var(--surface-hi); }
 
     #gesture-toggle.active {
       background: var(--blue-bg); border-color: var(--blue); color: var(--blue-text);
@@ -589,87 +684,59 @@
       50%       { box-shadow: 0 0 0 6px rgba(0, 122, 255, 0); }
     }
 
-    /* ── Editor toggle button ───────────────────────────────────────────── */
+    /* ── Gesture cheat sheet ─────────────────────────────────────────────── */
 
-    #editor-toggle {
-      display: flex;
-      position: absolute;
-      top: 10px; right: 54px; z-index: 100;
-      background: var(--toggle-bg);
-      border: 1px solid var(--border); border-radius: 50%;
-      color: var(--text-2);
-      width: 36px; height: 36px; cursor: pointer;
-      align-items: center; justify-content: center;
-      backdrop-filter: blur(4px);
-      transition: color 0.12s, background 0.12s, border-color 0.12s;
+    #gesture-section { border-bottom: 1px solid var(--border); }
+
+    #gesture-section-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 8px 12px; cursor: pointer; user-select: none; gap: 6px;
     }
 
-    #editor-toggle:hover { color: var(--text-1); }
+    #gesture-section-header:hover { background: var(--surface-hover); }
 
-    #editor-toggle.active {
-      background: var(--blue-bg); border-color: var(--blue); color: var(--blue-text);
+    #gesture-section-label {
+      font-size: 0.6875rem; font-weight: 500; color: var(--text-3);
+      text-transform: uppercase; letter-spacing: 0.06em; flex: 1;
     }
 
-    /* ── Editor panel ────────────────────────────────────────────────────── */
-
-    #editor-panel {
-      position: fixed;
-      right: 0; top: 0;
-      height: 100dvh;
-      width: 420px;
-      background: var(--surface);
-      border-left: 1px solid var(--border);
-      display: flex;
-      flex-direction: column;
-      z-index: 250;
-      transform: translateX(100%);
-      transition: transform 0.25s ease;
-      overflow: hidden;
+    #gesture-section-chevron {
+      font-size: 0.6875rem; color: var(--text-3);
+      transition: transform 0.15s; flex-shrink: 0;
     }
 
-    #editor-panel.open { transform: translateX(0); }
+    #gesture-section.open #gesture-section-chevron { transform: rotate(90deg); }
 
-    .editor-panel-header {
-      display: flex;
+    #gesture-cheatsheet {
+      display: none; padding: 6px 12px 10px;
+      flex-direction: column; gap: 6px;
+    }
+
+    #gesture-section.open #gesture-cheatsheet { display: flex; }
+
+    .gesture-row { display: flex; align-items: flex-start; gap: 8px; }
+
+    .gesture-icon { font-size: 1rem; line-height: 1.4; flex-shrink: 0; width: 20px; text-align: center; }
+
+    .gesture-desc { font-size: 0.6875rem; color: var(--text-2); line-height: 1.5; }
+
+    .gesture-desc strong { color: var(--text-1); font-weight: 500; }
+
+    /* ── Editor tab content ──────────────────────────────────────────────── */
+
+    /* Part selector bar — visible only when select is not hidden */
+    .editor-part-bar {
+      display: none;
       align-items: center;
-      justify-content: space-between;
-      padding: 0 8px 0 14px;
-      height: 40px;
+      padding: 4px 8px;
       border-bottom: 1px solid var(--border);
       flex-shrink: 0;
+      gap: 6px;
     }
 
-    .editor-panel-title {
-      font-size: 0.8125rem;
-      font-weight: 600;
-      letter-spacing: 0.08em;
-      color: var(--text-3);
-      text-transform: uppercase;
-    }
+    .editor-part-bar:has(select:not([hidden])) { display: flex; }
 
-    .editor-panel-close {
-      background: none; border: none;
-      color: var(--text-3); cursor: pointer;
-      width: 30px; height: 30px;
-      display: flex; align-items: center; justify-content: center;
-      border-radius: 4px; font-size: 0.75rem;
-    }
-
-    .editor-panel-close:hover { color: var(--text-1); }
-
-    #part-select {
-      flex: 1;
-      max-width: 180px;
-      background: var(--surface-hi);
-      border: 1px solid var(--border);
-      border-radius: 4px;
-      color: var(--text-2);
-      font-size: 0.6875rem;
-      padding: 0 4px;
-      height: 24px;
-    }
-
-    #part-select:focus-visible { outline: none; border-color: var(--blue); }
+    .editor-part-bar select { flex: 1; height: 26px; font-size: 0.6875rem; padding: 0 4px; }
 
     .editor-pane {
       display: flex;
@@ -726,53 +793,76 @@
       cursor: ns-resize;
       flex-shrink: 0;
       transition: background 0.12s;
+      display: none;
     }
+
+    body.editor-open .editor-split-handle { display: block; }
 
     .editor-split-handle:hover { background: var(--blue); }
 
     .chat-pane {
-      flex: 1;
+      height: 50%;
+      flex-shrink: 0;
       display: flex;
       flex-direction: column;
       overflow: hidden;
+      border-top: 1px solid var(--border);
     }
+
+    body.editor-open .chat-pane { border-top: none; }
 
     .chat-messages {
       flex: 1;
       overflow-y: auto;
-      padding: 12px;
+      padding: 10px 10px 6px;
       display: flex;
       flex-direction: column;
-      gap: 12px;
+      gap: 6px;
       min-height: 0;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(100, 116, 139, 0.4) transparent;
     }
+
+    .chat-messages::-webkit-scrollbar { width: 6px; }
+    .chat-messages::-webkit-scrollbar-track { background: transparent; }
+    .chat-messages::-webkit-scrollbar-thumb {
+      background-color: rgba(100, 116, 139, 0.4);
+      border-radius: 9999px;
+      border: 2px solid transparent;
+      background-clip: content-box;
+    }
+    .chat-messages::-webkit-scrollbar-thumb:hover { background-color: rgba(100, 116, 139, 0.7); }
 
     /* ── User bubble ─────────────────────────────────────────────────────── */
 
     .chat-msg-user {
       align-self: flex-end;
-      max-width: 88%;
-      background: var(--blue-bg);
-      border: 1px solid var(--blue);
-      border-radius: 10px 10px 3px 10px;
-      padding: 6px 12px;
+      max-width: 86%;
+      background: rgba(0, 122, 255, 0.15);
+      border: 1px solid rgba(0, 122, 255, 0.3);
+      border-radius: 14px 3px 14px 14px;
+      padding: 8px 12px;
       font-size: 0.8125rem;
       color: var(--text-1);
       white-space: pre-wrap;
       word-break: break-word;
     }
 
-    /* ── Assistant message — no bubble, markdown content ─────────────────── */
+    /* ── Assistant bubble ────────────────────────────────────────────────── */
 
     .chat-msg-assistant {
       align-self: flex-start;
-      max-width: 100%;
+      max-width: 92%;
+      background: var(--surface-hi);
+      border: 1px solid var(--border);
+      border-radius: 3px 14px 14px 14px;
+      padding: 8px 12px;
       font-size: 0.8125rem;
       color: var(--text-1);
-      line-height: 1.6;
+      line-height: 1.55;
     }
 
-    .chat-msg-assistant p { margin: 4px 0; }
+    .chat-msg-assistant p { margin: 3px 0; }
     .chat-msg-assistant p:first-child { margin-top: 0; }
     .chat-msg-assistant p:last-child  { margin-bottom: 0; }
 
@@ -786,11 +876,11 @@
     }
 
     .chat-msg-assistant pre {
-      background: var(--bg);
-      border: 1px solid var(--border);
+      background: rgba(0, 0, 0, 0.25);
+      border: 1px solid rgba(255, 255, 255, 0.06);
       border-radius: 6px;
-      padding: 8px 12px;
-      margin: 6px 0;
+      padding: 7px 10px;
+      margin: 5px 0;
       overflow-x: auto;
       font-size: 0.6875rem;
       line-height: 1.55;
@@ -848,8 +938,11 @@
     /* ── Thinking spinner ─────────────────────────────────────────────────── */
 
     .chat-spinner {
-      display: flex; gap: 4px; padding: 4px 2px;
+      display: flex; gap: 4px; padding: 8px 12px;
       align-items: center; align-self: flex-start;
+      background: var(--surface-hi);
+      border: 1px solid var(--border);
+      border-radius: 3px 14px 14px 14px;
     }
 
     .chat-spinner span {
@@ -908,7 +1001,7 @@
     .cmd-ac-arg  { font-family: ui-monospace, monospace; color: var(--text-3); font-size: 0.6875rem; }
     .cmd-ac-desc { color: var(--text-3); font-size: 0.75rem; margin-left: auto; }
 
-    /* ── Pill input ───────────────────────────────────────────────────────── */
+    /* ── Chat input ───────────────────────────────────────────────────────── */
 
     .chat-input-area {
       position: relative;
@@ -920,20 +1013,23 @@
     .chat-input-wrap {
       position: relative;
       border: 1px solid var(--border);
-      border-radius: 999px;
+      border-radius: 12px;
       background: var(--surface-hi);
-      transition: border-color 0.12s;
+      transition: border-color 0.15s, box-shadow 0.15s;
     }
 
-    .chat-input-wrap:focus-within { border-color: var(--blue); }
+    .chat-input-wrap:focus-within {
+      border-color: rgba(0, 122, 255, 0.5);
+      box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.1);
+    }
 
     #chat-input {
       width: 100%;
-      padding: 9px 44px 9px 16px;
+      padding: 9px 40px 9px 12px;
       font-size: 0.8125rem;
       font-family: system-ui, sans-serif;
       border: none;
-      border-radius: 999px;
+      border-radius: 12px;
       background: transparent;
       color: var(--text-1);
       resize: none;
@@ -948,10 +1044,10 @@
 
     .chat-send-btn, .chat-abort-btn {
       position: absolute;
-      top: 50%; right: 5px;
+      top: 50%; right: 6px;
       transform: translateY(-50%);
-      width: 30px; height: 30px;
-      border-radius: 50%; border: none;
+      width: 28px; height: 28px;
+      border-radius: 8px; border: none;
       cursor: pointer;
       display: flex; align-items: center; justify-content: center;
       transition: background 0.12s, transform 0.1s;
@@ -963,206 +1059,142 @@
     .chat-send-btn:disabled { opacity: 0.3; cursor: not-allowed; }
 
     .chat-abort-btn { background: var(--surface-hover); color: var(--text-2); }
-    .chat-abort-btn:hover { background: #c0392b; color: #fff; }
+    .chat-abort-btn:hover { background: rgba(196, 57, 43, 0.8); color: #fff; }
     .chat-abort-btn:active { transform: translateY(-50%) scale(0.88); }
-
-    /* ── Gesture cheat sheet ─────────────────────────────────────────────── */
-
-    #gesture-section { border-bottom: 1px solid var(--border); }
-
-    #gesture-section-header {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 8px 12px; cursor: pointer; user-select: none; gap: 6px;
-    }
-
-    #gesture-section-header:hover { background: var(--surface-hover); }
-
-    #gesture-section-label {
-      font-size: 0.6875rem; font-weight: 500; color: var(--text-3);
-      text-transform: uppercase; letter-spacing: 0.06em; flex: 1;
-    }
-
-    #gesture-section-chevron {
-      font-size: 0.6875rem; color: var(--text-3);
-      transition: transform 0.15s; flex-shrink: 0;
-    }
-
-    #gesture-section.open #gesture-section-chevron { transform: rotate(90deg); }
-
-    #gesture-cheatsheet {
-      display: none; padding: 6px 12px 10px;
-      flex-direction: column; gap: 6px;
-    }
-
-    #gesture-section.open #gesture-cheatsheet { display: flex; }
-
-    .gesture-row { display: flex; align-items: flex-start; gap: 8px; }
-
-    .gesture-icon { font-size: 1rem; line-height: 1.4; flex-shrink: 0; width: 20px; text-align: center; }
-
-    .gesture-desc { font-size: 0.6875rem; color: var(--text-2); line-height: 1.5; }
-
-    .gesture-desc strong { color: var(--text-1); font-weight: 500; }
   </style>
 </head>
 <body>
   <aside aria-label="Controls">
-    <header>
-      <h1>URDF Viewer</h1>
-      <button type="button" class="sidebar-close" id="sidebar-close" aria-label="Close panel">✕</button>
-    </header>
-
-    <div class="section">
-      <div class="section-label">Robots</div>
-      <div class="robot-grid" id="robots"></div>
-    </div>
-
-    <div class="section">
-      <div class="section-label">Load URL</div>
-      <div class="url-row">
-        <input class="url-input" id="url-input" type="url" placeholder="https://…/robot.urdf" />
-        <button type="button" class="url-load-btn" id="url-load">Load</button>
+    <!-- Panel header: tabs + gesture toggle + close -->
+    <div class="panel-header">
+      <div class="panel-tabs">
+        <button type="button" class="tab-btn" data-tab="robot" id="tab-robot">Robot</button>
+        <button type="button" class="tab-btn" data-tab="editor" id="tab-editor">Editor</button>
+      </div>
+      <div class="panel-header-actions">
+        <button type="button" id="gesture-toggle" aria-label="Toggle gesture mode" title="Gesture mode">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M18 11V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2"/>
+            <path d="M14 10V4a2 2 0 0 0-2-2a2 2 0 0 0-2 2v2"/>
+            <path d="M10 10.5V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2v8"/>
+            <path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"/>
+          </svg>
+        </button>
+        <button type="button" class="panel-close" id="panel-close" aria-label="Close panel">✕</button>
       </div>
     </div>
 
-    <div class="section">
-      <label class="option">
-        <input type="checkbox" id="ignore-limits" /> Ignore limits
-      </label>
-      <label class="option">
-        <input type="checkbox" id="show-collision" /> Show collision
-      </label>
-      <label class="option">
-        <input type="checkbox" id="display-shadow" /> Shadow
-      </label>
-      <label class="option" style="gap:12px">
-        Up
-        <select id="up-axis">
-          <option value="+Z">+Z (ROS)</option>
-          <option value="-Z">−Z</option>
-          <option value="+Y">+Y</option>
-          <option value="-Y">−Y</option>
-        </select>
-      </label>
-    </div>
-
-    <div id="gesture-section">
-      <div id="gesture-section-header" role="button" tabindex="0" aria-expanded="false">
-        <span id="gesture-section-label">Gestures</span>
-        <span id="gesture-section-chevron" aria-hidden="true">›</span>
+    <!-- Robot tab -->
+    <div class="tab-body" data-tab="robot">
+      <div class="section options-bar">
+        <label class="option"><input type="checkbox" id="ignore-limits" /> Ignore limits</label>
+        <label class="option"><input type="checkbox" id="show-collision" /> Collision</label>
+        <label class="option"><input type="checkbox" id="display-shadow" /> Shadow</label>
+        <label class="option">Up
+          <select id="up-axis">
+            <option value="+Z">+Z (ROS)</option>
+            <option value="-Z">−Z</option>
+            <option value="+Y">+Y</option>
+            <option value="-Y">−Y</option>
+          </select>
+        </label>
       </div>
-      <div id="gesture-cheatsheet" role="region">
-        <div class="gesture-row">
-          <span class="gesture-icon">✊</span>
-          <span class="gesture-desc"><strong>Fist + move</strong> — orbit camera</span>
+
+      <div id="gesture-section">
+        <div id="gesture-section-header" role="button" tabindex="0" aria-expanded="false">
+          <span id="gesture-section-label">Gestures</span>
+          <span id="gesture-section-chevron" aria-hidden="true">›</span>
         </div>
-        <div class="gesture-row">
-          <span class="gesture-icon">☝️</span>
-          <span class="gesture-desc"><strong>Point + hold 1.2 s over joint</strong> — select joint</span>
-        </div>
-        <div class="gesture-row">
-          <span class="gesture-icon">🤚</span>
-          <span class="gesture-desc"><strong>Tilt wrist</strong> (joint selected) — rotate joint</span>
-        </div>
-        <div class="gesture-row">
-          <span class="gesture-icon">🖐️</span>
-          <span class="gesture-desc"><strong>Open palm, hold 1 s</strong> — reset all joints</span>
-        </div>
-        <div class="gesture-row">
-          <span class="gesture-icon">🤲</span>
-          <span class="gesture-desc"><strong>Two hands, pinch/spread</strong> — zoom</span>
+        <div id="gesture-cheatsheet" role="region">
+          <div class="gesture-row">
+            <span class="gesture-icon">✊</span>
+            <span class="gesture-desc"><strong>Fist + move</strong> — orbit camera</span>
+          </div>
+          <div class="gesture-row">
+            <span class="gesture-icon">☝️</span>
+            <span class="gesture-desc"><strong>Point + hold 1.2 s over joint</strong> — select joint</span>
+          </div>
+          <div class="gesture-row">
+            <span class="gesture-icon">🤚</span>
+            <span class="gesture-desc"><strong>Tilt wrist</strong> (joint selected) — rotate joint</span>
+          </div>
+          <div class="gesture-row">
+            <span class="gesture-icon">🖐️</span>
+            <span class="gesture-desc"><strong>Open palm, hold 1 s</strong> — reset all joints</span>
+          </div>
+          <div class="gesture-row">
+            <span class="gesture-icon">🤲</span>
+            <span class="gesture-desc"><strong>Two hands, pinch/spread</strong> — zoom</span>
+          </div>
         </div>
       </div>
+
+      <div class="sidebar-scroll">
+        <div class="section-label" style="padding: 10px 12px 4px;">Joints</div>
+        <div class="joints" id="joints"></div>
+
+        <div id="inspector" style="display:none">
+          <div class="inspector-header">
+            <span class="inspector-title">Inspector</span>
+            <button type="button" class="inspector-close" id="inspector-close" aria-label="Deselect part">✕</button>
+          </div>
+          <div class="inspector-part-name" id="inspector-name"></div>
+          <div class="inspector-fields">
+            <div class="inspector-row">
+              <label>X</label>
+              <input type="number" id="inspector-x" step="0.001"/>
+            </div>
+            <div class="inspector-row">
+              <label>Y</label>
+              <input type="number" id="inspector-y" step="0.001"/>
+            </div>
+            <div class="inspector-row">
+              <label>Z</label>
+              <input type="number" id="inspector-z" step="0.001"/>
+            </div>
+            <div class="inspector-row">
+              <label>Sx</label>
+              <input type="number" id="inspector-scale-x" step="0.01" min="0.01" value="1"/>
+            </div>
+            <div class="inspector-row">
+              <label>Sy</label>
+              <input type="number" id="inspector-scale-y" step="0.01" min="0.01" value="1"/>
+            </div>
+            <div class="inspector-row">
+              <label>Sz</label>
+              <input type="number" id="inspector-scale-z" step="0.01" min="0.01" value="1"/>
+            </div>
+          </div>
+          <div class="inspector-snippet-wrap">
+            <code class="inspector-snippet" id="inspector-snippet"></code>
+            <button type="button" class="inspector-copy" id="inspector-copy">Copy</button>
+          </div>
+        </div>
+      </div>
+
     </div>
 
-    <div class="sidebar-scroll">
-      <div class="section-label" style="padding: 10px 12px 4px;">Joints</div>
-      <div class="joints" id="joints"></div>
-
-      <div id="inspector" style="display:none">
-        <div class="inspector-header">
-          <span class="inspector-title">Inspector</span>
-          <button type="button" class="inspector-close" id="inspector-close" aria-label="Deselect part">✕</button>
-        </div>
-        <div class="inspector-part-name" id="inspector-name"></div>
-        <div class="inspector-fields">
-          <div class="inspector-row">
-            <label>X</label>
-            <input type="number" id="inspector-x" step="0.001"/>
-          </div>
-          <div class="inspector-row">
-            <label>Y</label>
-            <input type="number" id="inspector-y" step="0.001"/>
-          </div>
-          <div class="inspector-row">
-            <label>Z</label>
-            <input type="number" id="inspector-z" step="0.001"/>
-          </div>
-          <div class="inspector-row">
-            <label>Sx</label>
-            <input type="number" id="inspector-scale-x" step="0.01" min="0.01" value="1"/>
-          </div>
-          <div class="inspector-row">
-            <label>Sy</label>
-            <input type="number" id="inspector-scale-y" step="0.01" min="0.01" value="1"/>
-          </div>
-          <div class="inspector-row">
-            <label>Sz</label>
-            <input type="number" id="inspector-scale-z" step="0.01" min="0.01" value="1"/>
-          </div>
-        </div>
-        <div class="inspector-snippet-wrap">
-          <code class="inspector-snippet" id="inspector-snippet"></code>
-          <button type="button" class="inspector-copy" id="inspector-copy">Copy</button>
-        </div>
+    <!-- Editor tab -->
+    <div class="tab-body" data-tab="editor" id="editor-panel">
+      <div class="editor-part-bar">
+        <select id="part-select" hidden aria-label="Edit part file"></select>
+      </div>
+      <div class="editor-pane">
+        <div class="editor-line-nums" id="editor-line-nums" aria-hidden="true"></div>
+        <textarea
+          id="editor-textarea"
+          spellcheck="false"
+          autocomplete="off"
+          autocorrect="off"
+          autocapitalize="off"
+          wrap="off"
+          aria-label="URDF source code"
+        ></textarea>
       </div>
     </div>
 
-    <div class="credits">
-      <a href="https://github.com/jonasneves" target="_blank" rel="noopener">by Jonas Neves</a>
-    </div>
-  </aside>
-
-  <main>
-    <button type="button" class="sidebar-toggle" id="sidebar-toggle" aria-label="Open controls">☰</button>
-    <button type="button" id="editor-toggle" aria-label="Toggle URDF editor" title="URDF Editor">
-      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>
-      </svg>
-    </button>
-    <button type="button" id="gesture-toggle" aria-label="Toggle gesture mode" title="Gesture mode">
-      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <path d="M18 11V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2"/>
-        <path d="M14 10V4a2 2 0 0 0-2-2a2 2 0 0 0-2 2v2"/>
-        <path d="M10 10.5V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2v8"/>
-        <path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"/>
-      </svg>
-    </button>
-    <urdf-viewer id="viewer" up="-Z" display-shadow></urdf-viewer>
-    <div class="loading" id="loading"><div class="spinner"></div></div>
-    <div class="drop-hint">Drop a .urdf file anywhere to load it</div>
-    <canvas id="gesture-overlay"></canvas>
-    <video id="gesture-video" playsinline muted></video>
-  </main>
-  <div id="editor-panel" aria-label="URDF Editor">
-    <div class="editor-panel-header">
-      <span class="editor-panel-title">URDF Editor</span>
-      <select id="part-select" hidden aria-label="Edit part file"></select>
-      <button type="button" class="editor-panel-close" id="editor-close" aria-label="Close editor">✕</button>
-    </div>
-    <div class="editor-pane">
-      <div class="editor-line-nums" id="editor-line-nums" aria-hidden="true"></div>
-      <textarea
-        id="editor-textarea"
-        spellcheck="false"
-        autocomplete="off"
-        autocorrect="off"
-        autocapitalize="off"
-        wrap="off"
-        aria-label="URDF source code"
-      ></textarea>
-    </div>
     <div class="editor-split-handle" role="separator" aria-orientation="horizontal" aria-label="Resize editor and chat"></div>
+
     <div class="chat-pane">
       <div class="chat-messages" id="chat-messages" aria-live="polite" aria-label="AI conversation"></div>
       <div class="chat-input-area">
@@ -1187,7 +1219,34 @@
         </div>
       </div>
     </div>
-  </div>
+  </aside>
+
+  <main>
+    <button type="button" class="panel-toggle" id="panel-toggle" aria-label="Open controls">☰</button>
+    <div class="robot-shell">
+      <div class="robot-track" id="robots" data-gesture-track>
+        <div class="robot-track-slider" id="robot-track-slider"></div>
+      </div>
+    </div>
+    <urdf-viewer id="viewer" up="-Z" display-shadow></urdf-viewer>
+    <div class="loading" id="loading">
+      <svg class="spinner" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="spinGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%"   stop-color="#007aff" stop-opacity="1" />
+            <stop offset="70%"  stop-color="#007aff" stop-opacity="0.4" />
+            <stop offset="100%" stop-color="#007aff" stop-opacity="0" />
+          </linearGradient>
+        </defs>
+        <circle cx="18" cy="18" r="15" stroke="url(#spinGrad)" stroke-width="3"
+                stroke-linecap="round" pathLength="100" stroke-dasharray="75 25" />
+      </svg>
+    </div>
+
+    <canvas id="gesture-overlay"></canvas>
+    <video id="gesture-video" playsinline muted></video>
+    <a class="viewport-credit" href="https://github.com/jonasneves" target="_blank" rel="noopener">by Jonas Neves</a>
+  </main>
 
   <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
   <div class="part-label" id="part-label"></div>
@@ -1196,32 +1255,31 @@
   <script src="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js"></script>
   <script type="module" src="./main.ts"></script>
   <script>
-    const sidebar   = document.querySelector('aside');
+    const panel     = document.querySelector('aside');
     const backdrop  = document.getElementById('sidebar-backdrop');
-    const toggleBtn = document.getElementById('sidebar-toggle');
-    const closeBtn  = document.getElementById('sidebar-close');
+    const toggleBtn = document.getElementById('panel-toggle');
+    const closeBtn  = document.getElementById('panel-close');
 
     const isDesktop = () => window.innerWidth > 768;
 
-    function openSidebar() {
-      sidebar.classList.add('open');
+    function openPanel() {
+      panel.classList.add('open');
       if (isDesktop()) {
-        sidebar.classList.add('pinned');
+        panel.classList.add('pinned');
       } else {
         backdrop.classList.add('visible');
       }
     }
 
-    function closeSidebar() {
-      sidebar.classList.remove('open', 'pinned');
+    function closePanel() {
+      panel.classList.remove('open', 'pinned');
       backdrop.classList.remove('visible');
     }
 
-    toggleBtn.addEventListener('click', openSidebar);
-    closeBtn.addEventListener('click', closeSidebar);
-    backdrop.addEventListener('click', closeSidebar);
+    toggleBtn.addEventListener('click', openPanel);
+    closeBtn.addEventListener('click', closePanel);
+    backdrop.addEventListener('click', closePanel);
 
-    if (isDesktop()) openSidebar();
   </script>
 </body>
 </html>
