@@ -148,6 +148,9 @@ function loadRobot(robot: RobotConfig, index: number): void {
     editorCtrl.setSourceUrl(sourceUrl);
 }
 
+let _hoverTimer: ReturnType<typeof setTimeout> | null = null;
+let _gestureHoverBtn: HTMLButtonElement | null = null;
+
 for (let i = 0; i < ROBOTS.length; i++) {
     const robot = ROBOTS[i];
     const btn = document.createElement('button');
@@ -155,10 +158,22 @@ for (let i = 0; i < ROBOTS.length; i++) {
     btn.className = 'robot-btn';
     btn.textContent = robot.label;
     btn.title = robot.name;
-    btn.dataset.name = robot.name;
+    btn.dataset.name  = robot.name;
+    btn.dataset.index = String(i);
     btn.addEventListener('click', () => loadRobot(robot, i));
+    btn.addEventListener('mouseenter', () => {
+        moveSliderTo(btn);
+        if (_hoverTimer) clearTimeout(_hoverTimer);
+        _hoverTimer = setTimeout(() => loadRobot(robot, i), 150);
+    });
     robotsPanel.appendChild(btn);
 }
+
+// When leaving the pill entirely, cancel pending load and restore slider to active
+robotsPanel.closest('.robot-shell')!.addEventListener('mouseleave', () => {
+    if (_hoverTimer) { clearTimeout(_hoverTimer); _hoverTimer = null; }
+    moveSliderToActive();
+});
 
 new ResizeObserver(moveSliderToActive).observe(robotsPanel);
 
@@ -469,10 +484,23 @@ gestureToggleBtn.addEventListener('click', async () => {
         onDwellSelect,
         onPointerMove(clientX, clientY) {
             const btn = document.elementFromPoint(clientX, clientY)?.closest<HTMLButtonElement>('.robot-btn');
-            if (btn) moveSliderTo(btn);
-            else moveSliderToActive();
+            if (btn) {
+                moveSliderTo(btn);
+                if (btn !== _gestureHoverBtn) {
+                    _gestureHoverBtn = btn;
+                    if (_hoverTimer) clearTimeout(_hoverTimer);
+                    const idx = parseInt(btn.dataset.index!, 10);
+                    _hoverTimer = setTimeout(() => loadRobot(ROBOTS[idx], idx), 150);
+                }
+            } else {
+                if (_gestureHoverBtn) {
+                    _gestureHoverBtn = null;
+                    if (_hoverTimer) { clearTimeout(_hoverTimer); _hoverTimer = null; }
+                }
+                moveSliderToActive();
+            }
         },
-        onPointerLeave() { moveSliderToActive(); },
+        onPointerLeave() { _gestureHoverBtn = null; moveSliderToActive(); },
         onStop() {
             gestureCtrl = null;
             gestureToggleBtn.classList.remove('active');
@@ -555,6 +583,35 @@ syncPair(buildChassisBodyHWEl,    document.getElementById('build-chassis-body-hw
 syncPair(buildChassisRearHWEl,    document.getElementById('build-chassis-rear-hw-num')   as HTMLInputElement, onChassisChange);
 syncPair(buildWheelRadiusEl,      document.getElementById('build-wheel-radius-num')      as HTMLInputElement, onWheelChange);
 syncPair(buildWheelWidthEl,       document.getElementById('build-wheel-width-num')       as HTMLInputElement, onWheelChange);
+
+const buildCasterRadiusEl = document.getElementById('build-caster-radius') as HTMLInputElement;
+const buildCasterWidthEl  = document.getElementById('build-caster-width')  as HTMLInputElement;
+const buildBatteryLEl     = document.getElementById('build-battery-l')     as HTMLInputElement;
+const buildBatteryWEl     = document.getElementById('build-battery-w')     as HTMLInputElement;
+const buildBatteryHEl     = document.getElementById('build-battery-h')     as HTMLInputElement;
+
+function onCasterChange(): void {
+    if (!buildCtrl.isSupported) return;
+    buildCtrl.updateCaster(
+        parseFloat(buildCasterRadiusEl.value) / 1000,
+        parseFloat(buildCasterWidthEl.value)  / 1000,
+    );
+}
+
+function onBatteryChange(): void {
+    if (!buildCtrl.isSupported) return;
+    buildCtrl.updateBatteryBox(
+        parseFloat(buildBatteryLEl.value) / 1000,
+        parseFloat(buildBatteryWEl.value) / 1000,
+        parseFloat(buildBatteryHEl.value) / 1000,
+    );
+}
+
+syncPair(buildCasterRadiusEl, document.getElementById('build-caster-radius-num') as HTMLInputElement, onCasterChange);
+syncPair(buildCasterWidthEl,  document.getElementById('build-caster-width-num')  as HTMLInputElement, onCasterChange);
+syncPair(buildBatteryLEl,     document.getElementById('build-battery-l-num')     as HTMLInputElement, onBatteryChange);
+syncPair(buildBatteryWEl,     document.getElementById('build-battery-w-num')     as HTMLInputElement, onBatteryChange);
+syncPair(buildBatteryHEl,     document.getElementById('build-battery-h-num')     as HTMLInputElement, onBatteryChange);
 
 const buildExportBtn       = document.getElementById('build-export')          as HTMLButtonElement;
 const buildPaletteEl       = document.getElementById('build-palette')          as HTMLElement;
