@@ -110,7 +110,7 @@ export class URDFEditorController {
     private _highlights   = new Set<number>();
     private _cmdAcIdx     = -1;
     private _partsList:   string[] = [];
-    private _robotName:   string = '';
+    private _robotName = '';
     private readonly _partSelEl: HTMLSelectElement;
     private readonly _tabsEl: HTMLElement;
 
@@ -220,11 +220,9 @@ export class URDFEditorController {
     open(): void {
         this._panelEl.classList.add('open');
         document.body.classList.add('editor-open');
-        if (this._sourceUrl && !this._textareaEl.value) {
-            void this._fetchAndPopulate(this._sourceUrl);
-        }
-        if (this._sourceUrl && !this._partsList.length) {
-            void this._loadPartsManifest();
+        if (this._sourceUrl) {
+            if (!this._textareaEl.value) void this._fetchAndPopulate(this._sourceUrl);
+            if (!this._partsList.length) void this._loadPartsManifest();
         }
     }
 
@@ -235,7 +233,10 @@ export class URDFEditorController {
         this._hideCmdAc();
     }
 
-    toggle(): void { this.isOpen ? this.close() : this.open(); }
+    toggle(): void {
+        if (this.isOpen) this.close();
+        else this.open();
+    }
 
     setSourceUrl(url: string): void {
         this._sourceUrl = url;
@@ -262,12 +263,12 @@ export class URDFEditorController {
                 ${v.arg ? `<span class="cmd-ac-arg">&lt;${v.arg}&gt;</span>` : ''}
                 <span class="cmd-ac-desc">${v.desc}</span>
             </div>`).join('');
-        this._cmdAcEl.querySelectorAll<HTMLElement>('.cmd-ac-item').forEach(item => {
+        for (const item of this._cmdAcEl.querySelectorAll<HTMLElement>('.cmd-ac-item')) {
             item.addEventListener('mousedown', (e) => {
                 e.preventDefault();
                 this._applyCmd(item.dataset.cmd!);
             });
-        });
+        }
         this._cmdAcEl.hidden = false;
     }
 
@@ -278,8 +279,9 @@ export class URDFEditorController {
 
     private _updateCmdAcSelection(items: NodeListOf<HTMLElement>): void {
         items.forEach((it, i) => {
-            it.setAttribute('aria-selected', String(i === this._cmdAcIdx));
-            it.classList.toggle('selected', i === this._cmdAcIdx);
+            const selected = i === this._cmdAcIdx;
+            it.setAttribute('aria-selected', String(selected));
+            it.classList.toggle('selected', selected);
         });
     }
 
@@ -391,18 +393,20 @@ export class URDFEditorController {
 
     private _renderTabs(): void {
         this._tabsEl.innerHTML = '';
-        const mkTab = (label: string, value: string) => {
-            const btn = document.createElement('button');
-            btn.className = 'editor-tab';
-            btn.textContent = label;
-            btn.dataset.part = value;
-            btn.addEventListener('click', () => this._selectTab(value));
-            this._tabsEl.appendChild(btn);
-        };
-        mkTab('all', '');
-        for (const f of this._partsList)
-            mkTab(f.replace(/^\d+-/, '').replace(/\.xml$/, ''), f);
+        this._appendTab('all', '');
+        for (const f of this._partsList) {
+            this._appendTab(f.replace(/^\d+-/, '').replace(/\.xml$/, ''), f);
+        }
         this._updateActiveTab();
+    }
+
+    private _appendTab(label: string, value: string): void {
+        const btn = document.createElement('button');
+        btn.className = 'editor-tab';
+        btn.textContent = label;
+        btn.dataset.part = value;
+        btn.addEventListener('click', () => this._selectTab(value));
+        this._tabsEl.appendChild(btn);
     }
 
     private _selectTab(filename: string): void {
@@ -446,7 +450,6 @@ export class URDFEditorController {
         void this._runConversation(raw);
     }
 
-    /** Remove any trailing assistant message that has unresolved tool_use blocks. */
     private _sanitizeHistory(): void {
         while (this._history.length > 0) {
             const last = this._history[this._history.length - 1];
@@ -466,31 +469,28 @@ export class URDFEditorController {
         this._abortBtn.hidden  = false;
 
         try {
-            let continueLoop = true;
-            while (continueLoop) {
+            while (true) {
                 const spinnerEl = this._appendSpinner();
                 const stream    = await this._callAPI();
                 const { content, toolCalls } = await this._processStream(stream, spinnerEl);
                 this._history.push({ role: 'assistant', content });
 
-                if (toolCalls.length) {
-                    const results: ToolResBlock[] = [];
-                    for (const tc of toolCalls) {
-                        const card = TOOL_CARDS.has(tc.name) ? this._appendToolCard(tc.name) : null;
-                        const res  = await this._executeTool(tc.name, tc.input);
-                        card?.setResult(!(res as Record<string, unknown>).error);
-                        results.push({ type: 'tool_result', tool_use_id: tc.id, content: JSON.stringify(res) });
-                    }
-                    this._history.push({ role: 'user', content: results });
-                } else {
-                    continueLoop = false;
+                if (!toolCalls.length) break;
+
+                const results: ToolResBlock[] = [];
+                for (const tc of toolCalls) {
+                    const card = TOOL_CARDS.has(tc.name) ? this._appendToolCard(tc.name) : null;
+                    const res  = await this._executeTool(tc.name, tc.input);
+                    card?.setResult(!(res as Record<string, unknown>).error);
+                    results.push({ type: 'tool_result', tool_use_id: tc.id, content: JSON.stringify(res) });
                 }
+                this._history.push({ role: 'user', content: results });
             }
-        } catch (e) {
-            if ((e as Error).name !== 'AbortError') {
-                // Remove last assistant entry if incomplete (avoid future 400s)
+        } catch (err) {
+            const e = err as Error;
+            if (e.name !== 'AbortError') {
                 this._sanitizeHistory();
-                this._appendAssistantBubble(`\u26a0 ${(e as Error).message || 'Request failed'}`);
+                this._appendAssistantBubble(`\u26a0 ${e.message || 'Request failed'}`);
             }
         } finally {
             this._abort            = null;
@@ -564,8 +564,8 @@ Be concise. Use tools proactively.`;
     }
 
     private _buildTools() {
-        const inPartMode = Boolean(this._partSelEl.value) && this._partsList.length > 0;
-        const editTool   = inPartMode && IS_DEV ? TOOL_UPDATE_PART : TOOL_FULL_URDF;
+        const canEditParts = IS_DEV && this._partSelEl.value && this._partsList.length > 0;
+        const editTool = canEditParts ? TOOL_UPDATE_PART : TOOL_FULL_URDF;
         return [editTool, TOOL_HIGHLIGHT, TOOL_SCROLL];
     }
 
@@ -592,16 +592,20 @@ Be concise. Use tools proactively.`;
         body: ReadableStream<Uint8Array>,
         spinnerEl: HTMLElement,
     ): Promise<{ content: ContentBlock[]; toolCalls: ToolUseBlock[] }> {
-        const content:   ContentBlock[] = [];
+        const content: ContentBlock[] = [];
         const toolCalls: ToolUseBlock[] = [];
-        let curMsgEl:  HTMLElement | null = null;
-        let curText    = '';
-        let curTool:   { id: string; name: string; idx: number } | null = null;
-        let curJson    = '';
+        let curMsgEl: HTMLElement | null = null;
+        let curText = '';
+        let curTool: { id: string; name: string; idx: number } | null = null;
+        let curJson = '';
         let rafPending = false;
-        let spinnerGone = false;
+        let spinnerRemoved = false;
 
-        const removeSpinner = () => { if (!spinnerGone) { spinnerGone = true; spinnerEl.remove(); } };
+        function removeSpinner(): void {
+            if (spinnerRemoved) return;
+            spinnerRemoved = true;
+            spinnerEl.remove();
+        }
 
         for await (const { event, data } of this._parseSSE(body)) {
             const d = data as {
@@ -785,18 +789,25 @@ function _indentXml(xml: string): string {
     return xml.trim()
         .replace(/>\s*</g, '>\n<')
         .split('\n')
-        .map(line => {
-            line = line.trim();
+        .map(raw => {
+            const line = raw.trim();
             if (!line) return '';
+
+            // Closing tag: dedent first
             if (line.startsWith('</')) {
                 indent = Math.max(0, indent - 1);
                 return '  '.repeat(indent) + line;
             }
-            if (line.endsWith('/>') || line.startsWith('<!--')) {
-                return '  '.repeat(indent) + line;
-            }
+
             const result = '  '.repeat(indent) + line;
-            if (line.startsWith('<') && !line.startsWith('<!--') && !line.startsWith('<?')) indent++;
+
+            // Opening tag (not self-closing, comment, or PI): indent children
+            const isOpening = line.startsWith('<')
+                && !line.endsWith('/>')
+                && !line.startsWith('<!--')
+                && !line.startsWith('<?');
+            if (isOpening) indent++;
+
             return result;
         })
         .filter(Boolean)

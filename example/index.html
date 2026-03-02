@@ -1386,13 +1386,13 @@
       resizeHandle.classList.add('dragging');
       mainEl.style.transition = 'none'; // prevent right-offset lag during drag
 
-      function onMove(e) {
-        let w = startW + startX - e.clientX;
+      function onMove(ev) {
+        let w = startW + startX - ev.clientX;
         if (Math.abs(w - PANEL_W_DEFAULT) <= SNAP_RADIUS) w = PANEL_W_DEFAULT; // magnet snap
         const applied = applyWidth(w);
         widthTooltip.textContent = Math.round(applied) + 'px';
-        widthTooltip.style.left    = (e.clientX + 12) + 'px';
-        widthTooltip.style.top     = (e.clientY - 20) + 'px';
+        widthTooltip.style.left    = (ev.clientX + 12) + 'px';
+        widthTooltip.style.top     = (ev.clientY - 20) + 'px';
         widthTooltip.style.display = 'block';
       }
       function onUp() {
