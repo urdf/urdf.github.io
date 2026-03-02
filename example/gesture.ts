@@ -68,6 +68,10 @@ export class GestureController {
     // Zoom state
     private prevZoomDist = 0;
 
+    // Raycaster for hit-testing the robot
+    private _raycaster = new THREE.Raycaster();
+    private _overRobot = false;
+
     constructor(opts: GestureControllerOptions) {
         this.viewer = opts.viewer;
         this.canvas = opts.overlayCanvas;
@@ -241,6 +245,20 @@ export class GestureController {
         this.viewer.redraw();
     }
 
+    private _isFingerOverRobot(screenX: number, screenY: number): boolean {
+        if (!this.viewer.robot) return false;
+        const cam = this.viewer.camera as THREE.PerspectiveCamera;
+        if (!cam) return false;
+        this._raycaster.setFromCamera(
+            new THREE.Vector2(
+                (screenX / this.canvas.width) * 2 - 1,
+                -(screenY / this.canvas.height) * 2 + 1,
+            ),
+            cam,
+        );
+        return this._raycaster.intersectObject(this.viewer.robot, true).length > 0;
+    }
+
     private _handleOrbitAndDwell(ctx: CanvasRenderingContext2D, lms: NormalizedLandmark[]): void {
         const tipX = 1 - lms[8].x;
         const tipY = lms[8].y;
@@ -250,20 +268,37 @@ export class GestureController {
         const screenX = tipX * sw;
         const screenY = tipY * sh;
 
+        this._overRobot = this._isFingerOverRobot(screenX, screenY);
+
+        // Draw a ring on the index tip: blue when over the robot, dim otherwise
+        ctx.beginPath();
+        ctx.arc(screenX, screenY, 8, 0, 2 * Math.PI);
+        ctx.strokeStyle = this._overRobot ? 'rgba(0,122,255,0.9)' : 'rgba(255,255,255,0.3)';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
         if (this.prevIndexTip === null) {
             this.prevIndexTip = { x: tipX, y: tipY };
-            this.dwellStart = performance.now();
-            this.dwellStartScreenX = screenX;
-            this.dwellStartScreenY = screenY;
-            this.dwellMoved = false;
-            this.dwellScreenX = screenX;
-            this.dwellScreenY = screenY;
+            if (this._overRobot) {
+                this.dwellStart = performance.now();
+                this.dwellStartScreenX = screenX;
+                this.dwellStartScreenY = screenY;
+                this.dwellMoved = false;
+                this.dwellScreenX = screenX;
+                this.dwellScreenY = screenY;
+            }
             return;
         }
 
         const dx = tipX - this.prevIndexTip.x;
         const dy = tipY - this.prevIndexTip.y;
-        this.prevIndexTip = { x: tipX, y: tipY };
+        this.prevIndexTip = { x: tipX, y: tipY }; // always update for continuity
+
+        if (!this._overRobot) {
+            // Finger left the robot — cancel any dwell in progress
+            this._resetDwell();
+            return;
+        }
 
         const movePixels = Math.hypot(screenX - this.dwellStartScreenX, screenY - this.dwellStartScreenY);
         if (movePixels > 30) {
@@ -276,7 +311,6 @@ export class GestureController {
         this.dwellScreenY = screenY;
 
         if (Math.abs(dx) >= 0.004 || Math.abs(dy) >= 0.004) {
-            // Write to targets only — camera lerps toward these each frame
             this.targetTheta -= dx * 4.0;
             this.targetPhi = Math.max(0.05, Math.min(Math.PI - 0.05, this.targetPhi - dy * 4.0));
         }
