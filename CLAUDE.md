@@ -53,10 +53,10 @@ print(screen_x(-0.010,  0.090, -0.002))  # wheel_right → positive = screen rig
 | caster_fork | −0.130 | 0 | −0.018 | 8×16×9 mm |
 | caster_wheel | −0.130 | 0 | −0.032 | sphere r=7.5 mm, continuous axis Y |
 | l298n | +0.020 | +0.042 | +0.0153 | |
-| esp32cam | −0.080 | 0 | +0.009 | |
+| esp32cam_mb | −0.080 | 0 | +0.009 | PRIMARY MCU — ESP32-CAM-MB, 27×51×15 mm combined unit (camera module + programmer base board) |
 | hcsr04 | −0.110 | 0 | +0.009 | |
 | powerbank | +0.025 | 0 | −0.019 | rpy 1.5708 0 0, under chassis spanning Y |
-| battery_9v | +0.050 | −0.038 | −0.0135 | |
+| battery_box | +0.046 | 0 | −0.012 | 4×AA holder, 80×44×22 mm, under chassis |
 
 ## robot-car URDF assembly
 
