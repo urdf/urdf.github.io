@@ -1,13 +1,13 @@
   <!-- ─────────────────────────────────────────────────────────────── -->
   <!-- LEFT DRIVE MOTOR                                                 -->
-  <!-- TT motor: body 70 × 22 × 22 mm (can runs along X, shaft along Y)-->
-  <!-- Shaft center 9.3 mm above chassis top (verified from datasheet) -->
+  <!-- TT motor: 36×22×18 mm gearbox + 28 mm DC can (gen_motor.cjs)  -->
+  <!-- Shaft points -Y (toward left wheel at Y=-0.081)                -->
   <!-- ─────────────────────────────────────────────────────────────── -->
   <link name="motor_left">
     <visual>
-      <origin xyz="0 0 0" rpy="0 1.5708 0"/>
+      <origin xyz="0 0 0" rpy="0 0 1.5708"/>
       <geometry>
-        <cylinder radius="0.011" length="0.070"/>
+        <mesh filename="tt_motor.stl"/>
       </geometry>
       <material name="motor_yellow">
         <color rgba="1.00 0.85 0.00 1.00"/>
@@ -22,12 +22,13 @@
 
   <!-- ─────────────────────────────────────────────────────────────── -->
   <!-- RIGHT DRIVE MOTOR                                                -->
+  <!-- Shaft points +Y (toward right wheel at Y=+0.081)               -->
   <!-- ─────────────────────────────────────────────────────────────── -->
   <link name="motor_right">
     <visual>
-      <origin xyz="0 0 0" rpy="0 1.5708 0"/>
+      <origin xyz="0 0 0" rpy="0 0 -1.5708"/>
       <geometry>
-        <cylinder radius="0.011" length="0.070"/>
+        <mesh filename="tt_motor.stl"/>
       </geometry>
       <material name="motor_yellow">
         <color rgba="1.00 0.85 0.00 1.00"/>
