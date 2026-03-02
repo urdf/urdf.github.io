@@ -18,7 +18,7 @@
   <joint name="caster_plate_joint" type="fixed">
     <parent link="base_link"/>
     <child link="caster_plate"/>
-    <origin xyz="-0.0900 0.0000 -0.0040" rpy="0 0 0"/>
+    <origin xyz="-0.1300 0.0000 -0.0040" rpy="0 0 0"/>
   </joint>
 
   <!-- Swivel fork: thin U-bracket, spans plate bottom → wheel center  -->
@@ -36,7 +36,7 @@
   <joint name="caster_fork_joint" type="fixed">
     <parent link="base_link"/>
     <child link="caster_fork"/>
-    <origin xyz="-0.0900 0.0000 -0.0180" rpy="0.0000 0.0000 0.0000"/>
+    <origin xyz="-0.1300 0.0000 -0.0180" rpy="0.0000 0.0000 0.0000"/>
   </joint>
 
   <!-- Swivel wheel: rubber; dimensions × 1.21 from inspector calibration -->
@@ -54,6 +54,6 @@
   <joint name="caster_wheel_joint" type="continuous">
     <parent link="base_link"/>
     <child link="caster_wheel"/>
-    <origin xyz="-0.0900 0.0000 -0.0320" rpy="1.5708 0.0000 0.0000"/>
+    <origin xyz="-0.1300 0.0000 -0.0320" rpy="1.5708 0.0000 0.0000"/>
     <axis xyz="0 0 1"/>
   </joint>
