@@ -12,7 +12,7 @@ const fs    = require('fs');
 
 const thick = 0.003;
 const bodyHW   = 0.062;
-const rearHW   = 0.095;
+const rearHW   = 0.080;
 const rearY    = 0.115;
 const rearR    = 0.010;
 const stepY    = 0.040;
@@ -58,8 +58,8 @@ function circH(cx, cy, r) {
 // ── Holes ───────────────────────────────────────────────────────────────────
 
 // Motor pass-through cutouts
-s.holes.push(rectH(-0.075, 0.070, 0.012, 0.030, 0.001));
-s.holes.push(rectH( 0.075, 0.070, 0.012, 0.030, 0.001));
+s.holes.push(rectH(-0.068, 0.070, 0.012, 0.030, 0.001));
+s.holes.push(rectH( 0.068, 0.070, 0.012, 0.030, 0.001));
 
 // Large center cutout
 ;(function () {
