@@ -657,25 +657,35 @@ function renderComponentItem(id: string, type: string): void {
     const body = document.createElement('div');
     body.style.cssText = 'display: flex; flex-direction: column; gap: 2px;';
 
-    const inputs: Record<string, HTMLInputElement> = {};
+    const inputs:  Record<string, HTMLInputElement>  = {};
+    const selects: Record<string, HTMLSelectElement> = {};
 
     const dispatchUpdate = () => {
         const dims = def.geomType === 'cylinder'
             ? [parseFloat(inputs['r'].value) || 0.001, parseFloat(inputs['l'].value) || 0.001]
             : [parseFloat(inputs['w'].value) || 0.001, parseFloat(inputs['d'].value) || 0.001, parseFloat(inputs['h'].value) || 0.001];
-        buildCtrl.moveComponent(
-            id,
-            parseFloat(inputs['x'].value)  || 0,
-            parseFloat(inputs['y'].value)  || 0,
-            parseFloat(inputs['z'].value)  || 0,
-            parseFloat(inputs['rx'].value) || 0,
-            parseFloat(inputs['ry'].value) || 0,
-            parseFloat(inputs['rz'].value) || 0,
+        const jt = selects['jt']?.value ?? 'fixed';
+        buildCtrl.updateComponent(id, {
+            x:  parseFloat(inputs['x'].value)  || 0,
+            y:  parseFloat(inputs['y'].value)  || 0,
+            z:  parseFloat(inputs['z'].value)  || 0,
+            rx: parseFloat(inputs['rx'].value) || 0,
+            ry: parseFloat(inputs['ry'].value) || 0,
+            rz: parseFloat(inputs['rz'].value) || 0,
             dims,
-        );
+            jointType:  jt as 'fixed' | 'continuous' | 'revolute' | 'prismatic',
+            axis: [
+                parseFloat(inputs['ax']?.value) || 0,
+                parseFloat(inputs['ay']?.value) || 0,
+                parseFloat(inputs['az']?.value) || 1,
+            ] as [number, number, number],
+            limitLower: parseFloat(inputs['limitMin']?.value) || -1.5708,
+            limitUpper: parseFloat(inputs['limitMax']?.value) ||  1.5708,
+            parent: selects['parent']?.value ?? 'base_link',
+        });
     };
 
-    const addRow = (key: string, axisClass: string, label: string, step: number, value: number) => {
+    const addRow = (key: string, axisClass: string, label: string, step: number, value: number, container: HTMLElement = body) => {
         const row = document.createElement('div');
         row.className = 'inspector-row';
         const lbl = document.createElement('label');
@@ -689,14 +699,32 @@ function renderComponentItem(id: string, type: string): void {
         makeScrubLabel(lbl, inp);
         inputs[key] = inp;
         row.append(lbl, inp);
-        body.appendChild(row);
+        container.appendChild(row);
     };
 
-    const addGroupLabel = (text: string) => {
+    const addGroupLabel = (text: string, container: HTMLElement = body) => {
         const lbl = document.createElement('div');
         lbl.className   = 'build-group-label';
         lbl.textContent = text;
-        body.appendChild(lbl);
+        container.appendChild(lbl);
+    };
+
+    const addSelectRow = (key: string, label: string, options: string[], container: HTMLElement = body) => {
+        const row = document.createElement('div');
+        row.className = 'inspector-row';
+        const lbl = document.createElement('label');
+        lbl.textContent = label;
+        const sel = document.createElement('select');
+        sel.className = 'build-select';
+        for (const opt of options) {
+            const o = document.createElement('option');
+            o.value = o.textContent = opt;
+            sel.appendChild(o);
+        }
+        sel.addEventListener('change', dispatchUpdate);
+        selects[key] = sel;
+        row.append(lbl, sel);
+        container.appendChild(row);
     };
 
     // Position
@@ -721,6 +749,34 @@ function renderComponentItem(id: string, type: string): void {
         addRow('d', 'axis-y', 'D',  0.005, def.defaultDims[1]);
         addRow('h', 'axis-z', 'H',  0.005, def.defaultDims[2]);
     }
+
+    // Joint
+    addGroupLabel('Joint');
+    addSelectRow('parent', 'Parent', buildCtrl.getAvailableLinks().filter(l => l !== id));
+    addSelectRow('jt', 'Type', ['fixed', 'continuous', 'revolute', 'prismatic']);
+
+    // Axis section (shown for non-fixed joints)
+    const axisSection = document.createElement('div');
+    addGroupLabel('Axis', axisSection);
+    addRow('ax', 'axis-x', 'X', 0.1, 0, axisSection);
+    addRow('ay', 'axis-y', 'Y', 0.1, 0, axisSection);
+    addRow('az', 'axis-z', 'Z', 0.1, 1, axisSection);
+    axisSection.hidden = true;
+    body.appendChild(axisSection);
+
+    // Limits section (shown for revolute/prismatic)
+    const limitsSection = document.createElement('div');
+    addGroupLabel('Limits', limitsSection);
+    addRow('limitMin', 'axis-x', 'Min', 0.01, -1.5708, limitsSection);
+    addRow('limitMax', 'axis-z', 'Max', 0.01,  1.5708, limitsSection);
+    limitsSection.hidden = true;
+    body.appendChild(limitsSection);
+
+    selects['jt'].addEventListener('change', () => {
+        const jt = selects['jt'].value;
+        axisSection.hidden   = jt === 'fixed';
+        limitsSection.hidden = jt !== 'revolute' && jt !== 'prismatic';
+    });
 
     item.append(header, body);
     buildComponentsListEl.appendChild(item);

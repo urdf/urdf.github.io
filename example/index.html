@@ -368,6 +368,16 @@
       max-width: calc(100% - 100px);
     }
 
+    @media (max-width: 768px) {
+      .robot-shell {
+        left: 62px;
+        right: 62px;
+        transform: none;
+        max-width: none;
+        overflow-x: auto;
+      }
+    }
+
     .robot-track {
       position: relative;
       display: flex;
@@ -744,6 +754,20 @@
 
     .inspector-row input[type=number]:focus-visible { outline: none; border-color: var(--blue); }
     .inspector-row input[type=range] { accent-color: var(--blue); height: 4px; }
+
+    .inspector-row select.build-select {
+      flex: 1;
+      min-width: 0;
+      background: var(--surface-hi);
+      border: 1px solid var(--border);
+      color: var(--text-1);
+      font-size: 0.6875rem;
+      padding: 1px 4px;
+      border-radius: 3px;
+      appearance: none;
+      -webkit-appearance: none;
+    }
+    .inspector-row select.build-select:focus-visible { outline: none; border-color: var(--blue); }
 
     .inspector-snippet-wrap { margin-top: 8px; position: relative; }
 
