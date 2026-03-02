@@ -760,6 +760,14 @@
 
     .editor-part-bar select { flex: 1; height: 26px; font-size: 0.6875rem; padding: 0 4px; }
 
+    #part-reset {
+      flex-shrink: 0; height: 22px; padding: 0 7px; font-size: 0.625rem;
+      border: 1px solid var(--border); border-radius: 4px;
+      background: transparent; color: var(--text-2); cursor: pointer; white-space: nowrap;
+    }
+    #part-reset:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+    #part-reset:disabled { opacity: 0.35; cursor: default; }
+
     .editor-pane {
       display: flex;
       flex-direction: row;
@@ -1318,6 +1326,7 @@
     <div class="tab-body" data-tab="editor" id="editor-panel">
       <div class="editor-part-bar">
         <select id="part-select" hidden aria-label="Edit part file"></select>
+        <button id="part-reset" hidden disabled title="Reset all parts to their original version">↺ Reset</button>
       </div>
       <div class="editor-tabs" id="editor-tabs"></div>
       <div class="editor-pane">

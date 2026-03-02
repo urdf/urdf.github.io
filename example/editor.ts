@@ -112,13 +112,15 @@ export class URDFEditorController {
     private _abort:       AbortController | null = null;
     private _highlights   = new Set<number>();
     private _cmdAcIdx     = -1;
-    private _partsList:   string[] = [];
-    private _partCache    = new Map<string, string>();
+    private _partsList:     string[] = [];
+    private _partCache      = new Map<string, string>();
+    private _originalCache  = new Map<string, string>();
     private _robotName = '';
     private _urdfFetched = false;
     private _brief = false;
-    private readonly _partSelEl: HTMLSelectElement;
-    private readonly _tabsEl: HTMLElement;
+    private readonly _partSelEl:  HTMLSelectElement;
+    private readonly _tabsEl:     HTMLElement;
+    private readonly _resetBtn:   HTMLButtonElement;
 
     constructor(viewer: URDFManipulator, panelEl: HTMLElement) {
         this._viewer       = viewer;
@@ -132,6 +134,8 @@ export class URDFEditorController {
         this._cmdAcEl      = document.getElementById('cmd-ac') as HTMLElement;
         this._partSelEl    = panelEl.querySelector<HTMLSelectElement>('#part-select')!;
         this._tabsEl       = document.getElementById('editor-tabs') as HTMLElement;
+        this._resetBtn     = panelEl.querySelector<HTMLButtonElement>('#part-reset')!;
+        this._resetBtn.addEventListener('click', () => this._resetParts());
 
         this._partSelEl.addEventListener('change', () => void this._onPartChange());
 
@@ -258,6 +262,7 @@ export class URDFEditorController {
         this._history     = [];
         this._partsList   = [];
         this._partCache.clear();
+        this._originalCache.clear();
         this._robotName   = '';
         this._urdfFetched = false;
         this._textareaEl.value = '';
@@ -333,7 +338,15 @@ export class URDFEditorController {
     private _onEdit(): void {
         this._updateLineNums();
         clearTimeout(this._renderTimer);
-        this._renderTimer = window.setTimeout(() => this._applyRender(), RENDER_DEBOUNCE_MS);
+        const filename = this._partSelEl.value;
+        if (filename) {
+            this._partCache.set(this._partUrl(filename), this._textareaEl.value);
+            this._saveOverrides();
+        }
+        this._renderTimer = window.setTimeout(
+            () => filename ? this._applyPartsRender() : this._applyRender(),
+            RENDER_DEBOUNCE_MS,
+        );
     }
 
     private _applyRender(): void {
@@ -391,6 +404,58 @@ export class URDFEditorController {
         return this._sourceUrl!.replace(/[^/]+\.urdf(\?.*)?$/, `parts/${filename}`);
     }
 
+    private _overridesKey(): string | null {
+        return this._sourceUrl && this._partsList.length > 0
+            ? `urdf-parts:${this._sourceUrl}` : null;
+    }
+
+    private get _isDirty(): boolean {
+        return this._partsList.some(f => {
+            const url = this._partUrl(f);
+            return this._partCache.get(url) !== this._originalCache.get(url);
+        });
+    }
+
+    private _updateResetBtn(): void {
+        const hasParts = this._partsList.length > 0;
+        this._resetBtn.hidden    = !hasParts;
+        this._resetBtn.disabled  = !this._isDirty;
+    }
+
+    private _saveOverrides(): void {
+        const key = this._overridesKey();
+        if (!key) return;
+        const overrides: Record<string, string> = {};
+        for (const f of this._partsList) {
+            const url = this._partUrl(f);
+            const cur = this._partCache.get(url), orig = this._originalCache.get(url);
+            if (cur !== undefined && cur !== orig) overrides[f] = cur;
+        }
+        try {
+            if (Object.keys(overrides).length === 0) localStorage.removeItem(key);
+            else localStorage.setItem(key, JSON.stringify(overrides));
+        } catch {}
+        this._updateResetBtn();
+    }
+
+    private _resetParts(): void {
+        if (!this._isDirty) return;
+        if (!confirm('Reset all parts to their original version?')) return;
+        const key = this._overridesKey();
+        if (key) try { localStorage.removeItem(key); } catch {}
+        for (const f of this._partsList) {
+            const url = this._partUrl(f);
+            const orig = this._originalCache.get(url);
+            if (orig !== undefined) this._partCache.set(url, orig);
+        }
+        const cur = this._partSelEl.value;
+        this._setEditorContent(
+            cur ? (this._partCache.get(this._partUrl(cur)) ?? '') : this._assembleFromCache(),
+        );
+        this._applyPartsRender();
+        this._updateResetBtn();
+    }
+
     private _assembleFromCache(): string {
         const sorted = this._partsList
             .map(f => [f, this._partCache.get(this._partUrl(f)) ?? ''] as [string, string])
@@ -417,14 +482,28 @@ export class URDFEditorController {
             this._robotName = data.robot;
             this._partsList = data.parts;
 
-            // Eagerly load all parts into cache in parallel
+            // Eagerly fetch all parts from server into original + working cache
             await Promise.all(data.parts.map(async f => {
                 const url = this._partUrl(f);
-                if (!this._partCache.has(url)) {
-                    const text = await fetch(url).then(r => r.text());
-                    this._partCache.set(url, text);
-                }
+                const text = await fetch(url).then(r => r.text());
+                this._originalCache.set(url, text);
+                this._partCache.set(url, text);
             }));
+
+            // Overlay any saved local overrides
+            const oKey = this._overridesKey();
+            if (oKey) {
+                try {
+                    const raw = localStorage.getItem(oKey);
+                    if (raw) {
+                        const saved = JSON.parse(raw) as Record<string, string>;
+                        for (const [f, xml] of Object.entries(saved)) {
+                            if (this._partsList.includes(f))
+                                this._partCache.set(this._partUrl(f), xml);
+                        }
+                    }
+                } catch {}
+            }
 
             this._urdfFetched = true;
             if (!this._partSelEl.value) {
@@ -434,6 +513,7 @@ export class URDFEditorController {
             this._rebuildPartOptions();
             this._partSelEl.hidden = false;
             this._renderTabs();
+            this._updateResetBtn();
         } catch { /* no manifest, parts not available */ }
     }
 
@@ -837,6 +917,7 @@ Be concise. Use tools proactively.${briefNote}`;
                 const { filename, xml } = args as { filename: string; xml: string };
                 if (!/^[\w-]+\.xml$/.test(filename)) return { error: 'invalid filename' };
                 this._partCache.set(this._partUrl(filename), xml);
+                this._saveOverrides();
                 if (!this._partsList.includes(filename)) {
                     this._partsList = [...this._partsList, filename].sort();
                     this._rebuildPartOptions();
