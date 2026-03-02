@@ -31,6 +31,22 @@ canvas { width: 100%; height: 100%; display: block; }
 
 const EMPTY_RAYCAST = () => {};
 const _ZERO_VEC = new THREE.Vector3();
+
+// Dispose a material and all textures it references.
+// mat.dispose() alone only frees the shader program — texture GPU units are separate.
+// For GLB/ImageBitmap-sourced textures, the CPU-side bitmap must also be closed first
+// (Three.js intentionally does not do this automatically — see github.com/mrdoob/three.js/issues/23953).
+function disposeMat(mat: THREE.Material): void {
+    for (const value of Object.values(mat)) {
+        if (value instanceof THREE.Texture) {
+            if (value.source?.data instanceof ImageBitmap) value.source.data.close();
+            value.dispose();
+        }
+    }
+    mat.dispose();
+}
+
+const _reduceMotionMQ = window.matchMedia?.('(prefers-reduced-motion: reduce)');
 // Fixed scene-space slide axis — matches the default fitCamera() view direction
 // so robots always enter from screen-right and exit screen-left, regardless of
 // where the user has orbited the camera.
@@ -156,6 +172,11 @@ export class URDFViewer extends HTMLElement {
         this.controls.maxDistance = 50;
         this.controls.minDistance = 0.25;
         this.controls.addEventListener('change', () => this.redraw());
+        // Disable inertia/damping for users who have requested reduced motion (vestibular disorders)
+        this.controls.enableDamping = !_reduceMotionMQ?.matches;
+        _reduceMotionMQ?.addEventListener('change', e => {
+            this.controls.enableDamping = !e.matches;
+        });
 
         this._collisionMaterial = new THREE.MeshPhongMaterial({
             transparent: true,
@@ -289,8 +310,8 @@ export class URDFViewer extends HTMLElement {
                     out.obj.traverse(c => {
                         const mesh = c as THREE.Mesh;
                         if (!mesh.geometry?.userData.shared) mesh.geometry?.dispose();
-                        if (Array.isArray(mesh.material)) mesh.material.forEach(m => m.dispose());
-                        else mesh.material?.dispose();
+                        if (Array.isArray(mesh.material)) mesh.material.forEach(disposeMat);
+                        else if (mesh.material) disposeMat(mesh.material);
                     });
                     this._outgoing = null;
                 }
@@ -382,15 +403,24 @@ export class URDFViewer extends HTMLElement {
 
     // Slides the world in from screen-right after fitCamera() has been called.
     private _startIntro(): void {
+        this.world.visible = true;
+        if (_reduceMotionMQ?.matches) {
+            this.world.position.setScalar(0);
+            return;
+        }
         const start = _SLIDE_RIGHT.clone().multiplyScalar(this._sphere.radius * 5);
         this.world.position.copy(start);
-        this.world.visible = true;
         this._introAnim = { start, t0: performance.now(), dur: 450 };
     }
 
     // Slides the current robot out to screen-left, then disposes it.
     private _startExit(): void {
         if (!this.robot || this._sphere.radius === 0) return;
+
+        if (_reduceMotionMQ?.matches) {
+            this._disposeRobot();
+            return;
+        }
 
         const to = _SLIDE_LEFT.clone().multiplyScalar(this._sphere.radius * 5);
 
@@ -409,10 +439,9 @@ export class URDFViewer extends HTMLElement {
         if (!this.robot) return;
         this.robot.traverse(c => {
             const mesh = c as THREE.Mesh;
-            // Skip shared module-level geometries (URDFLoader primitives)
             if (!mesh.geometry?.userData.shared) mesh.geometry?.dispose();
-            if (Array.isArray(mesh.material)) mesh.material.forEach(m => m.dispose());
-            else mesh.material?.dispose();
+            if (Array.isArray(mesh.material)) mesh.material.forEach(disposeMat);
+            else if (mesh.material) disposeMat(mesh.material);
         });
         this.robot.parent?.remove(this.robot);
         this.robot = null;
@@ -428,10 +457,11 @@ export class URDFViewer extends HTMLElement {
                 const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
                 for (const m of mats) {
                     if (m instanceof THREE.MeshBasicMaterial) {
-                        // Upgrade to Phong so it reacts to lights
+                        // Upgrade to Phong so it reacts to lights; dispose the original shader
                         const phong = new THREE.MeshPhongMaterial();
                         phong.copy(m as unknown as THREE.MeshPhongMaterial);
                         mesh.material = phong;
+                        m.dispose();
                     }
                     if ((m as THREE.MeshStandardMaterial).map) {
                         (m as THREE.MeshStandardMaterial).map!.colorSpace = THREE.SRGBColorSpace;

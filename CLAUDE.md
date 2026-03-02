@@ -260,6 +260,35 @@ Noisy Input in Interactive Systems*, CHI 2012.
 | Snap clutch (explicit mode activation) | Would eliminate Midas Touch entirely, but adds friction for casual use. Hand-out-of-frame already acts as an implicit off-switch. |
 | One Euro Filter on fingertip (hover) | Hover raycasting already benefits from stable fingertip position; adding filter would lag the visual ring behind the actual finger. Left as raw. |
 
+## Three.js resource management
+
+### Texture disposal
+
+`mat.dispose()` only frees the **shader program**. Texture GPU units are separate and must
+be disposed explicitly. The `disposeMat()` helper in `URDFViewer.ts` iterates all properties
+of a material, closes any `ImageBitmap` CPU-side source (required for GLB-loaded textures —
+see [issue #23953](https://github.com/mrdoob/three.js/issues/23953)), then calls
+`texture.dispose()` and `mat.dispose()`. It is called in both `_disposeRobot()` and the
+`_outgoing` traversal at slide-out completion.
+
+`Object3D.dispose()` does **not** recurse into children — always traverse manually.
+`BufferGeometry.dispose()` does free all `BufferAttribute` GPU buffers.
+
+Use `renderer.info.memory.{geometries,textures}` to detect leaks: these counts should
+return to baseline after every robot switch.
+
+### `prefers-reduced-motion`
+
+The `_reduceMotionMQ` media query is checked at:
+- `_startIntro()` — skip slide, place robot at origin immediately
+- `_startExit()` — skip slide, dispose immediately
+- `controls.enableDamping` — disabled when motion is reduced; listener updates it
+  at runtime if the OS setting changes
+
+WCAG 2.3.3 (Animation from Interactions, Level AAA): slide animations are non-essential
+decorative transitions — they must be skippable. OrbitControls damping is not strictly
+required but is best practice for users with vestibular disorders.
+
 ## Commands
 
 ```sh
