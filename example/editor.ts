@@ -723,6 +723,19 @@ export class URDFEditorController {
         return m?.[1] ?? '';
     }
 
+    private _summarizePart(xml: string): string {
+        try {
+            const doc    = new DOMParser().parseFromString(`<root>${xml}</root>`, 'application/xml');
+            const links  = [...doc.querySelectorAll('link')].map(l => l.getAttribute('name') ?? '?');
+            const joints = [...doc.querySelectorAll('joint')].map(j =>
+                `${j.getAttribute('name') ?? '?'}(${j.getAttribute('type') ?? 'fixed'})`);
+            return [
+                links.length  ? `links=[${links.join(', ')}]`  : '',
+                joints.length ? `joints=[${joints.join(', ')}]` : '',
+            ].filter(Boolean).join(', ');
+        } catch { return ''; }
+    }
+
     private _buildSystem(): string {
         const xml     = this._textareaEl.value;
         const nLines  = xml.split('\n').length;
@@ -738,22 +751,15 @@ export class URDFEditorController {
         const selectedPart = this._partSelEl.value;
 
         if (selectedPart && this._partsList.length) {
-            const fullUrdf    = this._assembleFromCache();
-            const fullPreview = fullUrdf.length > MAX_XML_CHARS
-                ? fullUrdf.slice(0, MAX_XML_CHARS) + '\n<!-- ... truncated ... -->'
-                : fullUrdf;
-            const partsDesc = this._partsList
-                .map(p => `  ${p}${p === selectedPart ? ' ← editing' : ''}`)
-                .join('\n');
+            const partsDesc = this._partsList.map(p => {
+                const summary = this._summarizePart(this._partCache.get(this._partUrl(p)) ?? '');
+                const tag     = p === selectedPart ? ' ← editing' : '';
+                return summary ? `  ${p}: ${summary}${tag}` : `  ${p}${tag}`;
+            }).join('\n');
             return `You are an expert URDF robot description assistant embedded in a live 3D robot viewer.
 The robot URDF is split into part files. You are editing one part at a time.
 
-${robotHeader}FULL ROBOT URDF (read this to understand the complete robot — do not edit it directly):
-\`\`\`xml
-${fullPreview}
-\`\`\`
-
-PARTS:
+${robotHeader}PARTS (auto-summarised — use this to understand the complete robot topology):
 ${partsDesc}
 
 CURRENTLY EDITING: ${selectedPart} (${nLines} lines)
