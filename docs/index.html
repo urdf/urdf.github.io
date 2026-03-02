@@ -64,14 +64,21 @@
     }
 
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    [hidden] { display: none !important; }
 
     body {
       font-family: system-ui, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
       background: var(--bg);
       color: var(--text-1);
       height: 100dvh;
       overflow: hidden;
+      user-select: none;
+      -webkit-user-select: none;
     }
+
+    input, textarea, select { user-select: text; -webkit-user-select: text; }
 
     /* ── Right panel ─────────────────────────────────────────────────────── */
 
@@ -85,12 +92,41 @@
       right: 0;
       top: 0;
       height: 100dvh;
-      width: 380px;
+      width: var(--panel-w, 380px);
       z-index: 200;
       transform: translateX(100%);
       transition: transform 0.25s ease;
       box-shadow: -4px 0 24px var(--shadow);
     }
+
+    .panel-resize-handle {
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 8px;        /* hit target */
+      cursor: col-resize; /* semantically correct for a vertical splitter */
+      z-index: 10;
+      touch-action: none;
+    }
+
+    .panel-resize-handle::after {
+      content: '';
+      position: absolute;
+      left: 50%;
+      top: 0;
+      bottom: 0;
+      width: 1px;
+      transform: translateX(-50%);
+      background: var(--border);
+      transition: width 0.12s, background 0.12s;
+    }
+
+    .panel-resize-handle:hover::after,
+    .panel-resize-handle.dragging::after { width: 2px; background: rgba(0, 122, 255, 0.6); }
+    .panel-resize-handle.dragging::after { background: var(--blue); }
+
+    @media (max-width: 768px) { .panel-resize-handle { display: none; } }
 
     aside.open { transform: translateX(0); }
 
@@ -186,100 +222,131 @@
 
     /* ── Robot picker (mode-selector style) ─────────────────────────────── */
 
+    .robot-shell {
+      position: absolute;
+      top: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 100;
+      background: var(--toggle-bg);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      box-shadow: 0 8px 32px var(--shadow);
+      padding: 4px;
+      max-width: calc(100% - 100px);
+    }
+
     .robot-track {
       position: relative;
       display: flex;
-      flex-wrap: wrap;
+      flex-wrap: nowrap;
       padding: 3px;
-      border-radius: 10px;
+      border-radius: 8px;
       background: rgba(0, 0, 0, 0.2);
     }
 
     .robot-track-slider {
       position: absolute;
-      border-radius: 7px;
+      border-radius: 5px;
       background: linear-gradient(135deg, rgba(0, 122, 255, 0.4), rgba(100, 60, 255, 0.4));
       box-shadow: 0 2px 10px rgba(0, 122, 255, 0.2);
       border: 1px solid rgba(255, 255, 255, 0.08);
       pointer-events: none;
-      transition: left 0.25s ease-out, top 0.25s ease-out,
-                  width 0.25s ease-out, height 0.25s ease-out;
+      will-change: left, width;
+      transition: left 0.3s ease-out, width 0.3s ease-out;
     }
 
     .robot-btn {
       position: relative;
       z-index: 1;
-      flex: 1 1 calc(25% - 2px);
-      min-width: 0;
+      flex: 0 0 auto;
       background: none;
       border: none;
-      padding: 6px 4px;
+      padding: 5px 12px;
       font-size: 0.6875rem;
       font-weight: 500;
       color: var(--text-2);
       cursor: pointer;
       transition: color 0.15s;
       white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
       text-align: center;
-      border-radius: 6px;
+      border-radius: 5px;
     }
 
     .robot-btn:hover { color: var(--text-1); }
+    .robot-btn:active { transform: scale(0.94); }
     .robot-btn.active { color: #fff; }
-
-    /* ── URL input ───────────────────────────────────────────────────────── */
-
-    .url-row {
-      display: flex;
-      gap: 6px;
-    }
-
-    .url-input {
-      flex: 1;
-      background: var(--surface-hi);
-      border: 1px solid var(--border);
-      border-radius: 4px;
-      color: var(--text-1);
-      font-size: 0.75rem;
-      padding: 0 7px;
-      height: 30px;
-      min-width: 0;
-    }
-
-    .url-input::placeholder { color: var(--text-3); }
-    .url-input:focus-visible { outline: none; border-color: var(--blue); }
-
-    .url-load-btn {
-      background: var(--blue);
-      border: 1px solid var(--blue);
-      border-radius: 4px;
-      color: #fff;
-      font-size: 0.75rem;
-      padding: 0 10px;
-      height: 30px;
-      cursor: pointer;
-      white-space: nowrap;
-      transition: background 0.12s;
-    }
-
-    .url-load-btn:hover { background: var(--blue-hover); border-color: var(--blue-hover); }
 
     /* ── Checkboxes ──────────────────────────────────────────────────────── */
 
     .option {
       display: flex;
       align-items: center;
-      gap: 7px;
+      gap: 6px;
       font-size: 0.75rem;
       cursor: pointer;
       user-select: none;
-      color: var(--text-1);
-      height: 28px;
+      color: var(--text-2);
     }
 
-    .option input[type=checkbox] { accent-color: var(--blue); width: 13px; height: 13px; flex-shrink: 0; }
+    /* Compact inline options bar. Overrides .section column layout. */
+    .options-bar {
+      flex-direction: row;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 4px 16px;
+      padding: 7px 12px;
+    }
+
+    .options-bar select {
+      flex: 0 0 auto;
+      width: auto;
+      height: 22px;
+      padding: 0 18px 0 5px;
+      font-size: 0.6875rem;
+    }
+
+    .option input[type=checkbox] {
+      appearance: none;
+      -webkit-appearance: none;
+      width: 13px;
+      height: 13px;
+      flex-shrink: 0;
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      background: var(--surface-hi);
+      transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
+      position: relative;
+      cursor: pointer;
+    }
+
+    .option input[type=checkbox]:hover:not(:checked) {
+      border-color: rgba(100, 116, 139, 0.7);
+    }
+
+    .option input[type=checkbox]:focus-visible {
+      outline: none;
+      box-shadow: 0 0 0 2px rgba(0, 122, 255, 0.4);
+    }
+
+    .option input[type=checkbox]:checked {
+      background: var(--blue);
+      border-color: var(--blue);
+    }
+
+    .option input[type=checkbox]:checked::after {
+      content: '';
+      position: absolute;
+      left: 3px;
+      top: 1px;
+      width: 5px;
+      height: 8px;
+      border: 2px solid #fff;
+      border-width: 0 2px 2px 0;
+      transform: rotate(45deg);
+    }
 
     select {
       background: var(--surface-hi);
@@ -289,7 +356,6 @@
       padding: 0 6px;
       height: 30px;
       font-size: 0.75rem;
-      flex: 1;
     }
 
     select:focus-visible { outline: none; border-color: var(--blue); }
@@ -299,6 +365,20 @@
     .sidebar-scroll {
       flex: 1;
       overflow-y: auto;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(100, 116, 139, 0.4) transparent;
+    }
+
+    .sidebar-scroll::-webkit-scrollbar { width: 6px; }
+    .sidebar-scroll::-webkit-scrollbar-track { background: transparent; }
+    .sidebar-scroll::-webkit-scrollbar-thumb {
+      background-color: rgba(100, 116, 139, 0.4);
+      border-radius: 9999px;
+      border: 2px solid transparent;
+      background-clip: content-box;
+    }
+    .sidebar-scroll::-webkit-scrollbar-thumb:hover {
+      background-color: rgba(100, 116, 139, 0.7);
     }
 
     .joints {
@@ -385,10 +465,6 @@
 
     .sidebar-backdrop.visible { display: block; }
 
-    @media (max-width: 768px) {
-      .drop-hint { display: none; }
-    }
-
     /* ── Viewer area ─────────────────────────────────────────────────────── */
 
     main {
@@ -398,8 +474,7 @@
       transition: right 0.25s ease;
     }
 
-    aside.open.pinned ~ main { right: 380px; }
-    aside.open.pinned ~ main .panel-toggle { display: none; }
+    aside.open.pinned ~ main { right: var(--panel-w, 380px); }
 
     urdf-viewer {
       width: 100%;
@@ -430,41 +505,28 @@
     .spinner {
       width: 2.25rem;
       height: 2.25rem;
-      border: 3px solid var(--border);
-      border-top-color: var(--blue);
-      border-radius: 50%;
-      animation: spin 0.7s linear infinite;
+      animation: spin 0.75s linear infinite;
+      filter: drop-shadow(0 0 6px rgba(0, 122, 255, 0.4));
     }
 
     @keyframes spin { to { transform: rotate(360deg); } }
 
-    /* ── Drop hint ───────────────────────────────────────────────────────── */
-
-    .drop-hint {
-      position: absolute;
-      bottom: 16px;
-      left: 50%;
-      transform: translateX(-50%);
-      font-size: 0.75rem;
-      color: var(--text-3);
-      pointer-events: none;
-      white-space: nowrap;
-    }
 
     /* ── Author credits ──────────────────────────────────────────────────── */
 
-    .credits {
-      padding: 10px 12px;
-      border-top: 1px solid var(--border);
-      flex-shrink: 0;
-    }
-
-    .credits a {
+    .viewport-credit {
+      position: absolute;
+      bottom: 12px;
+      left: 14px;
       font-size: 0.6875rem;
       color: var(--text-3);
-      text-decoration: underline;
+      text-decoration: none;
+      pointer-events: auto;
       transition: color 0.12s;
+      z-index: 10;
     }
+
+    .viewport-credit:hover { color: var(--text-2); }
 
     /* ── Part Inspector ──────────────────────────────────────────────────── */
 
@@ -687,7 +749,7 @@
 
     /* ── Editor tab content ──────────────────────────────────────────────── */
 
-    /* Part selector bar — visible only when select is not hidden */
+    /* Part selector bar. Visible only when select is not hidden. */
     .editor-part-bar {
       display: none;
       align-items: center;
@@ -704,10 +766,9 @@
     .editor-pane {
       display: flex;
       flex-direction: row;
-      height: 55%;
+      flex: 1;
       overflow: hidden;
       border-bottom: 1px solid var(--border);
-      flex-shrink: 0;
     }
 
     .editor-line-nums {
@@ -750,18 +811,9 @@
       tab-size: 2;
     }
 
-    .editor-split-handle {
-      height: 5px;
-      background: var(--border);
-      cursor: ns-resize;
-      flex-shrink: 0;
-      transition: background 0.12s;
-    }
-
-    .editor-split-handle:hover { background: var(--blue); }
-
     .chat-pane {
-      flex: 1;
+      height: 40%;
+      flex-shrink: 0;
       display: flex;
       flex-direction: column;
       overflow: hidden;
@@ -770,39 +822,55 @@
     .chat-messages {
       flex: 1;
       overflow-y: auto;
-      padding: 12px;
+      padding: 10px 10px 6px;
       display: flex;
       flex-direction: column;
-      gap: 12px;
+      gap: 6px;
       min-height: 0;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(100, 116, 139, 0.4) transparent;
     }
+
+    .chat-messages::-webkit-scrollbar { width: 6px; }
+    .chat-messages::-webkit-scrollbar-track { background: transparent; }
+    .chat-messages::-webkit-scrollbar-thumb {
+      background-color: rgba(100, 116, 139, 0.4);
+      border-radius: 9999px;
+      border: 2px solid transparent;
+      background-clip: content-box;
+    }
+    .chat-messages::-webkit-scrollbar-thumb:hover { background-color: rgba(100, 116, 139, 0.7); }
 
     /* ── User bubble ─────────────────────────────────────────────────────── */
 
     .chat-msg-user {
       align-self: flex-end;
-      max-width: 88%;
-      background: var(--blue-bg);
-      border: 1px solid var(--blue);
-      border-radius: 10px 10px 3px 10px;
-      padding: 6px 12px;
+      max-width: 86%;
+      background: rgba(0, 122, 255, 0.15);
+      border: 1px solid rgba(0, 122, 255, 0.3);
+      border-radius: 14px 3px 14px 14px;
+      padding: 8px 12px;
       font-size: 0.8125rem;
       color: var(--text-1);
       white-space: pre-wrap;
       word-break: break-word;
     }
 
-    /* ── Assistant message — no bubble, markdown content ─────────────────── */
+    /* ── Assistant bubble ────────────────────────────────────────────────── */
 
     .chat-msg-assistant {
       align-self: flex-start;
-      max-width: 100%;
+      max-width: 92%;
+      background: var(--surface-hi);
+      border: 1px solid var(--border);
+      border-radius: 3px 14px 14px 14px;
+      padding: 8px 12px;
       font-size: 0.8125rem;
       color: var(--text-1);
-      line-height: 1.6;
+      line-height: 1.55;
     }
 
-    .chat-msg-assistant p { margin: 4px 0; }
+    .chat-msg-assistant p { margin: 3px 0; }
     .chat-msg-assistant p:first-child { margin-top: 0; }
     .chat-msg-assistant p:last-child  { margin-bottom: 0; }
 
@@ -816,11 +884,11 @@
     }
 
     .chat-msg-assistant pre {
-      background: var(--bg);
-      border: 1px solid var(--border);
+      background: rgba(0, 0, 0, 0.25);
+      border: 1px solid rgba(255, 255, 255, 0.06);
       border-radius: 6px;
-      padding: 8px 12px;
-      margin: 6px 0;
+      padding: 7px 10px;
+      margin: 5px 0;
       overflow-x: auto;
       font-size: 0.6875rem;
       line-height: 1.55;
@@ -878,8 +946,11 @@
     /* ── Thinking spinner ─────────────────────────────────────────────────── */
 
     .chat-spinner {
-      display: flex; gap: 4px; padding: 4px 2px;
+      display: flex; gap: 4px; padding: 8px 12px;
       align-items: center; align-self: flex-start;
+      background: var(--surface-hi);
+      border: 1px solid var(--border);
+      border-radius: 3px 14px 14px 14px;
     }
 
     .chat-spinner span {
@@ -938,7 +1009,7 @@
     .cmd-ac-arg  { font-family: ui-monospace, monospace; color: var(--text-3); font-size: 0.6875rem; }
     .cmd-ac-desc { color: var(--text-3); font-size: 0.75rem; margin-left: auto; }
 
-    /* ── Pill input ───────────────────────────────────────────────────────── */
+    /* ── Chat input ───────────────────────────────────────────────────────── */
 
     .chat-input-area {
       position: relative;
@@ -950,20 +1021,23 @@
     .chat-input-wrap {
       position: relative;
       border: 1px solid var(--border);
-      border-radius: 999px;
+      border-radius: 12px;
       background: var(--surface-hi);
-      transition: border-color 0.12s;
+      transition: border-color 0.15s, box-shadow 0.15s;
     }
 
-    .chat-input-wrap:focus-within { border-color: var(--blue); }
+    .chat-input-wrap:focus-within {
+      border-color: rgba(0, 122, 255, 0.5);
+      box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.1);
+    }
 
     #chat-input {
       width: 100%;
-      padding: 9px 44px 9px 16px;
+      padding: 9px 40px 9px 12px;
       font-size: 0.8125rem;
       font-family: system-ui, sans-serif;
       border: none;
-      border-radius: 999px;
+      border-radius: 12px;
       background: transparent;
       color: var(--text-1);
       resize: none;
@@ -978,10 +1052,10 @@
 
     .chat-send-btn, .chat-abort-btn {
       position: absolute;
-      top: 50%; right: 5px;
+      top: 50%; right: 6px;
       transform: translateY(-50%);
-      width: 30px; height: 30px;
-      border-radius: 50%; border: none;
+      width: 28px; height: 28px;
+      border-radius: 8px; border: none;
       cursor: pointer;
       display: flex; align-items: center; justify-content: center;
       transition: background 0.12s, transform 0.1s;
@@ -993,13 +1067,68 @@
     .chat-send-btn:disabled { opacity: 0.3; cursor: not-allowed; }
 
     .chat-abort-btn { background: var(--surface-hover); color: var(--text-2); }
-    .chat-abort-btn:hover { background: #c0392b; color: #fff; }
+    .chat-abort-btn:hover { background: rgba(196, 57, 43, 0.8); color: #fff; }
     .chat-abort-btn:active { transform: translateY(-50%) scale(0.88); }
+
+    /* ── Editor file tabs ─────────────────────────────────────────────────── */
+
+    .editor-tabs {
+      display: flex;
+      overflow-x: auto;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+      background: var(--bg);
+      scrollbar-width: none;
+    }
+
+    .editor-tabs::-webkit-scrollbar { display: none; }
+
+    .editor-tab {
+      flex: 0 0 auto;
+      padding: 0 12px;
+      height: 32px;
+      font-size: 0.75rem;
+      color: var(--text-2);
+      border: none;
+      background: none;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      white-space: nowrap;
+      transition: color 0.12s;
+    }
+
+    .editor-tab:hover { color: var(--text-1); }
+    .editor-tab.active { color: var(--blue-text); border-bottom-color: var(--blue); }
+
+    /* ── Chat section header ─────────────────────────────────────────────── */
+
+    .chat-header {
+      padding: 0 12px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      font-size: 0.6875rem;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--text-3);
+      border-top: 1px solid var(--border);
+      flex-shrink: 0;
+    }
   </style>
-  <script type="module" crossorigin src="/assets/index-DSjBEnvN.js"></script>
+  <script type="module" crossorigin src="/assets/index-CuKRRNDv.js"></script>
 </head>
 <body>
   <aside aria-label="Controls">
+    <div class="panel-resize-handle"
+      role="separator"
+      aria-label="Resize panel"
+      aria-orientation="vertical"
+      aria-valuenow="380"
+      aria-valuemin="260"
+      aria-valuemax="700"
+      tabindex="0"
+    ></div>
     <!-- Panel header: tabs + gesture toggle + close -->
     <div class="panel-header">
       <div class="panel-tabs">
@@ -1021,32 +1150,11 @@
 
     <!-- Robot tab -->
     <div class="tab-body" data-tab="robot">
-      <div class="section">
-        <div class="robot-track" id="robots" data-gesture-track>
-          <div class="robot-track-slider" id="robot-track-slider"></div>
-        </div>
-      </div>
-
-      <div class="section">
-        <div class="section-label">Load URL</div>
-        <div class="url-row">
-          <input class="url-input" id="url-input" type="url" placeholder="https://…/robot.urdf" />
-          <button type="button" class="url-load-btn" id="url-load">Load</button>
-        </div>
-      </div>
-
-      <div class="section">
-        <label class="option">
-          <input type="checkbox" id="ignore-limits" /> Ignore limits
-        </label>
-        <label class="option">
-          <input type="checkbox" id="show-collision" /> Show collision
-        </label>
-        <label class="option">
-          <input type="checkbox" id="display-shadow" /> Shadow
-        </label>
-        <label class="option" style="gap:12px">
-          Up
+      <div class="section options-bar">
+        <label class="option"><input type="checkbox" id="ignore-limits" /> Ignore limits</label>
+        <label class="option"><input type="checkbox" id="show-collision" /> Collision</label>
+        <label class="option"><input type="checkbox" id="display-shadow" /> Shadow</label>
+        <label class="option">Up
           <select id="up-axis">
             <option value="+Z">+Z (ROS)</option>
             <option value="-Z">−Z</option>
@@ -1064,23 +1172,23 @@
         <div id="gesture-cheatsheet" role="region">
           <div class="gesture-row">
             <span class="gesture-icon">✊</span>
-            <span class="gesture-desc"><strong>Fist + move</strong> — orbit camera</span>
+            <span class="gesture-desc"><strong>Fist + move</strong> orbit camera</span>
           </div>
           <div class="gesture-row">
             <span class="gesture-icon">☝️</span>
-            <span class="gesture-desc"><strong>Point + hold 1.2 s over joint</strong> — select joint</span>
+            <span class="gesture-desc"><strong>Point + hold 1.2 s over joint</strong> select joint</span>
           </div>
           <div class="gesture-row">
             <span class="gesture-icon">🤚</span>
-            <span class="gesture-desc"><strong>Tilt wrist</strong> (joint selected) — rotate joint</span>
+            <span class="gesture-desc"><strong>Tilt wrist</strong> (joint selected) rotate joint</span>
           </div>
           <div class="gesture-row">
             <span class="gesture-icon">🖐️</span>
-            <span class="gesture-desc"><strong>Open palm, hold 1 s</strong> — reset all joints</span>
+            <span class="gesture-desc"><strong>Open palm, hold 1 s</strong> reset all joints</span>
           </div>
           <div class="gesture-row">
             <span class="gesture-icon">🤲</span>
-            <span class="gesture-desc"><strong>Two hands, pinch/spread</strong> — zoom</span>
+            <span class="gesture-desc"><strong>Two hands, pinch/spread</strong> zoom</span>
           </div>
         </div>
       </div>
@@ -1127,30 +1235,7 @@
           </div>
         </div>
       </div>
-
-      <div class="credits">
-        <a href="https://github.com/jonasneves" target="_blank" rel="noopener">by Jonas Neves</a>
-      </div>
-    </div>
-
-    <!-- Editor tab -->
-    <div class="tab-body" data-tab="editor" id="editor-panel">
-      <div class="editor-part-bar">
-        <select id="part-select" hidden aria-label="Edit part file"></select>
-      </div>
-      <div class="editor-pane">
-        <div class="editor-line-nums" id="editor-line-nums" aria-hidden="true"></div>
-        <textarea
-          id="editor-textarea"
-          spellcheck="false"
-          autocomplete="off"
-          autocorrect="off"
-          autocapitalize="off"
-          wrap="off"
-          aria-label="URDF source code"
-        ></textarea>
-      </div>
-      <div class="editor-split-handle" role="separator" aria-orientation="horizontal" aria-label="Resize editor and chat"></div>
+      <div class="chat-header">AI Assistant</div>
       <div class="chat-pane">
         <div class="chat-messages" id="chat-messages" aria-live="polite" aria-label="AI conversation"></div>
         <div class="chat-input-area">
@@ -1175,16 +1260,55 @@
           </div>
         </div>
       </div>
+
+    </div>
+
+    <!-- Editor tab -->
+    <div class="tab-body" data-tab="editor" id="editor-panel">
+      <div class="editor-part-bar">
+        <select id="part-select" hidden aria-label="Edit part file"></select>
+      </div>
+      <div class="editor-tabs" id="editor-tabs"></div>
+      <div class="editor-pane">
+        <div class="editor-line-nums" id="editor-line-nums" aria-hidden="true"></div>
+        <textarea
+          id="editor-textarea"
+          spellcheck="false"
+          autocomplete="off"
+          autocorrect="off"
+          autocapitalize="off"
+          wrap="off"
+          aria-label="URDF source code"
+        ></textarea>
+      </div>
     </div>
   </aside>
 
   <main>
     <button type="button" class="panel-toggle" id="panel-toggle" aria-label="Open controls">☰</button>
+    <div class="robot-shell">
+      <div class="robot-track" id="robots" data-gesture-track>
+        <div class="robot-track-slider" id="robot-track-slider"></div>
+      </div>
+    </div>
     <urdf-viewer id="viewer" up="-Z" display-shadow></urdf-viewer>
-    <div class="loading" id="loading"><div class="spinner"></div></div>
-    <div class="drop-hint">Drop a .urdf file anywhere to load it</div>
+    <div class="loading" id="loading">
+      <svg class="spinner" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="spinGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%"   stop-color="#007aff" stop-opacity="1" />
+            <stop offset="70%"  stop-color="#007aff" stop-opacity="0.4" />
+            <stop offset="100%" stop-color="#007aff" stop-opacity="0" />
+          </linearGradient>
+        </defs>
+        <circle cx="18" cy="18" r="15" stroke="url(#spinGrad)" stroke-width="3"
+                stroke-linecap="round" pathLength="100" stroke-dasharray="75 25" />
+      </svg>
+    </div>
+
     <canvas id="gesture-overlay"></canvas>
     <video id="gesture-video" playsinline muted></video>
+    <a class="viewport-credit" href="https://github.com/jonasneves" target="_blank" rel="noopener">by Jonas Neves</a>
   </main>
 
   <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
@@ -1198,7 +1322,7 @@
     const toggleBtn = document.getElementById('panel-toggle');
     const closeBtn  = document.getElementById('panel-close');
 
-    const isDesktop = () => window.innerWidth > 768;
+    function isDesktop() { return window.innerWidth > 768; }
 
     function openPanel() {
       panel.classList.add('open');
@@ -1218,7 +1342,97 @@
     closeBtn.addEventListener('click', closePanel);
     backdrop.addEventListener('click', closePanel);
 
-    if (isDesktop()) openPanel();
+    // ── Panel resize (left edge drag, desktop only) ──────────────────────────
+
+    const PANEL_W_KEY     = 'urdf-panel-w';
+    const PANEL_W_DEFAULT = 380;
+    const MIN_W           = 260;
+    const SNAP_RADIUS     = 10;
+
+    const resizeHandle = panel.querySelector('.panel-resize-handle');
+    const mainEl       = document.querySelector('main');
+    const widthTooltip = document.getElementById('part-label');
+
+    function maxW() { return Math.min(700, window.innerWidth * 0.6); }
+
+    function applyWidth(w) {
+      const clamped = Math.max(MIN_W, Math.min(maxW(), w));
+      document.documentElement.style.setProperty('--panel-w', clamped + 'px');
+      resizeHandle.setAttribute('aria-valuenow', Math.round(clamped));
+      return clamped;
+    }
+
+    function saveWidth() {
+      try { localStorage.setItem(PANEL_W_KEY, panel.offsetWidth); } catch {}
+    }
+
+    // Restore saved width (desktop only)
+    if (isDesktop()) {
+      const saved = parseInt(localStorage.getItem(PANEL_W_KEY), 10);
+      if (saved >= MIN_W) applyWidth(saved);
+    }
+
+    // Drag
+    resizeHandle.addEventListener('pointerdown', e => {
+      e.preventDefault();
+      const startX = e.clientX;
+      const startW = panel.offsetWidth;
+      resizeHandle.setPointerCapture(e.pointerId);
+      resizeHandle.classList.add('dragging');
+      mainEl.style.transition = 'none'; // prevent right-offset lag during drag
+
+      function onMove(ev) {
+        let w = startW + startX - ev.clientX;
+        if (Math.abs(w - PANEL_W_DEFAULT) <= SNAP_RADIUS) w = PANEL_W_DEFAULT; // magnet snap
+        const applied = applyWidth(w);
+        widthTooltip.textContent = Math.round(applied) + 'px';
+        widthTooltip.style.left    = (ev.clientX + 12) + 'px';
+        widthTooltip.style.top     = (ev.clientY - 20) + 'px';
+        widthTooltip.style.display = 'block';
+      }
+      function onUp() {
+        resizeHandle.classList.remove('dragging');
+        mainEl.style.transition = '';
+        widthTooltip.style.display = 'none';
+        resizeHandle.removeEventListener('pointermove', onMove);
+        resizeHandle.removeEventListener('pointerup', onUp);
+        saveWidth();
+      }
+      resizeHandle.addEventListener('pointermove', onMove);
+      resizeHandle.addEventListener('pointerup', onUp);
+    });
+
+    resizeHandle.addEventListener('dblclick', () => {
+      applyWidth(PANEL_W_DEFAULT);
+      saveWidth();
+    });
+
+    // Keyboard: Arrow Left widens, Arrow Right narrows (16 px/step); Home = min, End = max
+    resizeHandle.addEventListener('keydown', e => {
+      const cur = panel.offsetWidth;
+      let next;
+      switch (e.key) {
+        case 'ArrowLeft':  next = cur + 16; break;
+        case 'ArrowRight': next = cur - 16; break;
+        case 'Home':       next = MIN_W;    break;
+        case 'End':        next = maxW();   break;
+        default: return;
+      }
+      e.preventDefault();
+      applyWidth(next);
+      saveWidth();
+    });
+
+    // Clamp on window resize. Do not overwrite stored value, only re-clamp if overflowing.
+    let _wResizeTimer = 0;
+    window.addEventListener('resize', () => {
+      clearTimeout(_wResizeTimer);
+      _wResizeTimer = setTimeout(() => {
+        const cur = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--panel-w'), 10);
+        if (cur > maxW()) applyWidth(cur);
+      }, 50);
+    });
+
   </script>
 </body>
 </html>
