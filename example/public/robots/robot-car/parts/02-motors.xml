@@ -5,7 +5,7 @@
   <!-- ─────────────────────────────────────────────────────────────── -->
   <link name="motor_left">
     <visual>
-      <origin xyz="0 0 0" rpy="0 0 3.14159"/>
+      <origin xyz="0 0 0" rpy="0 0 1.5708"/>
       <geometry>
         <mesh filename="tt_motor.stl"/>
       </geometry>
@@ -17,7 +17,7 @@
   <joint name="motor_left_joint" type="fixed">
     <parent link="base_link"/>
     <child link="motor_left"/>
-    <origin xyz="0.0400 -0.0570 0.0000" rpy="0.0000 0.0000 0.0000"/>
+    <origin xyz="0.0400 -0.0570 -0.0110" rpy="0.0000 0.0000 0.0000"/>
   </joint>
 
   <!-- ─────────────────────────────────────────────────────────────── -->
@@ -26,7 +26,7 @@
   <!-- ─────────────────────────────────────────────────────────────── -->
   <link name="motor_right">
     <visual>
-      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <origin xyz="0 0 0" rpy="0 0 -1.5708"/>
       <geometry>
         <mesh filename="tt_motor.stl"/>
       </geometry>
@@ -38,5 +38,5 @@
   <joint name="motor_right_joint" type="fixed">
     <parent link="base_link"/>
     <child link="motor_right"/>
-    <origin xyz="0.0400 0.0570 0.0000" rpy="0.0000 0.0000 0.0000"/>
+    <origin xyz="0.0400 0.0570 -0.0110" rpy="0.0000 0.0000 0.0000"/>
   </joint>
