@@ -55,7 +55,7 @@ print(screen_x(-0.010,  0.090, -0.002))  # wheel_right → positive = screen rig
 | l298n | +0.050 | 0 | +0.005 | rpy 0 0 -1.5708 |
 | esp32_cam | −0.103 | 0 | +0.0023 | PRIMARY MCU — link name esp32_cam, rpy="0 0 1.5708", camera at X=−0.1305 above caster, file 07-esp32cam.xml |
 | hcsr04 | −0.110 | 0 | +0.009 | |
-| powerbank | +0.025 | 0 | −0.019 | rpy 1.5708 0 0, under chassis spanning Y |
+| powerbank | −0.035 | 0 | −0.011 | rpy 1.5708 0 0, under chassis spanning Y |
 | battery_box | +0.046 | 0 | −0.012 | 4×AA holder, 80×44×22 mm, under chassis |
 
 ## robot-car URDF assembly
