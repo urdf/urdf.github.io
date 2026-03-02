@@ -30,6 +30,7 @@ canvas { width: 100%; height: 100%; display: block; transition: opacity 0.2s eas
 `;
 
 const EMPTY_RAYCAST = () => {};
+const _ZERO_VEC = new THREE.Vector3();
 
 export class URDFViewer extends HTMLElement {
 
@@ -82,6 +83,7 @@ export class URDFViewer extends HTMLElement {
     private _rafId = 0;
     private _dirty = false;
     private _loadId = 0;
+    private _introAnim: { start: THREE.Vector3; t0: number; dur: number } | null = null;
     private _resizeObserver: ResizeObserver;
     private _shadow: ShadowRoot;
 
@@ -256,6 +258,19 @@ export class URDFViewer extends HTMLElement {
     private _startRenderLoop(): void {
         const loop = () => {
             this._rafId = requestAnimationFrame(loop);
+
+            const intro = this._introAnim;
+            if (intro) {
+                const t = Math.min((performance.now() - intro.t0) / intro.dur, 1);
+                const ease = 1 - Math.pow(1 - t, 4); // quartic ease-out
+                this.world.position.lerpVectors(intro.start, _ZERO_VEC, ease);
+                this._dirty = true;
+                if (t >= 1) {
+                    this._introAnim = null;
+                    this.world.position.setScalar(0);
+                }
+            }
+
             this.controls.update();
             if (this._dirty) {
                 this._updateScene();
@@ -281,6 +296,8 @@ export class URDFViewer extends HTMLElement {
         if ((this as unknown as { _lastKey?: string })._lastKey === key) return;
         (this as unknown as { _lastKey?: string })._lastKey = key;
 
+        this._introAnim = null;
+        this.world.position.setScalar(0);
         this._disposeRobot();
         this.dispatchEvent(new CustomEvent('urdf-change', { bubbles: true }));
 
@@ -300,7 +317,7 @@ export class URDFViewer extends HTMLElement {
         loader.loadMesh = (path, mgr) => {
             if (!meshManagerHooked) {
                 meshManagerHooked = true;
-                mgr.onLoad = () => { if (id === this._loadId) { this.fitCamera(); reveal(); } };
+                mgr.onLoad = () => { if (id === this._loadId) { this.fitCamera(); this._startIntro(); reveal(); } };
             }
             return baseMeshLoader(path, mgr).then(obj => { this.redraw(); return obj; });
         };
@@ -321,6 +338,7 @@ export class URDFViewer extends HTMLElement {
             // mgr.onLoad handles both after all meshes have loaded.
             if (!meshManagerHooked) {
                 this.fitCamera();
+                this._startIntro();
                 reveal();
             }
 
@@ -335,6 +353,19 @@ export class URDFViewer extends HTMLElement {
                 }));
             }
         });
+    }
+
+    // Slides the world in from screen-right after fitCamera() has been called.
+    private _startIntro(): void {
+        const forward = new THREE.Vector3()
+            .subVectors(this.controls.target, this.camera.position)
+            .normalize();
+        const right = new THREE.Vector3()
+            .crossVectors(forward, new THREE.Vector3(0, 1, 0))
+            .normalize()
+            .multiplyScalar(this._sphere.radius * 5);
+        this.world.position.copy(right);
+        this._introAnim = { start: right, t0: performance.now(), dur: 450 };
     }
 
     private _disposeRobot(): void {
