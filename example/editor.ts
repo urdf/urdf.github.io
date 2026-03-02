@@ -491,6 +491,7 @@ export class URDFEditorController {
             }));
 
             // Overlay any saved local overrides
+            let hadOverrides = false;
             const oKey = this._overridesKey();
             if (oKey) {
                 try {
@@ -498,8 +499,10 @@ export class URDFEditorController {
                     if (raw) {
                         const saved = JSON.parse(raw) as Record<string, string>;
                         for (const [f, xml] of Object.entries(saved)) {
-                            if (this._partsList.includes(f))
+                            if (this._partsList.includes(f)) {
                                 this._partCache.set(this._partUrl(f), xml);
+                                hadOverrides = true;
+                            }
                         }
                     }
                 } catch {}
@@ -510,6 +513,7 @@ export class URDFEditorController {
                 this._textareaEl.value = this._assembleFromCache();
                 this._updateLineNums();
             }
+            if (hadOverrides) this._applyPartsRender();
             this._rebuildPartOptions();
             this._partSelEl.hidden = false;
             this._renderTabs();
