@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import { mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { URDFLoader, PackageMap } from './URDFLoader.js';
 import { URDFRobot, URDFVisual, URDFCollider } from './URDFClasses.js';
 
@@ -467,6 +468,12 @@ export class URDFViewer extends HTMLElement {
             if (!mesh.isMesh) return;
             mesh.castShadow = true;
             mesh.receiveShadow = true;
+            // STL files store per-face normals, causing visible shading seams on flat
+            // surfaces rendered with transparency. Recompute vertex normals to smooth them.
+            if (mesh.geometry && !mesh.geometry.userData.shared) {
+                mesh.geometry = mergeVertices(mesh.geometry);
+                mesh.geometry.computeVertexNormals();
+            }
             if (mesh.material) {
                 const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
                 for (const m of mats) {
