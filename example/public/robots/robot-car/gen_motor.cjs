@@ -77,14 +77,14 @@ function writeSTL(pairs, label, filename) {
 
 const identity = new THREE.Matrix4();
 
-// ── Gearbox (yellow) ──────────────────────────────────────────────────────────
+
 // 36mm(X, front-rear) × 18mm(Y, shaft axis) × 22mm(Z, height)
 writeSTL(
     [[new THREE.BoxGeometry(0.036, 0.018, 0.022), identity]],
     'TT Gearbox', 'tt_gearbox.stl'
 );
 
-// ── DC can + end cap (silver) ─────────────────────────────────────────────────
+
 // CylinderGeometry default axis is Y; rotateZ(+PI/2) maps Y → -X (toward front)
 // Can center: gearbox half-X (0.018) + can half-length (0.014) = 0.032 in -X
 const canMat = new THREE.Matrix4().makeRotationZ(Math.PI / 2);
@@ -102,7 +102,7 @@ writeSTL(
     'TT DC Can', 'tt_can.stl'
 );
 
-// ── Shaft nub (dark metallic) ─────────────────────────────────────────────────
+
 // CylinderGeometry default axis is Y — exits at +Y face of gearbox
 // Center: gearbox half-Y (0.009) + nub half-length (0.003) = 0.012
 const nubMat = new THREE.Matrix4();

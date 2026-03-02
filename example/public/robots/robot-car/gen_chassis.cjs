@@ -1,7 +1,5 @@
 // Generates chassis.stl for the 2WD Robot Car.
-// Run from the repo root:  node example/public/robots/robot-car/gen_chassis.cjs
-//
-// Requires three (already a devDependency):  npm install
+// Run:  node example/public/robots/robot-car/gen_chassis.cjs
 //
 // Shape is defined in URDF coordinates: Y = forward/back, X = left/right.
 // After extrusion the geometry is rotated so it sits correctly in the viewer.
@@ -33,7 +31,7 @@ s.lineTo(-rearHW, stepY);
 s.lineTo(-rearHW, rearY - rearR);
 s.quadraticCurveTo(-rearHW, rearY, -rearHW + rearR, rearY);
 
-// ── Hole helpers ────────────────────────────────────────────────────────────
+
 
 function rectH(cx, cy, w, h, cr = 0.0008) {
   const p = new THREE.Path();
@@ -55,7 +53,6 @@ function circH(cx, cy, r) {
   return p;
 }
 
-// ── Holes ───────────────────────────────────────────────────────────────────
 
 // Motor pass-through cutouts
 s.holes.push(rectH(-0.075, 0.070, 0.012, 0.030, 0.001));
@@ -113,14 +110,12 @@ s.holes.push(circH( 0.014, -0.052, hr));
 s.holes.push(circH(-0.040, -0.062, hr));
 s.holes.push(circH( 0.040, -0.062, hr));
 
-// ── Extrude & orient ────────────────────────────────────────────────────────
 
 const geo = new THREE.ExtrudeGeometry(s, {
   depth: thick, bevelEnabled: false, curveSegments: 48,
 });
 geo.rotateZ(-Math.PI / 2);
 
-// ── Write binary STL ────────────────────────────────────────────────────────
 
 const posAttr = geo.getAttribute('position');
 const index   = geo.getIndex();
