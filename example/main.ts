@@ -1,4 +1,5 @@
 import { URDFManipulator } from '../src/index.js';
+import { GestureController } from './gesture.js';
 
 customElements.define('urdf-viewer', URDFManipulator);
 
@@ -8,6 +9,12 @@ const robotsPanel = document.getElementById('robots')!;
 const loadingEl = document.getElementById('loading')!;
 
 const partLabel = document.getElementById('part-label')!;
+
+const gestureToggleBtn = document.getElementById('gesture-toggle') as HTMLButtonElement;
+const gestureOverlay   = document.getElementById('gesture-overlay') as HTMLCanvasElement;
+const gestureVideo     = document.getElementById('gesture-video') as HTMLVideoElement;
+const gestureSectionEl = document.getElementById('gesture-section')!;
+const gestureHeaderEl  = document.getElementById('gesture-section-header')!;
 
 const ignoreLimitsEl = document.getElementById('ignore-limits') as HTMLInputElement;
 const showCollisionEl = document.getElementById('show-collision') as HTMLInputElement;
@@ -123,6 +130,7 @@ const inspectorClose    = document.getElementById('inspector-close')!;
 
 let selectedJoint: string | null = null;
 let hoveredJointName: string | null = null;
+let gestureCtrl: GestureController | null = null;
 
 function fmt(v: number): string { return v.toFixed(4); }
 
@@ -187,6 +195,7 @@ function selectPart(jointName: string | null): void {
     inspectorScaleZ.value = String(link ? link.scale.z : 1);
 
     refreshSnippet();
+    gestureCtrl?.setSelectedJoint(jointName);
 }
 
 for (const el of [inspectorX, inspectorY, inspectorZ, inspectorScaleX, inspectorScaleY, inspectorScaleZ]) {
@@ -342,4 +351,45 @@ document.body.addEventListener('drop', e => {
         _dropBlobUrl = URL.createObjectURL(file);
         viewer.urdf = _dropBlobUrl;
     }
+});
+
+// ── Gesture mode ───────────────────────────────────────────────────────────────
+
+function onDwellSelect(clientX: number, clientY: number): void {
+    const opts: PointerEventInit = { clientX, clientY, bubbles: true, pointerId: 1 };
+    viewer.dispatchEvent(new PointerEvent('pointerdown', opts));
+    viewer.dispatchEvent(new PointerEvent('pointerup', opts));
+}
+
+gestureToggleBtn.addEventListener('click', () => {
+    if (gestureCtrl) {
+        gestureCtrl.stop();
+        return;
+    }
+    gestureCtrl = new GestureController({
+        viewer, overlayCanvas: gestureOverlay, videoEl: gestureVideo,
+        onDwellSelect,
+        onStop() {
+            gestureCtrl = null;
+            gestureToggleBtn.classList.remove('active');
+        },
+    });
+    gestureCtrl.start()
+        .then(() => {
+            gestureToggleBtn.classList.add('active');
+            gestureSectionEl.classList.add('open');
+            gestureHeaderEl.setAttribute('aria-expanded', 'true');
+        })
+        .catch(() => {
+            gestureCtrl = null;
+        });
+});
+
+gestureHeaderEl.addEventListener('click', () => {
+    const open = gestureSectionEl.classList.toggle('open');
+    gestureHeaderEl.setAttribute('aria-expanded', String(open));
+});
+
+gestureHeaderEl.addEventListener('keydown', (e: KeyboardEvent) => {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); gestureHeaderEl.click(); }
 });

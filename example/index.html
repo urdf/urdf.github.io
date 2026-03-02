@@ -547,6 +547,81 @@
         transition-duration: 0.01ms !important;
       }
     }
+
+    /* ── Gesture overlay ─────────────────────────────────────────────────── */
+
+    #gesture-overlay {
+      position: fixed; inset: 0; pointer-events: none; z-index: 90;
+    }
+
+    #gesture-video {
+      position: fixed; bottom: -9999px; right: -9999px;
+      width: 160px; height: 90px; opacity: 0; pointer-events: none;
+    }
+
+    /* ── Gesture toggle button ───────────────────────────────────────────── */
+
+    #gesture-toggle {
+      display: flex; position: absolute;
+      top: 10px; left: 54px; z-index: 100;
+      background: var(--toggle-bg);
+      border: 1px solid var(--border); border-radius: 50%;
+      color: var(--text-2); font-size: 1rem;
+      width: 36px; height: 36px; cursor: pointer;
+      align-items: center; justify-content: center;
+      backdrop-filter: blur(4px);
+      transition: color 0.12s, background 0.12s, border-color 0.12s;
+    }
+
+    #gesture-toggle:hover { color: var(--text-1); }
+
+    #gesture-toggle.active {
+      background: var(--blue-bg); border-color: var(--blue); color: var(--blue-text);
+      animation: gesture-pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes gesture-pulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(0, 122, 255, 0.35); }
+      50%       { box-shadow: 0 0 0 6px rgba(0, 122, 255, 0); }
+    }
+
+    /* ── Gesture cheat sheet ─────────────────────────────────────────────── */
+
+    #gesture-section { border-bottom: 1px solid var(--border); }
+
+    #gesture-section-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 8px 12px; cursor: pointer; user-select: none; gap: 6px;
+    }
+
+    #gesture-section-header:hover { background: var(--surface-hover); }
+
+    #gesture-section-label {
+      font-size: 0.6875rem; font-weight: 500; color: var(--text-3);
+      text-transform: uppercase; letter-spacing: 0.06em; flex: 1;
+    }
+
+    #gesture-section-chevron {
+      font-size: 0.6875rem; color: var(--text-3);
+      transition: transform 0.15s; flex-shrink: 0;
+    }
+
+    #gesture-section.open #gesture-section-chevron { transform: rotate(90deg); }
+
+    #gesture-cheatsheet {
+      display: none; padding: 6px 12px 10px;
+      flex-direction: column; gap: 6px;
+    }
+
+    #gesture-section.open #gesture-cheatsheet { display: flex; }
+
+    .gesture-row { display: flex; align-items: flex-start; gap: 8px; }
+
+    .gesture-icon { font-size: 1rem; line-height: 1.4; flex-shrink: 0; width: 20px; text-align: center; }
+
+    .gesture-desc { font-size: 0.6875rem; color: var(--text-2); line-height: 1.5; }
+
+    .gesture-desc strong { color: var(--text-1); font-weight: 500; }
   </style>
 </head>
 <body>
@@ -588,6 +663,35 @@
           <option value="-Y">−Y</option>
         </select>
       </label>
+    </div>
+
+    <div id="gesture-section">
+      <div id="gesture-section-header" role="button" tabindex="0" aria-expanded="false">
+        <span id="gesture-section-label">Gestures</span>
+        <span id="gesture-section-chevron" aria-hidden="true">›</span>
+      </div>
+      <div id="gesture-cheatsheet" role="region">
+        <div class="gesture-row">
+          <span class="gesture-icon">☝️</span>
+          <span class="gesture-desc"><strong>Point + move</strong> — orbit camera</span>
+        </div>
+        <div class="gesture-row">
+          <span class="gesture-icon">☝️</span>
+          <span class="gesture-desc"><strong>Point + hold 1.2 s</strong> — select joint under finger</span>
+        </div>
+        <div class="gesture-row">
+          <span class="gesture-icon">🤚</span>
+          <span class="gesture-desc"><strong>Tilt wrist</strong> (joint selected) — rotate joint</span>
+        </div>
+        <div class="gesture-row">
+          <span class="gesture-icon">🖐️</span>
+          <span class="gesture-desc"><strong>Open palm, hold 1 s</strong> — reset all joints</span>
+        </div>
+        <div class="gesture-row">
+          <span class="gesture-icon">🤲</span>
+          <span class="gesture-desc"><strong>Two hands, pinch/spread</strong> — zoom</span>
+        </div>
+      </div>
     </div>
 
     <div class="sidebar-scroll">
@@ -640,9 +744,12 @@
 
   <main>
     <button type="button" class="sidebar-toggle" id="sidebar-toggle" aria-label="Open controls">☰</button>
+    <button type="button" id="gesture-toggle" aria-label="Toggle gesture mode" title="Gesture mode">✋</button>
     <urdf-viewer id="viewer" up="-Z" display-shadow></urdf-viewer>
     <div class="loading" id="loading"><div class="spinner"></div></div>
     <div class="drop-hint">Drop a .urdf file anywhere to load it</div>
+    <canvas id="gesture-overlay"></canvas>
+    <video id="gesture-video" playsinline muted></video>
   </main>
   <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
   <div class="part-label" id="part-label"></div>
