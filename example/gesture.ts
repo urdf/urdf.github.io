@@ -48,8 +48,8 @@ export class GestureController {
     private targetPhi = Math.PI / 3;
     private targetRadius = 0;
 
-    // Dwell select state
-    private prevIndexTip: { x: number; y: number } | null = null;
+    // Dwell select state — prevHandPos tracks the wrist (lm[0]) for orbit stability
+    private prevHandPos: { x: number; y: number } | null = null;
     private dwellStart = 0;
     private dwellMoved = false;
     private dwellScreenX = 0;
@@ -204,10 +204,22 @@ export class GestureController {
                 if (name === 'Open_Palm') {
                     this._handlePalmReset(ctx, lms);
                     this._resetDwell();
-                    this.prevIndexTip = null;
+                    this.prevHandPos = null;
                     this._clearHover();
+                    this.palmResetStart = 0;
+                } else if (name === 'Victory') {
+                    this._handleOrbit(lms);
+                    this._resetDwell();
+                    this._clearHover();
+                    this.palmResetStart = 0;
+                } else if (name === 'Pointing_Up') {
+                    this._handleDwellAndHover(ctx, lms);
+                    this.prevHandPos = null;
+                    this.palmResetStart = 0;
                 } else {
-                    this._handleOrbitAndDwell(ctx, lms);
+                    this._resetDwell();
+                    this._clearHover();
+                    this.prevHandPos = null;
                     this.palmResetStart = 0;
                 }
             }
@@ -295,10 +307,29 @@ export class GestureController {
         this._dragCtrl.update();
     }
 
-    private _handleOrbitAndDwell(ctx: CanvasRenderingContext2D, lms: NormalizedLandmark[]): void {
+    // ✌️ Victory — orbit only, no hover or dwell
+    private _handleOrbit(lms: NormalizedLandmark[]): void {
+        const wristX = 1 - lms[0].x;
+        const wristY = lms[0].y;
+
+        if (this.prevHandPos === null) {
+            this.prevHandPos = { x: wristX, y: wristY };
+        } else {
+            const dx = wristX - this.prevHandPos.x;
+            const dy = wristY - this.prevHandPos.y;
+            this.prevHandPos = { x: wristX, y: wristY };
+
+            if (Math.abs(dx) >= 0.004 || Math.abs(dy) >= 0.004) {
+                this.targetTheta -= dx * 6.0;
+                this.targetPhi = Math.max(0.05, Math.min(Math.PI - 0.05, this.targetPhi - dy * 6.0));
+            }
+        }
+    }
+
+    // ☝️ Pointing_Up only — hover highlight + dwell select, no orbit
+    private _handleDwellAndHover(ctx: CanvasRenderingContext2D, lms: NormalizedLandmark[]): void {
         const tipX = 1 - lms[8].x;
         const tipY = lms[8].y;
-
         const sw = this.canvas.width;
         const sh = this.canvas.height;
         const screenX = tipX * sw;
@@ -306,33 +337,24 @@ export class GestureController {
 
         this._overRobot = this._updateHoverState(screenX, screenY);
 
-        // Draw a ring on the index tip: blue when over the robot, dim otherwise
         ctx.beginPath();
         ctx.arc(screenX, screenY, 8, 0, 2 * Math.PI);
         ctx.strokeStyle = this._overRobot ? 'rgba(0,122,255,0.9)' : 'rgba(255,255,255,0.3)';
         ctx.lineWidth = 2;
         ctx.stroke();
 
-        if (this.prevIndexTip === null) {
-            this.prevIndexTip = { x: tipX, y: tipY };
-            if (this._overRobot) {
-                this.dwellStart = performance.now();
-                this.dwellStartScreenX = screenX;
-                this.dwellStartScreenY = screenY;
-                this.dwellMoved = false;
-                this.dwellScreenX = screenX;
-                this.dwellScreenY = screenY;
-            }
+        if (!this._overRobot) {
+            this._resetDwell();
             return;
         }
 
-        const dx = tipX - this.prevIndexTip.x;
-        const dy = tipY - this.prevIndexTip.y;
-        this.prevIndexTip = { x: tipX, y: tipY }; // always update for continuity
-
-        if (!this._overRobot) {
-            // Finger left the robot — cancel any dwell in progress
-            this._resetDwell();
+        if (this.dwellStart === 0) {
+            this.dwellStart = performance.now();
+            this.dwellStartScreenX = screenX;
+            this.dwellStartScreenY = screenY;
+            this.dwellMoved = false;
+            this.dwellScreenX = screenX;
+            this.dwellScreenY = screenY;
             return;
         }
 
@@ -345,11 +367,6 @@ export class GestureController {
         }
         this.dwellScreenX = screenX;
         this.dwellScreenY = screenY;
-
-        if (Math.abs(dx) >= 0.004 || Math.abs(dy) >= 0.004) {
-            this.targetTheta -= dx * 6.0;
-            this.targetPhi = Math.max(0.05, Math.min(Math.PI - 0.05, this.targetPhi - dy * 6.0));
-        }
 
         const elapsed = performance.now() - this.dwellStart;
         if (!this.dwellMoved && elapsed > 100) {
@@ -449,7 +466,7 @@ export class GestureController {
     private _resetTimers(): void {
         this._resetDwell();
         this.palmResetStart  = 0;
-        this.prevIndexTip    = null;
+        this.prevHandPos    = null;
         this.prevWristAngle  = Infinity;
         this.prevZoomDist    = 0;
         this._clearHover();
@@ -458,7 +475,7 @@ export class GestureController {
     private _resetOneHandTimers(): void {
         this._resetDwell();
         this.palmResetStart = 0;
-        this.prevIndexTip   = null;
+        this.prevHandPos   = null;
         this.prevZoomDist   = 0;
     }
 
