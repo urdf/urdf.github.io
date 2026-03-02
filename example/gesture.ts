@@ -72,6 +72,9 @@ export class GestureController {
     private _raycaster = new THREE.Raycaster();
     private _overRobot = false;
 
+    // Drag controls reference — grabbed at start() to drive hover/highlight
+    private _dragCtrl: { enabled: boolean; raycaster: THREE.Raycaster; update(): void } | null = null;
+
     constructor(opts: GestureControllerOptions) {
         this.viewer = opts.viewer;
         this.canvas = opts.overlayCanvas;
@@ -126,6 +129,12 @@ export class GestureController {
         const ctrl = (this.viewer as unknown as { controls: { enabled: boolean } }).controls;
         if (ctrl) ctrl.enabled = false;
 
+        // Grab drag controls so we can drive hover/highlight from the gesture loop
+        const dc = (this.viewer as unknown as {
+            _dragControls?: { enabled: boolean; raycaster: THREE.Raycaster; update(): void };
+        })._dragControls;
+        if (dc) { this._dragCtrl = dc; dc.enabled = false; }
+
         this.running = true;
         this.rafId = requestAnimationFrame(this._loop);
     }
@@ -145,6 +154,13 @@ export class GestureController {
         // Re-enable OrbitControls
         const ctrl = (this.viewer as unknown as { controls: { enabled: boolean } }).controls;
         if (ctrl) ctrl.enabled = true;
+
+        // Re-enable drag controls and clear any lingering hover state
+        if (this._dragCtrl) {
+            this._clearHover();
+            this._dragCtrl.enabled = true;
+            this._dragCtrl = null;
+        }
 
         window.removeEventListener('resize', this._onResize);
         this.onStop();
@@ -189,6 +205,7 @@ export class GestureController {
                     this._handlePalmReset(ctx, lms);
                     this._resetDwell();
                     this.prevIndexTip = null;
+                    this._clearHover();
                 } else {
                     this._handleOrbitAndDwell(ctx, lms);
                     this.palmResetStart = 0;
@@ -243,18 +260,39 @@ export class GestureController {
         this.viewer.redraw();
     }
 
-    private _isFingerOverRobot(screenX: number, screenY: number): boolean {
-        if (!this.viewer.robot) return false;
+    // Updates drag-controls hover state (highlight + label) and returns whether
+    // the fingertip is over any part of the robot.
+    private _updateHoverState(screenX: number, screenY: number): boolean {
         const cam = this.viewer.camera as THREE.PerspectiveCamera;
         if (!cam) return false;
-        this._raycaster.setFromCamera(
-            new THREE.Vector2(
-                (screenX / this.canvas.width) * 2 - 1,
-                -(screenY / this.canvas.height) * 2 + 1,
-            ),
-            cam,
+
+        const ndc = new THREE.Vector2(
+            (screenX / this.canvas.width) * 2 - 1,
+            -(screenY / this.canvas.height) * 2 + 1,
         );
+
+        // Drive the drag controls' raycaster so it fires onHover/onUnhover,
+        // which applies mesh highlight and dispatches joint-mouseover/out events.
+        if (this._dragCtrl) {
+            this._dragCtrl.raycaster.setFromCamera(ndc, cam);
+            this._dragCtrl.update();
+        }
+
+        // Separate check against the full robot (including root/fixed links)
+        // so orbit activates over any mesh, not just movable joints.
+        if (!this.viewer.robot) return false;
+        this._raycaster.setFromCamera(ndc, cam);
         return this._raycaster.intersectObject(this.viewer.robot, true).length > 0;
+    }
+
+    // Clear hover by pointing the drag-controls ray into empty space.
+    private _clearHover(): void {
+        if (!this._dragCtrl) return;
+        this._dragCtrl.raycaster.ray.set(
+            new THREE.Vector3(0, 10000, 0),
+            new THREE.Vector3(0, 1, 0),
+        );
+        this._dragCtrl.update();
     }
 
     private _handleOrbitAndDwell(ctx: CanvasRenderingContext2D, lms: NormalizedLandmark[]): void {
@@ -266,7 +304,7 @@ export class GestureController {
         const screenX = tipX * sw;
         const screenY = tipY * sh;
 
-        this._overRobot = this._isFingerOverRobot(screenX, screenY);
+        this._overRobot = this._updateHoverState(screenX, screenY);
 
         // Draw a ring on the index tip: blue when over the robot, dim otherwise
         ctx.beginPath();
@@ -414,6 +452,7 @@ export class GestureController {
         this.prevIndexTip    = null;
         this.prevWristAngle  = Infinity;
         this.prevZoomDist    = 0;
+        this._clearHover();
     }
 
     private _resetOneHandTimers(): void {
