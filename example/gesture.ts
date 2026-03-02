@@ -109,6 +109,11 @@ export class GestureController {
     // Last processed video timestamp — guard against duplicate recognizeForVideo calls
     private _lastVideoTime = -1;
 
+    // Gesture debounce: require the same gesture name for 2 consecutive frames before
+    // acting on it. Prevents single-frame classifier oscillation from flashing hover state.
+    private _prevGestureName = '';
+    private _stableGestureName = '';
+
     // Raycaster for hit-testing the robot
     private _raycaster = new THREE.Raycaster();
     private _overRobot = false;
@@ -140,12 +145,14 @@ export class GestureController {
             },
             runningMode: 'VIDEO',
             numHands: 2,
-            minHandDetectionConfidence: 0.7,  // was 0.6 — reduces false initial detections
-            minHandPresenceConfidence: 0.7,   // was 0.6 — stabilises Victory vs Pointing_Up
-            minTrackingConfidence: 0.5,        // keep lower so fast moves don't drop tracking
-            cannedGesturesClassifierOptions: {
-                scoreThreshold: 0.65,          // Victory/Pointing_Up confusion is a known model weakness
-            },
+            // Detection: 0.7 reduces false initial palm detections without hurting tracking.
+            // Presence: keep at 0.5 — higher values cause frequent tracking drops that look
+            // like hand blinking (each drop → re-detection → visible skeleton flash).
+            // scoreThreshold: 0.5 (default) — higher values cause gesture name to oscillate
+            // between a valid name and '' on borderline frames, flashing hover state on/off.
+            minHandDetectionConfidence: 0.7,
+            minHandPresenceConfidence: 0.5,
+            minTrackingConfidence: 0.5,
         });
 
         this.stream = await navigator.mediaDevices.getUserMedia({
@@ -246,8 +253,14 @@ export class GestureController {
                 this._handleZoom(hands);
                 this._resetOneHandTimers();
             } else {
-                const lms  = hands[0];
-                const name = gestures[0]?.[0]?.categoryName ?? '';
+                const lms     = hands[0];
+                const rawName = gestures[0]?.[0]?.categoryName ?? '';
+
+                // Only commit to a new gesture when it holds for 2 consecutive frames.
+                // Prevents single-frame classifier flicker from flashing hover/orbit state.
+                if (rawName === this._prevGestureName) this._stableGestureName = rawName;
+                this._prevGestureName = rawName;
+                const name = this._stableGestureName;
 
                 this._handleWristRoll(lms);
 
@@ -516,10 +529,12 @@ export class GestureController {
 
     private _resetTimers(): void {
         this._resetDwell();
-        this.palmResetStart  = 0;
-        this.prevHandPos     = null;
-        this.prevWristAngle  = Infinity;
-        this.prevZoomDist    = 0;
+        this.palmResetStart    = 0;
+        this.prevHandPos       = null;
+        this.prevWristAngle    = Infinity;
+        this.prevZoomDist      = 0;
+        this._prevGestureName  = '';
+        this._stableGestureName = '';
         this._wristFilterX.reset();
         this._wristFilterY.reset();
         this._clearHover();
