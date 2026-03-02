@@ -22,6 +22,9 @@ const HAND_CONNECTIONS: [number, number][] = [
 
 const WASM_CDN = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.21/wasm';
 
+// Lerp factor per rAF frame (~60fps). Higher = snappier, lower = smoother.
+const CAM_LERP = 0.14;
+
 export class GestureController {
     private viewer: URDFManipulator;
     private canvas: HTMLCanvasElement;
@@ -35,13 +38,18 @@ export class GestureController {
     private selectedJoint: string | null = null;
     private running = false;
 
-    // Orbit state
-    private prevIndexTip: { x: number; y: number } | null = null;
+    // Current animated spherical coords (lerped toward targets each frame)
     private sphTheta = 0;
     private sphPhi = Math.PI / 3;
     private sphRadius = 0;
 
+    // Target spherical coords (written by gesture handlers)
+    private targetTheta = 0;
+    private targetPhi = Math.PI / 3;
+    private targetRadius = 0;
+
     // Dwell select state
+    private prevIndexTip: { x: number; y: number } | null = null;
     private dwellStart = 0;
     private dwellMoved = false;
     private dwellScreenX = 0;
@@ -105,9 +113,9 @@ export class GestureController {
             const sph = new THREE.Spherical().setFromVector3(
                 cam.position.clone().sub((controls as unknown as { target: THREE.Vector3 }).target)
             );
-            this.sphTheta  = sph.theta;
-            this.sphPhi    = sph.phi;
-            this.sphRadius = sph.radius;
+            this.sphTheta  = this.targetTheta  = sph.theta;
+            this.sphPhi    = this.targetPhi    = sph.phi;
+            this.sphRadius = this.targetRadius = sph.radius;
         }
 
         // Disable OrbitControls
@@ -139,9 +147,7 @@ export class GestureController {
     }
 
     setSelectedJoint(name: string | null): void {
-        if (name !== this.selectedJoint) {
-            this.prevWristAngle = Infinity;
-        }
+        if (name !== this.selectedJoint) this.prevWristAngle = Infinity;
         this.selectedJoint = name;
     }
 
@@ -153,46 +159,63 @@ export class GestureController {
     private _loop = () => {
         if (!this.running) return;
         this.rafId = requestAnimationFrame(this._loop);
-        if (!this.recognizer || this.video.readyState < 2) return;
 
-        const result = this.recognizer.recognizeForVideo(this.video, performance.now());
-        const ctx = this.canvas.getContext('2d')!;
-        ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        // ── Gesture recognition ──────────────────────────────────────────────
+        if (this.recognizer && this.video.readyState >= 2) {
+            const result = this.recognizer.recognizeForVideo(this.video, performance.now());
+            const hands    = result.landmarks ?? [];
+            const gestures = result.gestures ?? [];
 
-        const hands = result.landmarks ?? [];
-        const gestures = result.gestures ?? [];
+            const ctx = this.canvas.getContext('2d')!;
+            ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+            for (const lms of hands) this._drawHand(ctx, lms);
 
-        // Draw all hands
-        for (const lms of hands) this._drawHand(ctx, lms);
+            if (hands.length === 0) {
+                this._resetTimers();
+            } else if (hands.length >= 2) {
+                this._handleZoom(hands);
+                this._resetOneHandTimers();
+            } else {
+                const lms  = hands[0];
+                const name = gestures[0]?.[0]?.categoryName ?? '';
 
-        if (hands.length === 0) {
-            this._resetTimers();
-            return;
+                this._handleWristRoll(lms);
+
+                if (name === 'Pointing_Up') {
+                    this._handleOrbitAndDwell(ctx, lms);
+                    this.palmResetStart = 0;
+                } else if (name === 'Open_Palm') {
+                    this._handlePalmReset(ctx, lms);
+                    this._resetDwell();
+                    this.prevIndexTip = null;
+                } else {
+                    this._resetOneHandTimers();
+                }
+            }
         }
 
-        if (hands.length >= 2) {
-            this._handleZoom(hands);
-            this._resetOneHandTimers();
-            return;
-        }
-
-        // Single hand
-        const lms  = hands[0];
-        const name = gestures[0]?.[0]?.categoryName ?? '';
-
-        this._handleWristRoll(lms);
-
-        if (name === 'Pointing_Up') {
-            this._handleOrbitAndDwell(ctx, lms);
-            this.palmResetStart = 0;
-        } else if (name === 'Open_Palm') {
-            this._handlePalmReset(ctx, lms);
-            this._resetDwell();
-            this.prevIndexTip = null;
-        } else {
-            this._resetOneHandTimers();
-        }
+        // ── Camera animation — runs every frame regardless of gesture state ──
+        this._applyCamera();
     };
+
+    // Lerp sph* toward target* and push to the camera.
+    private _applyCamera(): void {
+        const controls = (this.viewer as unknown as {
+            controls: { target: THREE.Vector3; update(): void };
+        }).controls;
+        const cam = this.viewer.camera as THREE.PerspectiveCamera;
+        if (!cam || !controls) return;
+
+        this.sphTheta  += (this.targetTheta  - this.sphTheta)  * CAM_LERP;
+        this.sphPhi    += (this.targetPhi    - this.sphPhi)    * CAM_LERP;
+        this.sphRadius += (this.targetRadius - this.sphRadius) * CAM_LERP;
+
+        const sph = new THREE.Spherical(this.sphRadius, this.sphPhi, this.sphTheta);
+        cam.position.setFromSpherical(sph).add(controls.target);
+        cam.lookAt(controls.target);
+        controls.update();
+        this.viewer.redraw();
+    }
 
     private _handleOrbitAndDwell(ctx: CanvasRenderingContext2D, lms: NormalizedLandmark[]): void {
         const tipX = 1 - lms[8].x;
@@ -218,7 +241,6 @@ export class GestureController {
         const dy = tipY - this.prevIndexTip.y;
         this.prevIndexTip = { x: tipX, y: tipY };
 
-        // Check for dwell movement
         const movePixels = Math.hypot(screenX - this.dwellStartScreenX, screenY - this.dwellStartScreenY);
         if (movePixels > 30) {
             this.dwellMoved = true;
@@ -229,12 +251,12 @@ export class GestureController {
         this.dwellScreenX = screenX;
         this.dwellScreenY = screenY;
 
-        const moving = Math.abs(dx) >= 0.004 || Math.abs(dy) >= 0.004;
-        if (moving) {
-            this._orbit(dx, dy);
+        if (Math.abs(dx) >= 0.004 || Math.abs(dy) >= 0.004) {
+            // Write to targets only — camera lerps toward these each frame
+            this.targetTheta -= dx * 4.0;
+            this.targetPhi = Math.max(0.05, Math.min(Math.PI - 0.05, this.targetPhi - dy * 4.0));
         }
 
-        // Dwell select
         const elapsed = performance.now() - this.dwellStart;
         if (!this.dwellMoved && elapsed > 100) {
             const progress = Math.min(elapsed / this.DWELL_MS, 1);
@@ -248,28 +270,12 @@ export class GestureController {
         }
     }
 
-    private _orbit(dx: number, dy: number): void {
-        const controls = (this.viewer as unknown as { controls: { target: THREE.Vector3; update(): void } }).controls;
-        const cam = this.viewer.camera as THREE.PerspectiveCamera;
-        if (!cam || !controls) return;
-
-        this.sphTheta -= dx * 4.0;
-        this.sphPhi = Math.max(0.05, Math.min(Math.PI - 0.05, this.sphPhi - dy * 4.0));
-
-        const sph = new THREE.Spherical(this.sphRadius, this.sphPhi, this.sphTheta);
-        cam.position.setFromSpherical(sph).add(controls.target);
-        cam.lookAt(controls.target);
-        controls.update();
-        this.viewer.redraw();
-    }
-
     private _handlePalmReset(ctx: CanvasRenderingContext2D, lms: NormalizedLandmark[]): void {
         if (this.palmResetStart === 0) this.palmResetStart = performance.now();
 
-        const elapsed = performance.now() - this.palmResetStart;
+        const elapsed  = performance.now() - this.palmResetStart;
         const progress = Math.min(elapsed / this.PALM_RESET_MS, 1);
 
-        // Palm center: average of fingertips (4, 8, 12, 16, 20)
         const tips = [4, 8, 12, 16, 20];
         let cx = 0, cy = 0;
         for (const i of tips) {
@@ -290,9 +296,7 @@ export class GestureController {
     private _resetAllJoints(): void {
         if (!this.viewer.robot) return;
         for (const [name, joint] of Object.entries(this.viewer.robot.joints)) {
-            if (joint.jointType !== 'fixed') {
-                this.viewer.setJointValue(name, 0);
-            }
+            if (joint.jointType !== 'fixed') this.viewer.setJointValue(name, 0);
         }
     }
 
@@ -301,12 +305,10 @@ export class GestureController {
         const joint = this.viewer.robot.joints[this.selectedJoint];
         if (!joint || joint.jointType === 'fixed') return;
 
-        const wx = 1 - lms[0].x;
-        const wy = lms[0].y;
-        const mx = 1 - lms[5].x;
-        const my = lms[5].y;
-
-        const angle = Math.atan2(my - wy, mx - wx);
+        const angle = Math.atan2(
+            lms[5].y - lms[0].y,
+            (1 - lms[5].x) - (1 - lms[0].x),
+        );
 
         if (this.prevWristAngle === Infinity) {
             this.prevWristAngle = angle;
@@ -314,73 +316,55 @@ export class GestureController {
         }
 
         let delta = angle - this.prevWristAngle;
-        // Wrap delta to ±π
-        if (delta > Math.PI)  delta -= 2 * Math.PI;
+        if (delta >  Math.PI) delta -= 2 * Math.PI;
         if (delta < -Math.PI) delta += 2 * Math.PI;
-
         this.prevWristAngle = angle;
 
-        const continuous = joint.jointType === 'continuous';
+        const continuous  = joint.jointType === 'continuous';
         const ignoreLimits = this.viewer.ignoreLimits;
         const lo = (ignoreLimits || continuous) ? -6.28 : joint.limit.lower;
-        const hi = (ignoreLimits || continuous) ? 6.28 : joint.limit.upper;
+        const hi = (ignoreLimits || continuous) ?  6.28 : joint.limit.upper;
 
         const current = (joint as unknown as { angle: number }).angle ?? 0;
-        const newVal = Math.max(lo, Math.min(hi, current + delta * 1.5));
-        this.viewer.setJointValue(this.selectedJoint, newVal);
+        this.viewer.setJointValue(this.selectedJoint, Math.max(lo, Math.min(hi, current + delta * 1.5)));
     }
 
     private _handleZoom(hands: NormalizedLandmark[][]): void {
-        const w0 = hands[0][0];
-        const w1 = hands[1][0];
-        const sw = this.canvas.width;
-        const sh = this.canvas.height;
+        const w0 = hands[0][0], w1 = hands[1][0];
+        const sw = this.canvas.width, sh = this.canvas.height;
 
         const dist = Math.hypot(
             (1 - w0.x - (1 - w1.x)) * sw,
             (w0.y - w1.y) * sh,
         );
 
-        if (this.prevZoomDist === 0) {
-            this.prevZoomDist = dist;
-            return;
-        }
+        if (this.prevZoomDist === 0) { this.prevZoomDist = dist; return; }
 
         const controls = (this.viewer as unknown as {
-            controls: { target: THREE.Vector3; minDistance: number; maxDistance: number; update(): void };
+            controls: { minDistance: number; maxDistance: number };
         }).controls;
-        const cam = this.viewer.camera as THREE.PerspectiveCamera;
-        if (!cam || !controls) { this.prevZoomDist = dist; return; }
 
         const ratio = this.prevZoomDist / dist;
-        const newDist = Math.max(
+        this.targetRadius = Math.max(
             controls.minDistance ?? 0.1,
-            Math.min(controls.maxDistance ?? 100, this.sphRadius * ratio),
+            Math.min(controls.maxDistance ?? 100, this.targetRadius * ratio),
         );
-        this.sphRadius = newDist;
-
-        const sph = new THREE.Spherical(this.sphRadius, this.sphPhi, this.sphTheta);
-        cam.position.setFromSpherical(sph).add(controls.target);
-        cam.lookAt(controls.target);
-        controls.update();
-        this.viewer.redraw();
-
         this.prevZoomDist = dist;
     }
 
     private _resetTimers(): void {
         this._resetDwell();
-        this.palmResetStart = 0;
-        this.prevIndexTip = null;
-        this.prevWristAngle = Infinity;
-        this.prevZoomDist = 0;
+        this.palmResetStart  = 0;
+        this.prevIndexTip    = null;
+        this.prevWristAngle  = Infinity;
+        this.prevZoomDist    = 0;
     }
 
     private _resetOneHandTimers(): void {
         this._resetDwell();
         this.palmResetStart = 0;
-        this.prevIndexTip = null;
-        this.prevZoomDist = 0;
+        this.prevIndexTip   = null;
+        this.prevZoomDist   = 0;
     }
 
     private _resetDwell(): void {
@@ -389,8 +373,7 @@ export class GestureController {
     }
 
     private _drawHand(ctx: CanvasRenderingContext2D, lms: NormalizedLandmark[]): void {
-        const sw = this.canvas.width;
-        const sh = this.canvas.height;
+        const sw = this.canvas.width, sh = this.canvas.height;
 
         ctx.strokeStyle = 'rgba(0,122,255,0.7)';
         ctx.lineWidth = 2;
@@ -411,21 +394,18 @@ export class GestureController {
 
     private _drawDwellRing(
         ctx: CanvasRenderingContext2D,
-        cx: number,
-        cy: number,
+        cx: number, cy: number,
         progress: number,
         isPalm = false,
     ): void {
         const r = isPalm ? 28 : 22;
 
-        // Background ring
         ctx.beginPath();
         ctx.arc(cx, cy, r, 0, 2 * Math.PI);
         ctx.strokeStyle = 'rgba(255,255,255,0.2)';
         ctx.lineWidth = 3;
         ctx.stroke();
 
-        // Progress arc
         ctx.beginPath();
         ctx.arc(cx, cy, r, -Math.PI / 2, -Math.PI / 2 + progress * 2 * Math.PI);
         ctx.strokeStyle = 'rgba(0,122,255,0.9)';
