@@ -150,11 +150,10 @@
       border-bottom: 2px solid transparent;
       padding: 0;
       height: 100%;
-      font-size: 0.8125rem;
-      font-weight: 500;
       color: var(--text-2);
       cursor: pointer;
       transition: color 0.12s, border-color 0.12s;
+      display: flex; align-items: center; justify-content: center;
     }
 
     .tab-btn:hover { color: var(--text-1); }
@@ -760,6 +759,14 @@
 
     .editor-part-bar select { flex: 1; height: 26px; font-size: 0.6875rem; padding: 0 4px; }
 
+    #part-reset {
+      flex-shrink: 0; height: 22px; padding: 0 7px; font-size: 0.625rem;
+      border: 1px solid var(--border); border-radius: 4px;
+      background: transparent; color: var(--text-2); cursor: pointer; white-space: nowrap;
+    }
+    #part-reset:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+    #part-reset:disabled { opacity: 0.35; cursor: default; }
+
     .editor-pane {
       display: flex;
       flex-direction: row;
@@ -1159,7 +1166,7 @@
     .chat-resize-handle.dragging::after { height: 2px; background: rgba(0, 122, 255, 0.6); }
     .chat-resize-handle.dragging::after { background: var(--blue); }
   </style>
-  <script type="module" crossorigin src="/assets/index-vhZzPNfD.js"></script>
+  <script type="module" crossorigin src="/assets/index-fGV-D7Yl.js"></script>
 </head>
 <body>
   <aside aria-label="Controls">
@@ -1174,8 +1181,18 @@
     ></div>
     <div class="panel-header">
       <div class="panel-tabs">
-        <button type="button" class="tab-btn" data-tab="robot" id="tab-robot">Robot</button>
-        <button type="button" class="tab-btn" data-tab="editor" id="tab-editor">Editor</button>
+        <button type="button" class="tab-btn" data-tab="robot" id="tab-robot" aria-label="Robot" title="Robot">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/>
+            <path d="M2 14h2"/><path d="M20 14h2"/>
+            <path d="M15 13v2"/><path d="M9 13v2"/>
+          </svg>
+        </button>
+        <button type="button" class="tab-btn" data-tab="editor" id="tab-editor" aria-label="Editor" title="Editor">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="m18 16 4-4-4-4"/><path d="m6 8-4 4 4 4"/><path d="m14.5 4-5 16"/>
+          </svg>
+        </button>
       </div>
       <div class="panel-header-actions">
         <button type="button" id="gesture-toggle" aria-label="Toggle gesture mode" title="Gesture mode">
@@ -1319,6 +1336,7 @@
     <div class="tab-body" data-tab="editor" id="editor-panel">
       <div class="editor-part-bar">
         <select id="part-select" hidden aria-label="Edit part file"></select>
+        <button id="part-reset" hidden disabled title="Reset all parts to their original version">↺ Reset</button>
       </div>
       <div class="editor-tabs" id="editor-tabs"></div>
       <div class="editor-pane">
@@ -1544,6 +1562,11 @@
         if (cur > maxW()) applyWidth(cur);
       }, 50);
     });
+
+    // Convert vertical wheel scroll to horizontal on the editor tab bar
+    document.getElementById('editor-tabs').addEventListener('wheel', (e) => {
+      if (e.deltaY !== 0) { e.preventDefault(); e.currentTarget.scrollLeft += e.deltaY; }
+    }, { passive: false });
 
   </script>
 </body>
