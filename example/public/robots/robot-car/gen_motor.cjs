@@ -6,7 +6,9 @@
 //   tt_can.stl      — silver DC motor can + rear end cap
 //   tt_shaft.stl    — dark metallic output shaft nub
 //
-// Orientation: gearbox centered at origin, shaft exits at -X, DC can extends +X
+// Orientation: shaft exits at +Y (toward wheel), DC can extends along -X (toward front bumper)
+//   Right motor: rpy="0 0 0"         (shaft → +Y right wheel, can → -X front)
+//   Left  motor: rpy="3.14159 0 0"   (R_x flip: shaft → -Y left wheel, can → -X front)
 
 const THREE = require('three');
 const path  = require('path');
@@ -76,17 +78,21 @@ function writeSTL(pairs, label, filename) {
 const identity = new THREE.Matrix4();
 
 // ── Gearbox (yellow) ──────────────────────────────────────────────────────────
+// 36mm(X, front-rear) × 18mm(Y, shaft axis) × 22mm(Z, height)
 writeSTL(
     [[new THREE.BoxGeometry(0.036, 0.018, 0.022), identity]],
     'TT Gearbox', 'tt_gearbox.stl'
 );
 
 // ── DC can + end cap (silver) ─────────────────────────────────────────────────
+// CylinderGeometry default axis is Y; rotateZ(+PI/2) maps Y → -X (toward front)
+// Can center: gearbox half-X (0.018) + can half-length (0.014) = 0.032 in -X
 const canMat = new THREE.Matrix4().makeRotationZ(Math.PI / 2);
-canMat.setPosition(0.032, 0, 0);
+canMat.setPosition(-0.032, 0, 0);
 
+// Cap sits beyond can tip: can tip at -0.046, cap center at -0.0475
 const capMat = new THREE.Matrix4().makeRotationZ(Math.PI / 2);
-capMat.setPosition(0.047, 0, 0);
+capMat.setPosition(-0.0475, 0, 0);
 
 writeSTL(
     [
@@ -97,8 +103,10 @@ writeSTL(
 );
 
 // ── Shaft nub (dark metallic) ─────────────────────────────────────────────────
-const nubMat = new THREE.Matrix4().makeRotationZ(Math.PI / 2);
-nubMat.setPosition(-0.021, 0, 0);
+// CylinderGeometry default axis is Y — exits at +Y face of gearbox
+// Center: gearbox half-Y (0.009) + nub half-length (0.003) = 0.012
+const nubMat = new THREE.Matrix4();
+nubMat.setPosition(0, 0.012, 0);
 
 writeSTL(
     [[new THREE.CylinderGeometry(0.004, 0.004, 0.006, 16), nubMat]],
