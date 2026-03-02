@@ -398,7 +398,7 @@ export class URDFLoader {
 function makeResolver(packages: PackageMap, workingPath: string): (path: string) => string | null {
     return function resolvePath(path: string): string | null {
         if (!path.startsWith('package://')) {
-            if (!workingPath || path.startsWith('/') || path.startsWith('http')) return path;
+            if (!workingPath || path.startsWith('/') || path.startsWith('http') || path.startsWith('blob:')) return path;
             return workingPath + path;
         }
 

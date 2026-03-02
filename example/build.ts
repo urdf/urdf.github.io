@@ -61,8 +61,12 @@ export class URDFBuildController {
 
     private _setSTL(filename: string, stl: ArrayBuffer): void {
         const old = this._stlBlobs.get(filename);
-        if (old) URL.revokeObjectURL(old);
-        const url = URL.createObjectURL(new Blob([stl], { type: 'application/octet-stream' }));
+        // Strip fragment before revoking — only the bare blob URL is a valid object URL
+        if (old) URL.revokeObjectURL(old.split('#')[0]);
+        const base = URL.createObjectURL(new Blob([stl], { type: 'application/octet-stream' }));
+        // Append the original filename as a fragment so the loader can detect the .stl extension.
+        // Browsers ignore fragments when fetching blob URLs, so the data still loads correctly.
+        const url = `${base}#${filename}`;
         this._stlBlobs.set(filename, url);
         this._reload();
     }
