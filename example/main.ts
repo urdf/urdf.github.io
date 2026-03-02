@@ -249,6 +249,7 @@ inspectorCopy.addEventListener('click', () => {
 
 viewer.addEventListener('click', () => {
     if (hoveredJointName) selectPart(hoveredJointName);
+    if (editorCtrl.isOpen && hoveredJointName) void editorCtrl.jumpToJoint(hoveredJointName);
 });
 
 // ── Loading indicator ─────────────────────────────────────────────────────────

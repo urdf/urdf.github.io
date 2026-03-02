@@ -92,12 +92,41 @@
       right: 0;
       top: 0;
       height: 100dvh;
-      width: 380px;
+      width: var(--panel-w, 380px);
       z-index: 200;
       transform: translateX(100%);
       transition: transform 0.25s ease;
       box-shadow: -4px 0 24px var(--shadow);
     }
+
+    .panel-resize-handle {
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 8px;        /* hit target */
+      cursor: col-resize; /* semantically correct for a vertical splitter */
+      z-index: 10;
+      touch-action: none;
+    }
+
+    .panel-resize-handle::after {
+      content: '';
+      position: absolute;
+      left: 50%;
+      top: 0;
+      bottom: 0;
+      width: 1px;
+      transform: translateX(-50%);
+      background: var(--border);
+      transition: width 0.12s, background 0.12s;
+    }
+
+    .panel-resize-handle:hover::after,
+    .panel-resize-handle.dragging::after { width: 2px; background: rgba(0, 122, 255, 0.6); }
+    .panel-resize-handle.dragging::after { background: var(--blue); }
+
+    @media (max-width: 768px) { .panel-resize-handle { display: none; } }
 
     aside.open { transform: translateX(0); }
 
@@ -449,7 +478,7 @@
       transition: right 0.25s ease;
     }
 
-    aside.open.pinned ~ main { right: 380px; }
+    aside.open.pinned ~ main { right: var(--panel-w, 380px); }
 
     urdf-viewer {
       width: 100%;
@@ -741,10 +770,9 @@
     .editor-pane {
       display: flex;
       flex-direction: row;
-      height: 55%;
+      flex: 1;
       overflow: hidden;
       border-bottom: 1px solid var(--border);
-      flex-shrink: 0;
     }
 
     .editor-line-nums {
@@ -787,29 +815,13 @@
       tab-size: 2;
     }
 
-    .editor-split-handle {
-      height: 5px;
-      background: var(--border);
-      cursor: ns-resize;
-      flex-shrink: 0;
-      transition: background 0.12s;
-      display: none;
-    }
-
-    body.editor-open .editor-split-handle { display: block; }
-
-    .editor-split-handle:hover { background: var(--blue); }
-
     .chat-pane {
-      height: 50%;
+      height: 40%;
       flex-shrink: 0;
       display: flex;
       flex-direction: column;
       overflow: hidden;
-      border-top: 1px solid var(--border);
     }
-
-    body.editor-open .chat-pane { border-top: none; }
 
     .chat-messages {
       flex: 1;
@@ -1061,10 +1073,65 @@
     .chat-abort-btn { background: var(--surface-hover); color: var(--text-2); }
     .chat-abort-btn:hover { background: rgba(196, 57, 43, 0.8); color: #fff; }
     .chat-abort-btn:active { transform: translateY(-50%) scale(0.88); }
+
+    /* ── Editor file tabs ─────────────────────────────────────────────────── */
+
+    .editor-tabs {
+      display: flex;
+      overflow-x: auto;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+      background: var(--bg);
+      scrollbar-width: none;
+    }
+
+    .editor-tabs::-webkit-scrollbar { display: none; }
+
+    .editor-tab {
+      flex: 0 0 auto;
+      padding: 0 12px;
+      height: 32px;
+      font-size: 0.75rem;
+      color: var(--text-2);
+      border: none;
+      background: none;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      white-space: nowrap;
+      transition: color 0.12s;
+    }
+
+    .editor-tab:hover { color: var(--text-1); }
+    .editor-tab.active { color: var(--blue-text); border-bottom-color: var(--blue); }
+
+    /* ── Chat section header ─────────────────────────────────────────────── */
+
+    .chat-header {
+      padding: 0 12px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      font-size: 0.6875rem;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--text-3);
+      border-top: 1px solid var(--border);
+      flex-shrink: 0;
+    }
   </style>
 </head>
 <body>
   <aside aria-label="Controls">
+    <div class="panel-resize-handle"
+      role="separator"
+      aria-label="Resize panel"
+      aria-orientation="vertical"
+      aria-valuenow="380"
+      aria-valuemin="260"
+      aria-valuemax="700"
+      tabindex="0"
+    ></div>
     <!-- Panel header: tabs + gesture toggle + close -->
     <div class="panel-header">
       <div class="panel-tabs">
@@ -1171,6 +1238,31 @@
           </div>
         </div>
       </div>
+      <div class="chat-header">AI Assistant</div>
+      <div class="chat-pane">
+        <div class="chat-messages" id="chat-messages" aria-live="polite" aria-label="AI conversation"></div>
+        <div class="chat-input-area">
+          <div id="cmd-ac" class="cmd-ac" hidden role="listbox" aria-label="Commands"></div>
+          <div class="chat-input-wrap">
+            <textarea
+              id="chat-input"
+              placeholder="Ask AI about this URDF…"
+              aria-label="Chat with AI"
+              rows="1"
+            ></textarea>
+            <button type="button" id="chat-send" class="chat-send-btn" aria-label="Send message" title="Send (Enter)">
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                <path d="M8 13V3M3.5 7.5L8 3l4.5 4.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </button>
+            <button type="button" id="chat-abort" class="chat-abort-btn" hidden aria-label="Stop generating" title="Stop">
+              <svg width="10" height="10" viewBox="0 0 11 11" aria-hidden="true">
+                <rect width="11" height="11" rx="2" fill="currentColor"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
 
     </div>
 
@@ -1179,6 +1271,7 @@
       <div class="editor-part-bar">
         <select id="part-select" hidden aria-label="Edit part file"></select>
       </div>
+      <div class="editor-tabs" id="editor-tabs"></div>
       <div class="editor-pane">
         <div class="editor-line-nums" id="editor-line-nums" aria-hidden="true"></div>
         <textarea
@@ -1190,33 +1283,6 @@
           wrap="off"
           aria-label="URDF source code"
         ></textarea>
-      </div>
-    </div>
-
-    <div class="editor-split-handle" role="separator" aria-orientation="horizontal" aria-label="Resize editor and chat"></div>
-
-    <div class="chat-pane">
-      <div class="chat-messages" id="chat-messages" aria-live="polite" aria-label="AI conversation"></div>
-      <div class="chat-input-area">
-        <div id="cmd-ac" class="cmd-ac" hidden role="listbox" aria-label="Commands"></div>
-        <div class="chat-input-wrap">
-          <textarea
-            id="chat-input"
-            placeholder="Ask AI about this URDF…"
-            aria-label="Chat with AI"
-            rows="1"
-          ></textarea>
-          <button type="button" id="chat-send" class="chat-send-btn" aria-label="Send message" title="Send (Enter)">
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-              <path d="M8 13V3M3.5 7.5L8 3l4.5 4.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-          </button>
-          <button type="button" id="chat-abort" class="chat-abort-btn" hidden aria-label="Stop generating" title="Stop">
-            <svg width="10" height="10" viewBox="0 0 11 11" aria-hidden="true">
-              <rect width="11" height="11" rx="2" fill="currentColor"/>
-            </svg>
-          </button>
-        </div>
       </div>
     </div>
   </aside>
@@ -1279,6 +1345,88 @@
     toggleBtn.addEventListener('click', openPanel);
     closeBtn.addEventListener('click', closePanel);
     backdrop.addEventListener('click', closePanel);
+
+    // ── Panel resize (left edge drag, desktop only) ──────────────────────────
+    // Best practices: W3C APG Window Splitter, VS Code sash, Grafana/Figma precedent
+
+    const PANEL_W_KEY     = 'urdf-panel-w';
+    const PANEL_W_DEFAULT = 380;
+    const MIN_W           = 260;
+    const SNAP_RADIUS     = 10;
+
+    const resizeHandle = panel.querySelector('.panel-resize-handle');
+    const mainEl       = document.querySelector('main');
+    const widthTooltip = document.getElementById('part-label');
+
+    function maxW() { return Math.min(700, window.innerWidth * 0.6); }
+
+    function applyWidth(w) {
+      const clamped = Math.max(MIN_W, Math.min(maxW(), w));
+      document.documentElement.style.setProperty('--panel-w', clamped + 'px');
+      resizeHandle.setAttribute('aria-valuenow', Math.round(clamped));
+      return clamped;
+    }
+
+    // Restore saved width (desktop only)
+    if (isDesktop()) {
+      const saved = parseInt(localStorage.getItem(PANEL_W_KEY), 10);
+      if (saved >= MIN_W) applyWidth(saved);
+    }
+
+    // Drag
+    resizeHandle.addEventListener('pointerdown', e => {
+      e.preventDefault();
+      const startX = e.clientX, startW = panel.offsetWidth;
+      resizeHandle.setPointerCapture(e.pointerId);
+      resizeHandle.classList.add('dragging');
+      mainEl.style.transition = 'none'; // prevent right-offset lag during drag
+
+      function onMove(e) {
+        let w = startW + startX - e.clientX;
+        if (Math.abs(w - PANEL_W_DEFAULT) <= SNAP_RADIUS) w = PANEL_W_DEFAULT; // magnet
+        const applied = applyWidth(w);
+        widthTooltip.textContent = Math.round(applied) + 'px';
+        widthTooltip.style.left    = (e.clientX + 12) + 'px';
+        widthTooltip.style.top     = (e.clientY - 20) + 'px';
+        widthTooltip.style.display = 'block';
+      }
+      function onUp() {
+        resizeHandle.classList.remove('dragging');
+        mainEl.style.transition = '';
+        widthTooltip.style.display = 'none';
+        resizeHandle.removeEventListener('pointermove', onMove);
+        resizeHandle.removeEventListener('pointerup', onUp);
+        try { localStorage.setItem(PANEL_W_KEY, panel.offsetWidth); } catch {}
+      }
+      resizeHandle.addEventListener('pointermove', onMove);
+      resizeHandle.addEventListener('pointerup', onUp);
+    });
+
+    // Double-click to reset to default width
+    resizeHandle.addEventListener('dblclick', () => {
+      applyWidth(PANEL_W_DEFAULT);
+      try { localStorage.setItem(PANEL_W_KEY, PANEL_W_DEFAULT); } catch {}
+    });
+
+    // Keyboard: ← widen, → narrow (16 px/step); Home = min, End = max
+    resizeHandle.addEventListener('keydown', e => {
+      const cur = panel.offsetWidth;
+      const next = { ArrowLeft: cur + 16, ArrowRight: cur - 16, Home: MIN_W, End: maxW() }[e.key];
+      if (next === undefined) return;
+      e.preventDefault();
+      applyWidth(next);
+      try { localStorage.setItem(PANEL_W_KEY, panel.offsetWidth); } catch {}
+    });
+
+    // Clamp on window resize — do not overwrite stored value, only re-clamp if overflowing
+    let _wResizeTimer = 0;
+    window.addEventListener('resize', () => {
+      clearTimeout(_wResizeTimer);
+      _wResizeTimer = setTimeout(() => {
+        const cur = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--panel-w'), 10);
+        if (cur > maxW()) applyWidth(cur);
+      }, 50);
+    });
 
   </script>
 </body>

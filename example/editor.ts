@@ -112,6 +112,7 @@ export class URDFEditorController {
     private _partsList:   string[] = [];
     private _robotName:   string = '';
     private readonly _partSelEl: HTMLSelectElement;
+    private _tabsEl: HTMLElement;
 
     constructor(viewer: URDFManipulator, panelEl: HTMLElement) {
         this._viewer       = viewer;
@@ -125,6 +126,7 @@ export class URDFEditorController {
         this._editorPaneEl = panelEl.querySelector<HTMLElement>('.editor-pane')!;
         this._cmdAcEl      = document.getElementById('cmd-ac') as HTMLElement;
         this._partSelEl    = panelEl.querySelector<HTMLSelectElement>('#part-select')!;
+        this._tabsEl       = document.getElementById('editor-tabs') as HTMLElement;
 
         this._partSelEl.addEventListener('change', () => void this._onPartChange());
 
@@ -180,21 +182,39 @@ export class URDFEditorController {
         this._sendBtn.addEventListener('click', () => this._handleSend());
         this._abortBtn.addEventListener('click', () => this._abort?.abort());
 
-        // Global: route printable keys to chat input when panel open and no input focused
+        // Global: route printable keys to chat input when panel open and robot tab visible
         document.addEventListener('keydown', (e) => {
             if (!this._panelEl.closest('aside')?.classList.contains('open')) return;
+            if (document.body.classList.contains('editor-open')) return;
             const active = document.activeElement as HTMLElement | null;
             if (active && /^(INPUT|TEXTAREA|SELECT)$/.test(active.tagName)) return;
             if (active?.isContentEditable) return;
             if (e.key.length !== 1 || e.metaKey || e.ctrlKey || e.altKey) return;
             this._chatInputEl.focus();
         });
-
-        this._wireResizeHandle();
     }
 
     get ownBlobUrl(): string | null { return this._ownBlobUrl; }
     get isOpen(): boolean { return this._panelEl.classList.contains('open'); }
+
+    async jumpToJoint(name: string): Promise<void> {
+        if (!this._partsList.length || !this._sourceUrl) return;
+        for (const filename of this._partsList) {
+            const url = this._sourceUrl.replace(/[^/]+\.urdf(\?.*)?$/, `parts/${filename}`);
+            const text = await fetch(url).then(r => r.text());
+            if (!text.includes(`name="${name}"`)) continue;
+            this._partSelEl.value = filename;
+            await this._onPartChange();
+            const idx = this._textareaEl.value.indexOf(`name="${name}"`);
+            if (idx !== -1) {
+                this._textareaEl.focus();
+                this._textareaEl.setSelectionRange(idx, idx);
+                const line = this._textareaEl.value.slice(0, idx).split('\n').length - 1;
+                this._textareaEl.scrollTop = Math.max(0, line * 18 - 60);
+            }
+            return;
+        }
+    }
 
     open(): void {
         this._panelEl.classList.add('open');
@@ -336,21 +356,6 @@ export class URDFEditorController {
         } catch { /* keep original */ }
     }
 
-    private _wireResizeHandle(): void {
-        const handle   = document.querySelector<HTMLElement>('.editor-split-handle')!;
-        const chatPane = document.querySelector<HTMLElement>('.chat-pane')!;
-        let dragging = false;
-        handle.addEventListener('pointerdown', (e) => { dragging = true; handle.setPointerCapture(e.pointerId); });
-        handle.addEventListener('pointermove', (e) => {
-            if (!dragging) return;
-            const aside = handle.parentElement!;
-            const rect  = aside.getBoundingClientRect();
-            const pct   = ((rect.bottom - e.clientY) / rect.height) * 100;
-            chatPane.style.height = `${Math.min(80, Math.max(15, pct))}%`;
-        });
-        handle.addEventListener('pointerup', () => { dragging = false; });
-    }
-
     // ── Parts ─────────────────────────────────────────────────────────────────
 
     private async _loadPartsManifest(): Promise<void> {
@@ -363,6 +368,7 @@ export class URDFEditorController {
             this._partSelEl.innerHTML = '<option value="">Full URDF</option>' +
                 data.parts.map(p => `<option value="${p}">${p}</option>`).join('');
             this._partSelEl.hidden = false;
+            this._renderTabs();
         } catch { /* no manifest — parts not available */ }
     }
 
@@ -371,6 +377,7 @@ export class URDFEditorController {
         this._highlights.clear();
         if (!filename) {
             if (this._sourceUrl) await this._fetchAndPopulate(this._sourceUrl);
+            this._updateActiveTab();
             return;
         }
         const partUrl = this._sourceUrl!.replace(/[^/]+\.urdf(\?.*)?$/, `parts/${filename}`);
@@ -379,6 +386,33 @@ export class URDFEditorController {
             this._textareaEl.value = text;
             this._updateLineNums();
         } catch { /* ignore */ }
+        this._updateActiveTab();
+    }
+
+    private _renderTabs(): void {
+        this._tabsEl.innerHTML = '';
+        const mkTab = (label: string, value: string) => {
+            const btn = document.createElement('button');
+            btn.className = 'editor-tab';
+            btn.textContent = label;
+            btn.dataset.part = value;
+            btn.addEventListener('click', () => this._selectTab(value));
+            this._tabsEl.appendChild(btn);
+        };
+        mkTab('all', '');
+        for (const f of this._partsList)
+            mkTab(f.replace(/^\d+-/, '').replace(/\.xml$/, ''), f);
+        this._updateActiveTab();
+    }
+
+    private _selectTab(filename: string): void {
+        this._partSelEl.value = filename;
+        void this._onPartChange();
+    }
+
+    private _updateActiveTab(): void {
+        for (const btn of this._tabsEl.querySelectorAll<HTMLElement>('.editor-tab'))
+            btn.classList.toggle('active', (btn.dataset.part ?? '') === this._partSelEl.value);
     }
 
     // ── AI Chat ───────────────────────────────────────────────────────────────
@@ -664,8 +698,10 @@ Be concise. Use tools proactively.`;
                     this._partsList = [...this._partsList, filename].sort();
                     this._partSelEl.innerHTML = '<option value="">Full URDF</option>' +
                         this._partsList.map(p => `<option value="${p}">${p}</option>`).join('');
+                    this._renderTabs();
                 }
                 this._partSelEl.value = filename;
+                this._updateActiveTab();
                 // Reload the assembled URDF in the viewer with a cache-bust
                 if (this._sourceUrl) {
                     const base = this._sourceUrl.split('?')[0];
