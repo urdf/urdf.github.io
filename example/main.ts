@@ -583,61 +583,88 @@ function renderComponentItem(id: string, type: string): void {
     item.className = 'build-component';
     item.dataset.id = id;
 
+    // ── Header ────────────────────────────────────────────────────────
     const header = document.createElement('div');
     header.className = 'build-component-header';
-
-    const label = document.createElement('span');
-    const n = id.split('_').pop();
-    label.textContent = `${def.label} ${n}`;
-
+    const labelEl = document.createElement('span');
+    labelEl.textContent = `${def.label} ${id.split('_').pop()}`;
     const removeBtn = document.createElement('button');
     removeBtn.type = 'button';
     removeBtn.className = 'build-remove-btn';
     removeBtn.title = 'Remove';
     removeBtn.textContent = '×';
-    removeBtn.addEventListener('click', () => {
-        buildCtrl.removeComponent(id);
-        item.remove();
-    });
+    removeBtn.addEventListener('click', () => { buildCtrl.removeComponent(id); item.remove(); });
+    header.append(labelEl, removeBtn);
 
-    header.append(label, removeBtn);
-
-    // XYZ position inputs reusing .inspector-row style
-    const xyzEl = document.createElement('div');
-    xyzEl.style.cssText = 'display: flex; flex-direction: column; gap: 2px;';
+    // ── Input rows ────────────────────────────────────────────────────
+    const body = document.createElement('div');
+    body.style.cssText = 'display: flex; flex-direction: column; gap: 2px;';
 
     const inputs: Record<string, HTMLInputElement> = {};
 
-    const dispatchMove = () => {
+    const dispatchUpdate = () => {
+        const dims = def.geomType === 'cylinder'
+            ? [parseFloat(inputs['r'].value) || 0.001, parseFloat(inputs['l'].value) || 0.001]
+            : [parseFloat(inputs['w'].value) || 0.001, parseFloat(inputs['d'].value) || 0.001, parseFloat(inputs['h'].value) || 0.001];
         buildCtrl.moveComponent(
             id,
-            parseFloat(inputs['x'].value) || 0,
-            parseFloat(inputs['y'].value) || 0,
-            parseFloat(inputs['z'].value) || 0,
+            parseFloat(inputs['x'].value)  || 0,
+            parseFloat(inputs['y'].value)  || 0,
+            parseFloat(inputs['z'].value)  || 0,
+            parseFloat(inputs['rx'].value) || 0,
+            parseFloat(inputs['ry'].value) || 0,
+            parseFloat(inputs['rz'].value) || 0,
+            dims,
         );
     };
 
-    for (const axis of ['x', 'y', 'z'] as const) {
+    const addRow = (key: string, axisClass: string, label: string, step: number, value: number) => {
         const row = document.createElement('div');
         row.className = 'inspector-row';
-
         const lbl = document.createElement('label');
-        lbl.textContent = axis.toUpperCase();
-        lbl.className   = `axis-${axis}`;
-
+        lbl.className   = axisClass;
+        lbl.textContent = label;
         const inp = document.createElement('input');
         inp.type  = 'number';
-        inp.step  = '0.005';
-        inp.value = axis === 'z' ? String(def.defaultZ) : '0';
-        inp.addEventListener('input', dispatchMove);
-
+        inp.step  = String(step);
+        inp.value = String(value);
+        inp.addEventListener('input', dispatchUpdate);
         makeScrubLabel(lbl, inp);
-
-        inputs[axis] = inp;
+        inputs[key] = inp;
         row.append(lbl, inp);
-        xyzEl.appendChild(row);
+        body.appendChild(row);
+    };
+
+    const addGroupLabel = (text: string) => {
+        const lbl = document.createElement('div');
+        lbl.className   = 'build-group-label';
+        lbl.textContent = text;
+        body.appendChild(lbl);
+    };
+
+    // Position
+    addGroupLabel('Position');
+    addRow('x',  'axis-x', 'X', 0.005, 0);
+    addRow('y',  'axis-y', 'Y', 0.005, 0);
+    addRow('z',  'axis-z', 'Z', 0.005, def.defaultZ);
+
+    // Rotation
+    addGroupLabel('Rotation');
+    addRow('rx', 'axis-x', 'Rx', 0.01, 0);
+    addRow('ry', 'axis-y', 'Ry', 0.01, 0);
+    addRow('rz', 'axis-z', 'Rz', 0.01, 0);
+
+    // Dimensions
+    addGroupLabel('Size');
+    if (def.geomType === 'cylinder') {
+        addRow('r', 'axis-x', 'R',  0.005, def.defaultDims[0]);
+        addRow('l', 'axis-z', 'L',  0.005, def.defaultDims[1]);
+    } else {
+        addRow('w', 'axis-x', 'W',  0.005, def.defaultDims[0]);
+        addRow('d', 'axis-y', 'D',  0.005, def.defaultDims[1]);
+        addRow('h', 'axis-z', 'H',  0.005, def.defaultDims[2]);
     }
 
-    item.append(header, xyzEl);
+    item.append(header, body);
     buildComponentsListEl.appendChild(item);
 }

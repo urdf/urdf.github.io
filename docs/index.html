@@ -222,6 +222,64 @@
       padding: 4px 0 1px;
     }
 
+    .build-export-btn {
+      display: block;
+      width: 100%;
+      padding: 8px 0;
+      background: var(--blue);
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      letter-spacing: 0.02em;
+    }
+
+    .build-export-btn:hover  { background: var(--blue-hover); }
+    .build-export-btn:active { transform: scale(0.98); }
+
+    /* ── Mobile / touch ──────────────────────────────────────────────────── */
+
+    @media (max-width: 480px) {
+      aside { width: 100vw; }
+    }
+
+    @media (max-width: 768px) {
+      /* Palette buttons: comfortably tappable */
+      .component-palette .robot-btn {
+        min-height: 40px;
+        font-size: 12px;
+        padding: 8px 10px;
+      }
+
+      /* Build param sliders */
+      .build-param .joint-row input[type="range"] { height: 28px; }
+
+      /* Remove button: larger hit area */
+      .build-remove-btn {
+        padding: 6px 10px;
+        font-size: 18px;
+        min-width: 40px;
+      }
+
+      /* Download button */
+      .build-export-btn { min-height: 48px; font-size: 14px; }
+
+      /* Number inputs and labels in component cards */
+      .build-component .inspector-row input[type="number"] {
+        min-height: 36px;
+        font-size: 13px;
+      }
+
+      .build-component .inspector-row label {
+        min-width: 36px;
+        font-size: 12px;
+      }
+
+      .build-group-label { font-size: 11px; padding: 6px 0 2px; }
+    }
+
     .build-param {
       padding: 4px 12px;
     }
@@ -1463,18 +1521,7 @@
         <div id="build-components-list"></div>
 
         <div style="padding: 12px 12px 8px;">
-          <button id="build-export" style="
-            width: 100%;
-            padding: 7px 0;
-            background: var(--blue);
-            color: #fff;
-            border: none;
-            border-radius: 6px;
-            font-size: 12px;
-            font-weight: 600;
-            cursor: pointer;
-            letter-spacing: 0.02em;
-          ">Download .zip</button>
+          <button id="build-export" class="build-export-btn">Download .zip</button>
         </div>
       </div>
     </div>

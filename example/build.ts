@@ -9,10 +9,11 @@ export { CHASSIS_DEFAULTS, WHEEL_DEFAULTS };
 // ── Component catalog ──────────────────────────────────────────────────────
 
 export interface ComponentDef {
-    label:    string;
-    color:    string;   // URDF rgba string
-    defaultZ: number;   // metres — sensible starting height above chassis
-    geometry: string;   // URDF <geometry> inner XML
+    label:       string;
+    color:       string;                    // URDF rgba string
+    defaultZ:    number;                    // metres — sensible starting height above chassis
+    geomType:    'box' | 'cylinder';
+    defaultDims: number[];                  // box: [w,d,h] m  |  cylinder: [radius,length] m
 }
 
 export const COMPONENT_CATALOG: Record<string, ComponentDef> = {
@@ -20,31 +21,36 @@ export const COMPONENT_CATALOG: Record<string, ComponentDef> = {
         label: 'Ultrasonic',
         color: '0.20 0.45 0.90 1.00',
         defaultZ: 0.015,
-        geometry: '<box size="0.045 0.020 0.015"/>',
+        geomType: 'box',
+        defaultDims: [0.045, 0.020, 0.015],
     },
     servo: {
         label: 'Servo',
         color: '0.90 0.50 0.15 1.00',
         defaultZ: 0.020,
-        geometry: '<box size="0.022 0.012 0.030"/>',
+        geomType: 'box',
+        defaultDims: [0.022, 0.012, 0.030],
     },
     lidar: {
         label: 'LIDAR',
         color: '0.20 0.80 0.45 1.00',
         defaultZ: 0.035,
-        geometry: '<cylinder radius="0.035" length="0.040"/>',
+        geomType: 'cylinder',
+        defaultDims: [0.035, 0.040],        // radius, length
     },
     camera: {
         label: 'Camera',
         color: '0.90 0.20 0.25 1.00',
         defaultZ: 0.010,
-        geometry: '<box size="0.025 0.024 0.009"/>',
+        geomType: 'box',
+        defaultDims: [0.025, 0.024, 0.009],
     },
     box: {
         label: 'Box',
         color: '0.65 0.65 0.65 1.00',
         defaultZ: 0.020,
-        geometry: '<box size="0.040 0.040 0.020"/>',
+        geomType: 'box',
+        defaultDims: [0.040, 0.040, 0.020],
     },
 };
 
@@ -53,7 +59,12 @@ export const COMPONENT_CATALOG: Record<string, ComponentDef> = {
 /** Robots that have parametric generators (by manifest robot name). */
 const SUPPORTED_ROBOTS = new Set(['robot-car']);
 
-interface Component { type: string; x: number; y: number; z: number; }
+interface Component {
+    type: string;
+    x: number; y: number; z: number;
+    rx: number; ry: number; rz: number;
+    dims: number[];
+}
 
 function assembleXML(robotName: string, partMap: Map<string, string>): string {
     const sorted = [...partMap.entries()].sort(([a], [b]) => a.localeCompare(b));
@@ -127,12 +138,13 @@ export class URDFBuildController {
     addComponent(type: string): string {
         const n  = (this._compCounters.get(type) ?? 0) + 1;
         this._compCounters.set(type, n);
-        const id = `${type}_${n}`;
+        const id  = `${type}_${n}`;
+        const def = COMPONENT_CATALOG[type];
         this._components.set(id, {
             type,
-            x: 0,
-            y: 0,
-            z: COMPONENT_CATALOG[type]?.defaultZ ?? 0.020,
+            x: 0, y: 0, z: def?.defaultZ ?? 0.020,
+            rx: 0, ry: 0, rz: 0,
+            dims: [...(def?.defaultDims ?? [0.040, 0.040, 0.020])],
         });
         this._reload();
         return id;
@@ -143,10 +155,13 @@ export class URDFBuildController {
         this._reload();
     }
 
-    moveComponent(id: string, x: number, y: number, z: number): void {
+    moveComponent(id: string, x: number, y: number, z: number,
+                  rx = 0, ry = 0, rz = 0, dims?: number[]): void {
         const c = this._components.get(id);
         if (!c) return;
         c.x = x; c.y = y; c.z = z;
+        c.rx = rx; c.ry = ry; c.rz = rz;
+        if (dims) c.dims = dims;
         this._reload();
     }
 
@@ -197,8 +212,13 @@ export class URDFBuildController {
         if (this._components.size === 0) return xml;
         const parts = [...this._components.entries()]
             .map(([id, c]) => {
-                const def = COMPONENT_CATALOG[c.type];
-                return `\n  <link name="${id}">\n    <visual>\n      <geometry>${def.geometry}</geometry>\n      <material name="${id}_mat"><color rgba="${def.color}"/></material>\n    </visual>\n  </link>\n  <joint name="${id}_joint" type="fixed">\n    <parent link="base_link"/>\n    <child link="${id}"/>\n    <origin xyz="${c.x.toFixed(4)} ${c.y.toFixed(4)} ${c.z.toFixed(4)}" rpy="0 0 0"/>\n  </joint>`;
+                const def  = COMPONENT_CATALOG[c.type];
+                const geom = def.geomType === 'cylinder'
+                    ? `<cylinder radius="${c.dims[0].toFixed(4)}" length="${c.dims[1].toFixed(4)}"/>`
+                    : `<box size="${c.dims[0].toFixed(4)} ${c.dims[1].toFixed(4)} ${c.dims[2].toFixed(4)}"/>`;
+                const xyz  = `${c.x.toFixed(4)} ${c.y.toFixed(4)} ${c.z.toFixed(4)}`;
+                const rpy  = `${c.rx.toFixed(4)} ${c.ry.toFixed(4)} ${c.rz.toFixed(4)}`;
+                return `\n  <link name="${id}">\n    <visual>\n      <geometry>${geom}</geometry>\n      <material name="${id}_mat"><color rgba="${def.color}"/></material>\n    </visual>\n  </link>\n  <joint name="${id}_joint" type="fixed">\n    <parent link="base_link"/>\n    <child link="${id}"/>\n    <origin xyz="${xyz}" rpy="${rpy}"/>\n  </joint>`;
             })
             .join('\n');
         return xml.replace('</robot>', `${parts}\n</robot>`);
