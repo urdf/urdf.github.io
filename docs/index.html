@@ -394,7 +394,7 @@
       flex: 0 0 auto;
       background: none;
       border: none;
-      padding: 8px 16px;
+      padding: 6px 16px;
       font-size: 0.75rem;
       font-weight: 500;
       color: var(--text-2);
@@ -582,7 +582,8 @@
       transition: color 0.12s;
     }
 
-    .panel-toggle:hover { color: var(--text-1); }
+    .panel-toggle:hover { background: var(--surface-hi); color: var(--text-1); }
+    .panel-toggle:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
 
     .sidebar-backdrop {
       display: none;
@@ -817,16 +818,16 @@
 
     #gesture-toggle {
       position: fixed;
-      top: 1rem;
-      left: 1rem;
-      z-index: 50;
+      top: 10px;
+      left: 10px;
+      z-index: 210;
       display: flex;
       width: 42px;
       height: 42px;
       border-radius: 50%;
-      border: 1px solid rgba(51, 65, 85, 0.5);
-      background: rgba(15, 23, 42, 0.5);
-      color: #94a3b8;
+      border: 1px solid var(--border);
+      background: var(--toggle-bg);
+      color: var(--text-2);
       cursor: pointer;
       align-items: center;
       justify-content: center;
@@ -834,23 +835,21 @@
       backdrop-filter: blur(4px);
     }
 
-    #gesture-toggle:hover {
-      background: rgba(51, 65, 85, 0.5);
-      color: #e2e8f0;
-    }
+    #gesture-toggle:hover { background: var(--surface-hi); color: var(--text-1); }
+    #gesture-toggle:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
 
     #gesture-toggle.active {
-      background: rgba(59, 130, 246, 0.2);
-      border-color: rgba(59, 130, 246, 0.5);
-      color: #60a5fa;
+      background: var(--blue-bg);
+      border-color: var(--blue);
+      color: var(--blue-text);
       animation: gesture-pulse 2s ease-in-out infinite;
     }
 
     #gesture-toggle:active { transform: scale(0.95); }
 
     @keyframes gesture-pulse {
-      0%, 100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.35); }
-      50%       { box-shadow: 0 0 0 8px rgba(59, 130, 246, 0); }
+      0%, 100% { box-shadow: 0 0 0 0 rgba(0, 122, 255, 0.35); }
+      50%       { box-shadow: 0 0 0 8px rgba(0, 122, 255, 0); }
     }
 
     /* ── Gesture cheat sheet ─────────────────────────────────────────────── */
@@ -1313,7 +1312,7 @@
     .chat-resize-handle.dragging::after { height: 2px; background: rgba(0, 122, 255, 0.6); }
     .chat-resize-handle.dragging::after { background: var(--blue); }
   </style>
-  <script type="module" crossorigin src="/assets/index-CG5MmUiC.js"></script>
+  <script type="module" crossorigin src="/assets/index-CoAL0nZB.js"></script>
 </head>
 <body>
   <button type="button" id="gesture-toggle" aria-label="Toggle gesture mode" title="Gesture mode">
@@ -1513,6 +1512,50 @@
           <div class="joint-row">
             <input type="range"  id="build-wheel-width" min="8" max="30" step="1" value="26">
             <input type="number" id="build-wheel-width-num" min="8" max="30" step="1" value="26">
+          </div>
+        </div>
+
+        <div class="section-label" style="padding: 10px 12px 4px;">Caster</div>
+
+        <div class="build-param joint">
+          <div class="joint-name">Radius <span class="unit">mm</span></div>
+          <div class="joint-row">
+            <input type="range"  id="build-caster-radius" min="8" max="25" step="0.5" value="14.6">
+            <input type="number" id="build-caster-radius-num" min="8" max="25" step="0.5" value="14.6">
+          </div>
+        </div>
+
+        <div class="build-param joint">
+          <div class="joint-name">Width <span class="unit">mm</span></div>
+          <div class="joint-row">
+            <input type="range"  id="build-caster-width" min="5" max="25" step="0.5" value="14.5">
+            <input type="number" id="build-caster-width-num" min="5" max="25" step="0.5" value="14.5">
+          </div>
+        </div>
+
+        <div class="section-label" style="padding: 10px 12px 4px;">Battery Box</div>
+
+        <div class="build-param joint">
+          <div class="joint-name">Length <span class="unit">mm</span></div>
+          <div class="joint-row">
+            <input type="range"  id="build-battery-l" min="40" max="120" step="1" value="80.6">
+            <input type="number" id="build-battery-l-num" min="40" max="120" step="1" value="80.6">
+          </div>
+        </div>
+
+        <div class="build-param joint">
+          <div class="joint-name">Width <span class="unit">mm</span></div>
+          <div class="joint-row">
+            <input type="range"  id="build-battery-w" min="25" max="80" step="1" value="44.2">
+            <input type="number" id="build-battery-w-num" min="25" max="80" step="1" value="44.2">
+          </div>
+        </div>
+
+        <div class="build-param joint">
+          <div class="joint-name">Height <span class="unit">mm</span></div>
+          <div class="joint-row">
+            <input type="range"  id="build-battery-h" min="15" max="50" step="1" value="22">
+            <input type="number" id="build-battery-h-num" min="15" max="50" step="1" value="22">
           </div>
         </div>
 
