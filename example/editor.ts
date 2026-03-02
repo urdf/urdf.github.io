@@ -53,6 +53,20 @@ const TOOL_SCROLL = {
     },
 } as const;
 
+const TOOL_READ_PART = {
+    name: 'read_part',
+    description:
+        'Read the full XML of any part file. Call this before placing a new component to check ' +
+        'occupied xyz positions and avoid spatial overlaps.',
+    input_schema: {
+        type: 'object',
+        properties: {
+            filename: { type: 'string', description: 'Part filename, e.g. "01-chassis.xml"' },
+        },
+        required: ['filename'],
+    },
+} as const;
+
 const TOOL_CARDS = new Set(['update_urdf', 'update_part']);
 
 const URDF_REF = `URDF reference:
@@ -112,11 +126,12 @@ export class URDFEditorController {
     private _abort:       AbortController | null = null;
     private _highlights   = new Set<number>();
     private _cmdAcIdx     = -1;
-    private _partsList:     string[] = [];
-    private _partCache      = new Map<string, string>();
-    private _originalCache  = new Map<string, string>();
-    private _robotName = '';
-    private _urdfFetched = false;
+    private _partsList:       string[] = [];
+    private _partCache        = new Map<string, string>();
+    private _originalCache    = new Map<string, string>();
+    private _robotName        = '';
+    private _urdfFetched      = false;
+    private _componentSpecs:  string | null = null;
     private _brief = false;
     private readonly _partSelEl:  HTMLSelectElement;
     private readonly _tabsEl:     HTMLElement;
@@ -258,13 +273,14 @@ export class URDFEditorController {
 
     setSourceUrl(url: string): void {
         this._abort?.abort();
-        this._sourceUrl   = url;
-        this._history     = [];
-        this._partsList   = [];
+        this._sourceUrl      = url;
+        this._history        = [];
+        this._partsList      = [];
         this._partCache.clear();
         this._originalCache.clear();
-        this._robotName   = '';
-        this._urdfFetched = false;
+        this._robotName      = '';
+        this._urdfFetched    = false;
+        this._componentSpecs = null;
         this._textareaEl.value = '';
         this._rebuildPartOptions();
         this._partSelEl.hidden = true;
@@ -520,6 +536,28 @@ export class URDFEditorController {
             this._renderTabs();
             this._updateResetBtn();
         } catch { /* no manifest, parts not available */ }
+
+        // Try to load per-robot hardware specs for placement guidance.
+        if (this._sourceUrl) {
+            const specsUrl = this._sourceUrl.replace(/\.urdf(\?.*)?$/, '.components.json');
+            try {
+                type SpecEntry = { size_mm: number[]; note?: string };
+                const specs = await fetch(specsUrl).then(r => r.json()) as {
+                    chassis?: SpecEntry;
+                    components?: Record<string, SpecEntry>;
+                };
+                const lines: string[] = [];
+                if (specs.chassis) {
+                    const [x, y, z] = specs.chassis.size_mm;
+                    lines.push(`chassis: ${x}×${y}×${z} mm${specs.chassis.note ? ' — ' + specs.chassis.note : ''}`);
+                }
+                for (const [name, c] of Object.entries(specs.components ?? {})) {
+                    const [x, y, z] = c.size_mm;
+                    lines.push(`${name}: ${x}×${y}×${z} mm${c.note ? ' — ' + c.note : ''}`);
+                }
+                this._componentSpecs = lines.join('\n');
+            } catch { /* no specs file for this robot */ }
+        }
     }
 
     private async _onPartChange(): Promise<void> {
@@ -732,8 +770,12 @@ export class URDFEditorController {
         try {
             const doc    = new DOMParser().parseFromString(`<root>${xml}</root>`, 'application/xml');
             const links  = [...doc.querySelectorAll('link')].map(l => l.getAttribute('name') ?? '?');
-            const joints = [...doc.querySelectorAll('joint')].map(j =>
-                `${j.getAttribute('name') ?? '?'}(${j.getAttribute('type') ?? 'fixed'})`);
+            const joints = [...doc.querySelectorAll('joint')].map(j => {
+                const name   = j.getAttribute('name') ?? '?';
+                const type   = j.getAttribute('type') ?? 'fixed';
+                const xyz    = j.querySelector('origin')?.getAttribute('xyz') ?? '';
+                return xyz ? `${name}(${type} xyz=${xyz})` : `${name}(${type})`;
+            });
             return [
                 links.length  ? `links=[${links.join(', ')}]`  : '',
                 joints.length ? `joints=[${joints.join(', ')}]` : '',
@@ -754,6 +796,9 @@ export class URDFEditorController {
             ? '\nBRIEF MODE: Answer in fewer than 4 lines. No preamble, no postamble, no elaboration. Minimize tokens. Direct answers only.'
             : '';
         const selectedPart = this._partSelEl.value;
+        const specsBlock   = this._componentSpecs
+            ? `\nHARDWARE SPECS (real dimensions for sizing new components, in mm):\n${this._componentSpecs}\n`
+            : '';
 
         if (selectedPart && this._partsList.length) {
             const partsDesc = this._partsList.map(p => {
@@ -764,9 +809,9 @@ export class URDFEditorController {
             return `You are an expert URDF robot description assistant embedded in a live 3D robot viewer.
 The robot URDF is split into part files. You are editing one part at a time.
 
-${robotHeader}PARTS (auto-summarised — use this to understand the complete robot topology):
+${robotHeader}PARTS (auto-summarised with joint xyz positions — use this to understand the complete robot topology and occupied space):
 ${partsDesc}
-
+${specsBlock}
 CURRENTLY EDITING: ${selectedPart} (${nLines} lines)
 Part files contain <link> and <joint> elements only — no <?xml?> declaration, no <robot> wrapper.
 \`\`\`xml
@@ -778,9 +823,10 @@ ${URDF_REF}
 Tool rules:
 • update_part — write the COMPLETE content of a part file; assembler rebuilds + viewer re-renders
 • update_part with a new filename (e.g. "07-lidar.xml") to add a new component
+• read_part — read the full XML of any part file before placing a new component nearby
 • highlight_lines / scroll_to_line — editor navigation
 
-Be concise. Use tools proactively.${briefNote}`;
+Be concise. Use tools proactively. Before adding a new component, check the part summaries for occupied xyz positions to avoid overlaps; use read_part for full details if needed.${briefNote}`;
         }
 
         return `You are an expert URDF robot description assistant embedded in a live 3D robot viewer.
@@ -804,6 +850,7 @@ Be concise. Use tools proactively.${briefNote}`;
     private _buildTools(): readonly object[] {
         const canEditParts = this._partsList.length > 0;
         const editTool = canEditParts ? TOOL_UPDATE_PART : TOOL_FULL_URDF;
+        if (canEditParts) return [editTool, TOOL_READ_PART, TOOL_HIGHLIGHT, TOOL_SCROLL];
         return [editTool, TOOL_HIGHLIGHT, TOOL_SCROLL];
     }
 
@@ -962,6 +1009,18 @@ Be concise. Use tools proactively.${briefNote}`;
             case 'scroll_to_line': {
                 this._scrollEditorToLine(args.line as number);
                 return { ok: true };
+            }
+            case 'read_part': {
+                const { filename } = args as { filename: string };
+                if (!/^[\w-]+\.xml$/.test(filename)) return { error: 'invalid filename' };
+                const cached = this._partCache.get(this._partUrl(filename));
+                if (cached !== undefined) return { ok: true, xml: cached };
+                try {
+                    const text = await fetch(this._partUrl(filename)).then(r => r.text());
+                    return { ok: true, xml: text };
+                } catch {
+                    return { error: `could not read ${filename}` };
+                }
             }
             default:
                 return { error: `unknown tool: ${name}` };
