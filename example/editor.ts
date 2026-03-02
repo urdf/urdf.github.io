@@ -490,7 +490,7 @@ export class URDFEditorController {
                 this._partCache.set(url, text);
             }));
 
-            // Overlay any saved local overrides
+            // Overlay any saved local overrides (including new parts not in the manifest)
             let hadOverrides = false;
             const oKey = this._overridesKey();
             if (oKey) {
@@ -499,10 +499,11 @@ export class URDFEditorController {
                     if (raw) {
                         const saved = JSON.parse(raw) as Record<string, string>;
                         for (const [f, xml] of Object.entries(saved)) {
-                            if (this._partsList.includes(f)) {
-                                this._partCache.set(this._partUrl(f), xml);
-                                hadOverrides = true;
+                            if (!this._partsList.includes(f)) {
+                                this._partsList = [...this._partsList, f].sort();
                             }
+                            this._partCache.set(this._partUrl(f), xml);
+                            hadOverrides = true;
                         }
                     }
                 } catch {}
