@@ -2,6 +2,7 @@ import { URDFManipulator } from '../src/index.js';
 import { URDFEditorController } from './editor.js';
 import { URDFBuildController, CHASSIS_DEFAULTS, WHEEL_DEFAULTS, COMPONENT_CATALOG } from './build.js';
 import type { GestureController } from './gesture.js';
+import { Raycaster, Vector2, Vector3, Plane } from 'three';
 
 customElements.define('urdf-viewer', URDFManipulator);
 
@@ -681,6 +682,7 @@ buildCtrl.onHistoryChange = () => {
 };
 
 buildCtrl.onDOMRebuild = () => {
+    componentInputs.clear();
     buildComponentsListEl.innerHTML = '';
     for (const { id, type } of buildCtrl.getComponentEntries()) renderComponentItem(id, type);
     syncSlidersFromController();
@@ -718,6 +720,9 @@ for (const [type, def] of Object.entries(COMPONENT_CATALOG)) {
     buildPaletteEl.appendChild(btn);
 }
 
+// Map from component ID to its card's input elements (for drag position sync)
+const componentInputs = new Map<string, Record<string, HTMLInputElement>>();
+
 function renderComponentItem(id: string, type: string): void {
     const def  = COMPONENT_CATALOG[type];
     const item = document.createElement('div');
@@ -734,7 +739,7 @@ function renderComponentItem(id: string, type: string): void {
     removeBtn.className = 'build-remove-btn';
     removeBtn.title = 'Remove';
     removeBtn.textContent = '×';
-    removeBtn.addEventListener('click', () => { buildCtrl.removeComponent(id); item.remove(); });
+    removeBtn.addEventListener('click', () => { buildCtrl.removeComponent(id); componentInputs.delete(id); item.remove(); });
     header.append(labelEl, removeBtn);
 
     // ── Input rows ────────────────────────────────────────────────────
@@ -862,6 +867,107 @@ function renderComponentItem(id: string, type: string): void {
         limitsSection.hidden = jt !== 'revolute' && jt !== 'prismatic';
     });
 
+    componentInputs.set(id, inputs);
     item.append(header, body);
     buildComponentsListEl.appendChild(item);
 }
+
+// ── Component 3D drag ─────────────────────────────────────────────────────
+// Click a catalog component in the viewer and drag to reposition it (XY plane).
+// Only works for fixed-joint components (non-fixed joints use the joint manipulator).
+
+const _compRaycaster  = new Raycaster();
+const _compMouse      = new Vector2();
+const _compDragPlane  = new Plane();
+const _compInitialHit = new Vector3();
+const _compNewHit     = new Vector3();
+
+let _compDragId:      string | null      = null;
+let _compDragCard:    HTMLElement | null = null;
+let _compInitUrdfX    = 0;
+let _compInitUrdfY    = 0;
+let _compDragUrdfZ    = 0;
+let _compCurX         = 0;
+let _compCurY         = 0;
+
+function _compUpdateNDC(e: PointerEvent): void {
+    const rect = viewer.renderer.domElement.getBoundingClientRect();
+    _compMouse.set(
+        ((e.clientX - rect.left) / rect.width)  * 2 - 1,
+       -((e.clientY - rect.top)  / rect.height) * 2 + 1,
+    );
+}
+
+function _compFindId(obj: { parent: typeof obj | null; isURDFLink?: boolean; urdfName?: string }): string | null {
+    const ids = buildCtrl.componentIds;
+    let curr = obj;
+    while (curr) {
+        if (curr.isURDFLink && curr.urdfName && ids.has(curr.urdfName)) return curr.urdfName;
+        curr = curr.parent!;
+    }
+    return null;
+}
+
+viewer.renderer.domElement.addEventListener('pointerdown', (e: PointerEvent) => {
+    if (!buildCtrl.isCatalogActive) return;
+    _compUpdateNDC(e);
+    _compRaycaster.setFromCamera(_compMouse, viewer.camera);
+    const hits = _compRaycaster.intersectObject(viewer.scene, true);
+    if (!hits.length) return;
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const id = _compFindId(hits[0].object as any);
+    if (!id || !buildCtrl.isFixedComponent(id)) return;
+
+    const xyz = buildCtrl.getComponentXYZ(id);
+    if (!xyz) return;
+
+    // Horizontal drag plane at the component's height (Three.js Y = URDF Z)
+    _compDragPlane.set(new Vector3(0, 1, 0), -xyz.z);
+    _compRaycaster.ray.intersectPlane(_compDragPlane, _compInitialHit);
+
+    _compDragId    = id;
+    _compInitUrdfX = xyz.x;
+    _compInitUrdfY = xyz.y;
+    _compDragUrdfZ = xyz.z;
+    _compCurX      = xyz.x;
+    _compCurY      = xyz.y;
+
+    buildCtrl.startComponentDrag(id);
+    viewer.controls.enabled = false;
+
+    _compDragCard = buildComponentsListEl.querySelector<HTMLElement>(`[data-id="${id}"]`);
+    _compDragCard?.classList.add('dragging');
+
+    viewer.renderer.domElement.setPointerCapture(e.pointerId);
+    e.stopPropagation();
+});
+
+viewer.renderer.domElement.addEventListener('pointermove', (e: PointerEvent) => {
+    if (!_compDragId) return;
+    _compUpdateNDC(e);
+    _compRaycaster.setFromCamera(_compMouse, viewer.camera);
+    if (!_compRaycaster.ray.intersectPlane(_compDragPlane, _compNewHit)) return;
+
+    // Delta in Three.js world XZ → URDF XY (URDF X = Three X, URDF Y = -Three Z)
+    _compCurX = _compInitUrdfX + (_compNewHit.x - _compInitialHit.x);
+    _compCurY = _compInitUrdfY - (_compNewHit.z - _compInitialHit.z);
+
+    // Direct Three.js update — no URDF reload during drag for smooth performance
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const joint = (viewer.robot as any)?.joints[`${_compDragId}_joint`];
+    if (joint) joint.position.set(_compCurX, _compCurY, _compDragUrdfZ);
+
+    // Sync position inputs in the component card
+    const inp = componentInputs.get(_compDragId);
+    if (inp) { inp['x'].value = _compCurX.toFixed(4); inp['y'].value = _compCurY.toFixed(4); }
+});
+
+viewer.renderer.domElement.addEventListener('pointerup', () => {
+    if (!_compDragId) return;
+    buildCtrl.finishComponentDrag(_compDragId, _compCurX, _compCurY, _compDragUrdfZ);
+    viewer.controls.enabled = true;
+    _compDragCard?.classList.remove('dragging');
+    _compDragCard = null;
+    _compDragId   = null;
+});

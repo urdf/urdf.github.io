@@ -271,9 +271,14 @@ export class URDFBuildController {
     }
 
     updateComponent(id: string, updates: Partial<Omit<Component, 'type'>>): void {
+        if (!this._components.has(id)) return;
+        this._pushUndo();
+        this._updateComponentDirect(id, updates);
+    }
+
+    private _updateComponentDirect(id: string, updates: Partial<Omit<Component, 'type'>>): void {
         const c = this._components.get(id);
         if (!c) return;
-        this._pushUndo();
         Object.assign(c, updates);
         this._reload();
     }
@@ -288,6 +293,22 @@ export class URDFBuildController {
 
     get canUndo(): boolean { return this._undoStack.length > 0; }
     get canRedo(): boolean { return this._redoStack.length > 0; }
+    get componentIds(): Set<string> { return new Set(this._components.keys()); }
+
+    isFixedComponent(id: string): boolean {
+        return this._components.get(id)?.jointType === 'fixed';
+    }
+
+    getComponentXYZ(id: string): { x: number; y: number; z: number } | null {
+        const c = this._components.get(id);
+        return c ? { x: c.x, y: c.y, z: c.z } : null;
+    }
+
+    startComponentDrag(id: string): void { this._pushUndo(); }
+
+    finishComponentDrag(id: string, x: number, y: number, z: number): void {
+        this._updateComponentDirect(id, { x, y, z });
+    }
 
     updatePowerbank(radius: number, length: number): void {
         this._pushUndo();
