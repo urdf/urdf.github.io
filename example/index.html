@@ -1367,6 +1367,10 @@
       return clamped;
     }
 
+    function saveWidth() {
+      try { localStorage.setItem(PANEL_W_KEY, panel.offsetWidth); } catch {}
+    }
+
     // Restore saved width (desktop only)
     if (isDesktop()) {
       const saved = parseInt(localStorage.getItem(PANEL_W_KEY), 10);
@@ -1376,14 +1380,15 @@
     // Drag
     resizeHandle.addEventListener('pointerdown', e => {
       e.preventDefault();
-      const startX = e.clientX, startW = panel.offsetWidth;
+      const startX = e.clientX;
+      const startW = panel.offsetWidth;
       resizeHandle.setPointerCapture(e.pointerId);
       resizeHandle.classList.add('dragging');
       mainEl.style.transition = 'none'; // prevent right-offset lag during drag
 
       function onMove(e) {
         let w = startW + startX - e.clientX;
-        if (Math.abs(w - PANEL_W_DEFAULT) <= SNAP_RADIUS) w = PANEL_W_DEFAULT; // magnet
+        if (Math.abs(w - PANEL_W_DEFAULT) <= SNAP_RADIUS) w = PANEL_W_DEFAULT; // magnet snap
         const applied = applyWidth(w);
         widthTooltip.textContent = Math.round(applied) + 'px';
         widthTooltip.style.left    = (e.clientX + 12) + 'px';
@@ -1396,29 +1401,34 @@
         widthTooltip.style.display = 'none';
         resizeHandle.removeEventListener('pointermove', onMove);
         resizeHandle.removeEventListener('pointerup', onUp);
-        try { localStorage.setItem(PANEL_W_KEY, panel.offsetWidth); } catch {}
+        saveWidth();
       }
       resizeHandle.addEventListener('pointermove', onMove);
       resizeHandle.addEventListener('pointerup', onUp);
     });
 
-    // Double-click to reset to default width
     resizeHandle.addEventListener('dblclick', () => {
       applyWidth(PANEL_W_DEFAULT);
-      try { localStorage.setItem(PANEL_W_KEY, PANEL_W_DEFAULT); } catch {}
+      saveWidth();
     });
 
-    // Keyboard: ← widen, → narrow (16 px/step); Home = min, End = max
+    // Keyboard: Arrow Left widens, Arrow Right narrows (16 px/step); Home = min, End = max
     resizeHandle.addEventListener('keydown', e => {
       const cur = panel.offsetWidth;
-      const next = { ArrowLeft: cur + 16, ArrowRight: cur - 16, Home: MIN_W, End: maxW() }[e.key];
-      if (next === undefined) return;
+      let next;
+      switch (e.key) {
+        case 'ArrowLeft':  next = cur + 16; break;
+        case 'ArrowRight': next = cur - 16; break;
+        case 'Home':       next = MIN_W;    break;
+        case 'End':        next = maxW();   break;
+        default: return;
+      }
       e.preventDefault();
       applyWidth(next);
-      try { localStorage.setItem(PANEL_W_KEY, panel.offsetWidth); } catch {}
+      saveWidth();
     });
 
-    // Clamp on window resize — do not overwrite stored value, only re-clamp if overflowing
+    // Clamp on window resize. Do not overwrite stored value, only re-clamp if overflowing.
     let _wResizeTimer = 0;
     window.addEventListener('resize', () => {
       clearTimeout(_wResizeTimer);

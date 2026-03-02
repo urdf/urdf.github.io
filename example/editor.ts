@@ -112,7 +112,7 @@ export class URDFEditorController {
     private _partsList:   string[] = [];
     private _robotName:   string = '';
     private readonly _partSelEl: HTMLSelectElement;
-    private _tabsEl: HTMLElement;
+    private readonly _tabsEl: HTMLElement;
 
     constructor(viewer: URDFManipulator, panelEl: HTMLElement) {
         this._viewer       = viewer;
@@ -199,18 +199,19 @@ export class URDFEditorController {
 
     async jumpToJoint(name: string): Promise<void> {
         if (!this._partsList.length || !this._sourceUrl) return;
+        const needle = `name="${name}"`;
         for (const filename of this._partsList) {
             const url = this._sourceUrl.replace(/[^/]+\.urdf(\?.*)?$/, `parts/${filename}`);
             const text = await fetch(url).then(r => r.text());
-            if (!text.includes(`name="${name}"`)) continue;
+            if (!text.includes(needle)) continue;
             this._partSelEl.value = filename;
             await this._onPartChange();
-            const idx = this._textareaEl.value.indexOf(`name="${name}"`);
+            const idx = this._textareaEl.value.indexOf(needle);
             if (idx !== -1) {
                 this._textareaEl.focus();
                 this._textareaEl.setSelectionRange(idx, idx);
-                const line = this._textareaEl.value.slice(0, idx).split('\n').length - 1;
-                this._textareaEl.scrollTop = Math.max(0, line * 18 - 60);
+                const line = this._textareaEl.value.slice(0, idx).split('\n').length;
+                this._scrollEditorToLine(line);
             }
             return;
         }
@@ -375,17 +376,16 @@ export class URDFEditorController {
     private async _onPartChange(): Promise<void> {
         const filename = this._partSelEl.value;
         this._highlights.clear();
-        if (!filename) {
-            if (this._sourceUrl) await this._fetchAndPopulate(this._sourceUrl);
-            this._updateActiveTab();
-            return;
+        if (filename) {
+            const partUrl = this._sourceUrl!.replace(/[^/]+\.urdf(\?.*)?$/, `parts/${filename}`);
+            try {
+                const text = await fetch(partUrl).then(r => r.text());
+                this._textareaEl.value = text;
+                this._updateLineNums();
+            } catch { /* ignore */ }
+        } else if (this._sourceUrl) {
+            await this._fetchAndPopulate(this._sourceUrl);
         }
-        const partUrl = this._sourceUrl!.replace(/[^/]+\.urdf(\?.*)?$/, `parts/${filename}`);
-        try {
-            const text = await fetch(partUrl).then(r => r.text());
-            this._textareaEl.value = text;
-            this._updateLineNums();
-        } catch { /* ignore */ }
         this._updateActiveTab();
     }
 
