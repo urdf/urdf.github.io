@@ -103,7 +103,7 @@ The module is lazy-loaded on first button click (separate Vite chunk, no bundle 
 | Gesture | MediaPipe label | Action |
 |---------|----------------|--------|
 | Closed Fist | `Closed_Fist` | Orbit camera (wrist lm[0] delta) |
-| Pointing Up | `Pointing_Up` | Hover highlight + dwell select (fingertip lm[8]) |
+| Pointing Up | `Pointing_Up` **or landmark check** | Hover highlight + dwell select (fingertip lm[8]). Works at any angle — ML label catches upward, landmark geometry (index extended + others curled) catches sideways/diagonal. |
 | Open Palm | `Open_Palm` | Reset all joints (hold 1 s) |
 | Any + joint selected | any | Wrist roll drives joint angle |
 | Two hands | any | Pinch/spread zoom |

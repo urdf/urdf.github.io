@@ -254,7 +254,7 @@ export class GestureController {
                     this._resetDwell();
                     this._clearHover();
                     this.palmResetStart = 0;
-                } else if (name === 'Pointing_Up') {
+                } else if (name === 'Pointing_Up' || this._isIndexPointing(lms)) {
                     this._handleDwellAndHover(ctx, lms);
                     this.prevHandPos = null;
                     this.palmResetStart = 0;
@@ -324,6 +324,18 @@ export class GestureController {
         this._dragCtrl.raycaster.ray.origin.set(0, 10000, 0);
         this._dragCtrl.raycaster.ray.direction.set(0, 1, 0);
         this._dragCtrl.update();
+    }
+
+    // Detects index-finger-extended pose at any hand orientation.
+    // Uses landmark distances rather than the orientation-sensitive ML label.
+    private _isIndexPointing(lms: NormalizedLandmark[]): boolean {
+        const w = lms[0];
+        const d = (a: NormalizedLandmark, b: NormalizedLandmark) =>
+            Math.hypot(a.x - b.x, a.y - b.y);
+        return d(lms[8],  w) > d(lms[5],  w) * 1.2    // index extended
+            && d(lms[12], w) < d(lms[9],  w) * 1.15   // middle curled
+            && d(lms[16], w) < d(lms[13], w) * 1.15   // ring curled
+            && d(lms[20], w) < d(lms[17], w) * 1.15;  // pinky curled
     }
 
     private _handleOrbit(lms: NormalizedLandmark[]): void {
