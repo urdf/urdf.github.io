@@ -173,6 +173,47 @@
       font-size: 12px;
     }
 
+    .component-palette {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      padding: 4px 12px 8px;
+    }
+
+    .component-palette .robot-btn {
+      flex: none;
+      font-size: 11px;
+      padding: 4px 8px;
+      height: auto;
+    }
+
+    .build-component {
+      border-top: 1px solid var(--border);
+      padding: 6px 12px;
+    }
+
+    .build-component-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 4px;
+      font-size: 12px;
+      color: var(--text-1);
+    }
+
+    .build-remove-btn {
+      background: none;
+      border: none;
+      color: var(--text-3);
+      cursor: pointer;
+      font-size: 14px;
+      line-height: 1;
+      padding: 0 2px;
+      border-radius: 3px;
+    }
+
+    .build-remove-btn:hover { color: var(--text-1); background: var(--surface-hover); }
+
     .build-param {
       padding: 4px 12px;
     }
@@ -706,32 +747,44 @@
       width: 160px; height: 90px; opacity: 0; pointer-events: none;
     }
 
-    /* ── Gesture toggle button (in panel header) ─────────────────────────── */
+    /* ── Gesture toggle button (fixed top-left) ──────────────────────────── */
 
     #gesture-toggle {
+      position: fixed;
+      top: 1rem;
+      left: 1rem;
+      z-index: 50;
       display: flex;
-      background: none;
-      border: 1px solid transparent;
-      border-radius: 5px;
-      color: var(--text-2);
-      width: 30px;
-      height: 30px;
+      width: 42px;
+      height: 42px;
+      border-radius: 50%;
+      border: 1px solid rgba(51, 65, 85, 0.5);
+      background: rgba(15, 23, 42, 0.5);
+      color: #94a3b8;
       cursor: pointer;
       align-items: center;
       justify-content: center;
-      transition: color 0.12s, background 0.12s, border-color 0.12s;
+      transition: background 0.2s, border-color 0.2s, color 0.2s;
+      backdrop-filter: blur(4px);
     }
 
-    #gesture-toggle:hover { color: var(--text-1); background: var(--surface-hi); }
+    #gesture-toggle:hover {
+      background: rgba(51, 65, 85, 0.5);
+      color: #e2e8f0;
+    }
 
     #gesture-toggle.active {
-      background: var(--blue-bg); border-color: var(--blue); color: var(--blue-text);
+      background: rgba(59, 130, 246, 0.2);
+      border-color: rgba(59, 130, 246, 0.5);
+      color: #60a5fa;
       animation: gesture-pulse 2s ease-in-out infinite;
     }
 
+    #gesture-toggle:active { transform: scale(0.95); }
+
     @keyframes gesture-pulse {
-      0%, 100% { box-shadow: 0 0 0 0 rgba(0, 122, 255, 0.35); }
-      50%       { box-shadow: 0 0 0 6px rgba(0, 122, 255, 0); }
+      0%, 100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.35); }
+      50%       { box-shadow: 0 0 0 8px rgba(59, 130, 246, 0); }
     }
 
     /* ── Gesture cheat sheet ─────────────────────────────────────────────── */
@@ -1196,6 +1249,14 @@
   </style>
 </head>
 <body>
+  <button type="button" id="gesture-toggle" aria-label="Toggle gesture mode" title="Gesture mode">
+    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M18 11V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2"/>
+      <path d="M14 10V4a2 2 0 0 0-2-2a2 2 0 0 0-2 2v2"/>
+      <path d="M10 10.5V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2v8"/>
+      <path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"/>
+    </svg>
+  </button>
   <aside aria-label="Controls">
     <div class="panel-resize-handle"
       role="separator"
@@ -1227,14 +1288,6 @@
         </button>
       </div>
       <div class="panel-header-actions">
-        <button type="button" id="gesture-toggle" aria-label="Toggle gesture mode" title="Gesture mode">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M18 11V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2"/>
-            <path d="M14 10V4a2 2 0 0 0-2-2a2 2 0 0 0-2 2v2"/>
-            <path d="M10 10.5V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2v8"/>
-            <path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"/>
-          </svg>
-        </button>
         <button type="button" class="panel-close" id="panel-close" aria-label="Close panel">✕</button>
       </div>
     </div>
@@ -1395,6 +1448,10 @@
             <input type="number" id="build-wheel-width-num" min="8" max="30" step="1" value="26">
           </div>
         </div>
+
+        <div class="section-label" style="padding: 10px 12px 4px;">Add Component</div>
+        <div class="component-palette" id="build-palette"></div>
+        <div id="build-components-list"></div>
 
         <div style="padding: 12px 12px 8px;">
           <button id="build-export" style="

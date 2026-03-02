@@ -1,6 +1,6 @@
 import { URDFManipulator } from '../src/index.js';
 import { URDFEditorController } from './editor.js';
-import { URDFBuildController, CHASSIS_DEFAULTS, WHEEL_DEFAULTS } from './build.js';
+import { URDFBuildController, CHASSIS_DEFAULTS, WHEEL_DEFAULTS, COMPONENT_CATALOG } from './build.js';
 import type { GestureController } from './gesture.js';
 
 customElements.define('urdf-viewer', URDFManipulator);
@@ -556,5 +556,88 @@ syncPair(buildChassisRearHWEl,    document.getElementById('build-chassis-rear-hw
 syncPair(buildWheelRadiusEl,      document.getElementById('build-wheel-radius-num')      as HTMLInputElement, onWheelChange);
 syncPair(buildWheelWidthEl,       document.getElementById('build-wheel-width-num')       as HTMLInputElement, onWheelChange);
 
-const buildExportBtn = document.getElementById('build-export') as HTMLButtonElement;
+const buildExportBtn       = document.getElementById('build-export')          as HTMLButtonElement;
+const buildPaletteEl       = document.getElementById('build-palette')          as HTMLElement;
+const buildComponentsListEl = document.getElementById('build-components-list') as HTMLElement;
+
 buildExportBtn.addEventListener('click', () => void buildCtrl.exportZip(buildExportBtn));
+
+// Populate component palette
+for (const [type, def] of Object.entries(COMPONENT_CATALOG)) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'robot-btn';
+    btn.textContent = def.label;
+    btn.dataset.comp = type;
+    btn.addEventListener('click', () => {
+        if (!buildCtrl.isSupported) return;
+        const id = buildCtrl.addComponent(type);
+        renderComponentItem(id, type);
+    });
+    buildPaletteEl.appendChild(btn);
+}
+
+function renderComponentItem(id: string, type: string): void {
+    const def  = COMPONENT_CATALOG[type];
+    const item = document.createElement('div');
+    item.className = 'build-component';
+    item.dataset.id = id;
+
+    const header = document.createElement('div');
+    header.className = 'build-component-header';
+
+    const label = document.createElement('span');
+    const n = id.split('_').pop();
+    label.textContent = `${def.label} ${n}`;
+
+    const removeBtn = document.createElement('button');
+    removeBtn.type = 'button';
+    removeBtn.className = 'build-remove-btn';
+    removeBtn.title = 'Remove';
+    removeBtn.textContent = '×';
+    removeBtn.addEventListener('click', () => {
+        buildCtrl.removeComponent(id);
+        item.remove();
+    });
+
+    header.append(label, removeBtn);
+
+    // XYZ position inputs reusing .inspector-row style
+    const xyzEl = document.createElement('div');
+    xyzEl.style.cssText = 'display: flex; flex-direction: column; gap: 2px;';
+
+    const inputs: Record<string, HTMLInputElement> = {};
+
+    const dispatchMove = () => {
+        buildCtrl.moveComponent(
+            id,
+            parseFloat(inputs['x'].value) || 0,
+            parseFloat(inputs['y'].value) || 0,
+            parseFloat(inputs['z'].value) || 0,
+        );
+    };
+
+    for (const axis of ['x', 'y', 'z'] as const) {
+        const row = document.createElement('div');
+        row.className = 'inspector-row';
+
+        const lbl = document.createElement('label');
+        lbl.textContent = axis.toUpperCase();
+        lbl.className   = `axis-${axis}`;
+
+        const inp = document.createElement('input');
+        inp.type  = 'number';
+        inp.step  = '0.005';
+        inp.value = axis === 'z' ? String(def.defaultZ) : '0';
+        inp.addEventListener('input', dispatchMove);
+
+        makeScrubLabel(lbl, inp);
+
+        inputs[axis] = inp;
+        row.append(lbl, inp);
+        xyzEl.appendChild(row);
+    }
+
+    item.append(header, xyzEl);
+    buildComponentsListEl.appendChild(item);
+}
