@@ -1,5 +1,6 @@
 import { URDFManipulator } from '../src/index.js';
 import { URDFEditorController } from './editor.js';
+import { URDFBuildController, CHASSIS_DEFAULTS, WHEEL_DEFAULTS } from './build.js';
 import type { GestureController } from './gesture.js';
 
 customElements.define('urdf-viewer', URDFManipulator);
@@ -18,11 +19,23 @@ const gestureSectionEl = document.getElementById('gesture-section')!;
 const gestureHeaderEl  = document.getElementById('gesture-section-header')!;
 
 const editorPanelEl = document.getElementById('editor-panel')!;
+const buildNoticeEl = document.getElementById('build-notice') as HTMLElement;
 
 const editorCtrl = new URDFEditorController(viewer, editorPanelEl);
+const buildCtrl  = new URDFBuildController(viewer, buildNoticeEl);
 
-document.getElementById('tab-robot')!.addEventListener('click', () => editorCtrl.close());
-document.getElementById('tab-editor')!.addEventListener('click', () => editorCtrl.open());
+document.getElementById('tab-robot')!.addEventListener('click', () => {
+    editorCtrl.close();
+    buildCtrl.close();
+});
+document.getElementById('tab-editor')!.addEventListener('click', () => {
+    buildCtrl.close();
+    editorCtrl.open();
+});
+document.getElementById('tab-build')!.addEventListener('click', () => {
+    editorCtrl.close();
+    buildCtrl.open();
+});
 
 const ignoreLimitsEl = document.getElementById('ignore-limits') as HTMLInputElement;
 const showCollisionEl = document.getElementById('show-collision') as HTMLInputElement;
@@ -53,6 +66,7 @@ async function loadViaBrowserAssembly(robot: RobotConfig): Promise<void> {
     const dir      = base.replace(/\/[^/]+$/, '');
     const texts    = await Promise.all(manifest.parts.map(f => fetch(`${dir}/parts/${f}`).then(r => r.text())));
     const partMap  = new Map(manifest.parts.map((f, i) => [f, texts[i]] as [string, string]));
+    buildCtrl.init(manifest.robot, dir, partMap);
     // Rewrite relative mesh filenames to absolute paths — blob URLs have no usable base
     const xml      = assembleURDF(manifest.robot, partMap)
         .replace(/filename="([^/"]+)"/g, `filename="${dir}/$1"`);
@@ -448,3 +462,60 @@ gestureHeaderEl.addEventListener('click', () => {
 gestureHeaderEl.addEventListener('keydown', (e: KeyboardEvent) => {
     if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); gestureHeaderEl.click(); }
 });
+
+// ── Build panel sliders ────────────────────────────────────────────────────
+
+/** Keep a range slider and a number input in sync. */
+function syncPair(slider: HTMLInputElement, num: HTMLInputElement, onChange: () => void): void {
+    slider.addEventListener('input', () => { num.value = slider.value; onChange(); });
+    num.addEventListener('change', () => {
+        const v = Math.max(parseFloat(num.min), Math.min(parseFloat(num.max), parseFloat(num.value)));
+        slider.value = String(v);
+        num.value    = String(v);
+        onChange();
+    });
+}
+
+const buildChassisThicknessEl = document.getElementById('build-chassis-thickness')     as HTMLInputElement;
+const buildChassisBodyHWEl    = document.getElementById('build-chassis-body-hw')       as HTMLInputElement;
+const buildChassisRearHWEl    = document.getElementById('build-chassis-rear-hw')       as HTMLInputElement;
+const buildWheelRadiusEl      = document.getElementById('build-wheel-radius')          as HTMLInputElement;
+const buildWheelWidthEl       = document.getElementById('build-wheel-width')           as HTMLInputElement;
+
+// Set default values from generator defaults (convert m → mm)
+buildChassisThicknessEl.value = String(CHASSIS_DEFAULTS.thickness     * 1000);
+buildChassisBodyHWEl.value    = String(CHASSIS_DEFAULTS.bodyHalfWidth * 1000);
+buildChassisRearHWEl.value    = String(CHASSIS_DEFAULTS.rearHalfWidth * 1000);
+buildWheelRadiusEl.value      = String(WHEEL_DEFAULTS.radius           * 1000);
+buildWheelWidthEl.value       = String(WHEEL_DEFAULTS.width            * 1000);
+
+// Mirror initial values to number inputs
+for (const id of ['build-chassis-thickness', 'build-chassis-body-hw', 'build-chassis-rear-hw',
+                   'build-wheel-radius', 'build-wheel-width']) {
+    const slider = document.getElementById(id) as HTMLInputElement;
+    const num    = document.getElementById(`${id}-num`) as HTMLInputElement;
+    if (slider && num) num.value = slider.value;
+}
+
+function onChassisChange(): void {
+    if (!buildCtrl.isSupported) return;
+    buildCtrl.updateChassis({
+        thickness:     parseFloat(buildChassisThicknessEl.value) / 1000,
+        bodyHalfWidth: parseFloat(buildChassisBodyHWEl.value)    / 1000,
+        rearHalfWidth: parseFloat(buildChassisRearHWEl.value)    / 1000,
+    });
+}
+
+function onWheelChange(): void {
+    if (!buildCtrl.isSupported) return;
+    buildCtrl.updateWheel({
+        radius: parseFloat(buildWheelRadiusEl.value) / 1000,
+        width:  parseFloat(buildWheelWidthEl.value)  / 1000,
+    });
+}
+
+syncPair(buildChassisThicknessEl, document.getElementById('build-chassis-thickness-num') as HTMLInputElement, onChassisChange);
+syncPair(buildChassisBodyHWEl,    document.getElementById('build-chassis-body-hw-num')   as HTMLInputElement, onChassisChange);
+syncPair(buildChassisRearHWEl,    document.getElementById('build-chassis-rear-hw-num')   as HTMLInputElement, onChassisChange);
+syncPair(buildWheelRadiusEl,      document.getElementById('build-wheel-radius-num')      as HTMLInputElement, onWheelChange);
+syncPair(buildWheelWidthEl,       document.getElementById('build-wheel-width-num')       as HTMLInputElement, onWheelChange);

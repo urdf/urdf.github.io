@@ -55,8 +55,11 @@ function circH(cx, cy, r) {
 
 
 // Motor pass-through cutouts
-s.holes.push(rectH(-0.075, 0.070, 0.012, 0.030, 0.001));
-s.holes.push(rectH( 0.075, 0.070, 0.012, 0.030, 0.001));
+// Centered at y=0.093 (rear zone, y>stepY=0.080) so the full hole stays within
+// rearHW=0.095; at y=0.070 (body zone) bodyHW=0.062 < hole x-extent=0.081,
+// which put the holes entirely outside the shape and caused earcut phantom geometry.
+s.holes.push(rectH(-0.075, 0.093, 0.012, 0.014, 0.001));
+s.holes.push(rectH( 0.075, 0.093, 0.012, 0.014, 0.001));
 
 // Large center cutout
 ;(function () {
@@ -94,8 +97,8 @@ s.holes.push(circH(0, -0.098, 0.006));
 const hr = 0.002;
 s.holes.push(circH(-0.080,  0.105, hr));
 s.holes.push(circH( 0.080,  0.105, hr));
-s.holes.push(circH(-0.080,  0.080, hr));
-s.holes.push(circH( 0.080,  0.080, hr));
+s.holes.push(circH(-0.080,  0.083, hr));
+s.holes.push(circH( 0.080,  0.083, hr));
 s.holes.push(circH(-0.020,  0.108, hr));
 s.holes.push(circH( 0.020,  0.108, hr));
 s.holes.push(circH(-0.048,  0.010, hr));

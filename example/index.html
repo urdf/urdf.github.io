@@ -161,6 +161,31 @@
     .tab-btn[data-tab="robot"] { color: var(--blue-text); border-bottom-color: var(--blue); }
     body.editor-open .tab-btn[data-tab="robot"] { color: var(--text-2); border-bottom-color: transparent; }
     body.editor-open .tab-btn[data-tab="editor"] { color: var(--blue-text); border-bottom-color: var(--blue); }
+    body.build-open  .tab-btn[data-tab="robot"]  { color: var(--text-2);   border-bottom-color: transparent; }
+    body.build-open  .tab-btn[data-tab="build"]  { color: var(--blue-text); border-bottom-color: var(--blue); }
+    body.build-open  .tab-body[data-tab="robot"] { display: none; }
+    body.build-open  .tab-body[data-tab="build"] { display: flex; }
+
+    /* ── Build panel ─────────────────────────────────────────────────────────── */
+    .build-notice {
+      padding: 12px;
+      color: var(--text-2);
+      font-size: 12px;
+    }
+
+    .build-param {
+      padding: 4px 12px;
+    }
+
+    .build-param .joint-name {
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .build-param .joint-name .unit {
+      color: var(--text-3);
+      font-weight: 400;
+    }
 
     .panel-header-actions {
       display: flex;
@@ -1192,6 +1217,11 @@
             <path d="m18 16 4-4-4-4"/><path d="m6 8-4 4 4 4"/><path d="m14.5 4-5 16"/>
           </svg>
         </button>
+        <button type="button" class="tab-btn" data-tab="build" id="tab-build" aria-label="Build" title="Build">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
+          </svg>
+        </button>
       </div>
       <div class="panel-header-actions">
         <button type="button" id="gesture-toggle" aria-label="Toggle gesture mode" title="Gesture mode">
@@ -1312,6 +1342,56 @@
           wrap="off"
           aria-label="URDF source code"
         ></textarea>
+      </div>
+    </div>
+
+    <div class="tab-body" data-tab="build" id="build-panel">
+      <div class="sidebar-scroll">
+        <p class="build-notice" id="build-notice" hidden>Load Robot Car to use the parametric builder.</p>
+
+        <div class="section-label" style="padding: 10px 12px 4px;">Chassis</div>
+
+        <div class="build-param joint">
+          <div class="joint-name">Thickness <span class="unit">mm</span></div>
+          <div class="joint-row">
+            <input type="range"  id="build-chassis-thickness" min="1" max="10" step="0.5" value="3">
+            <input type="number" id="build-chassis-thickness-num" min="1" max="10" step="0.5" value="3">
+          </div>
+        </div>
+
+        <div class="build-param joint">
+          <div class="joint-name">Body width <span class="unit">mm × 2</span></div>
+          <div class="joint-row">
+            <input type="range"  id="build-chassis-body-hw" min="40" max="90" step="1" value="62">
+            <input type="number" id="build-chassis-body-hw-num" min="40" max="90" step="1" value="62">
+          </div>
+        </div>
+
+        <div class="build-param joint">
+          <div class="joint-name">Rear width <span class="unit">mm × 2</span></div>
+          <div class="joint-row">
+            <input type="range"  id="build-chassis-rear-hw" min="85" max="130" step="1" value="95">
+            <input type="number" id="build-chassis-rear-hw-num" min="85" max="130" step="1" value="95">
+          </div>
+        </div>
+
+        <div class="section-label" style="padding: 10px 12px 4px;">Wheels</div>
+
+        <div class="build-param joint">
+          <div class="joint-name">Radius <span class="unit">mm</span></div>
+          <div class="joint-row">
+            <input type="range"  id="build-wheel-radius" min="20" max="50" step="0.5" value="32.5">
+            <input type="number" id="build-wheel-radius-num" min="20" max="50" step="0.5" value="32.5">
+          </div>
+        </div>
+
+        <div class="build-param joint">
+          <div class="joint-name">Width <span class="unit">mm</span></div>
+          <div class="joint-row">
+            <input type="range"  id="build-wheel-width" min="8" max="30" step="1" value="26">
+            <input type="number" id="build-wheel-width-num" min="8" max="30" step="1" value="26">
+          </div>
+        </div>
       </div>
     </div>
 
