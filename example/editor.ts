@@ -738,13 +738,22 @@ export class URDFEditorController {
         const selectedPart = this._partSelEl.value;
 
         if (selectedPart && this._partsList.length) {
+            const fullUrdf    = this._assembleFromCache();
+            const fullPreview = fullUrdf.length > MAX_XML_CHARS
+                ? fullUrdf.slice(0, MAX_XML_CHARS) + '\n<!-- ... truncated ... -->'
+                : fullUrdf;
             const partsDesc = this._partsList
                 .map(p => `  ${p}${p === selectedPart ? ' ← editing' : ''}`)
                 .join('\n');
             return `You are an expert URDF robot description assistant embedded in a live 3D robot viewer.
-The robot URDF is split into part files assembled at build time. You are editing one part at a time.
+The robot URDF is split into part files. You are editing one part at a time.
 
-${robotHeader}ROBOT PARTS:
+${robotHeader}FULL ROBOT URDF (read this to understand the complete robot — do not edit it directly):
+\`\`\`xml
+${fullPreview}
+\`\`\`
+
+PARTS:
 ${partsDesc}
 
 CURRENTLY EDITING: ${selectedPart} (${nLines} lines)
