@@ -59,6 +59,17 @@ const TOOL_SCROLL = {
 
 const TOOL_CARDS = new Set(['update_urdf', 'update_part']);
 
+const URDF_REF = `URDF reference:
+• <link name="..."> rigid body — <visual>, <collision>, <inertial>
+• <joint name="..." type="fixed|revolute|continuous|prismatic|floating|planar">
+• <origin xyz="x y z" rpy="r p y"/> — position + Euler angles (radians)
+• <geometry>: <box size="x y z">, <cylinder radius length>, <sphere radius>, <mesh filename="..."/>
+• revolute joints need <limit lower upper effort velocity/>
+
+Coordinate conventions:
+• -X = front/bumper, +X = rear, -Y = left, +Y = right, +Z = up
+• rpy = roll(X), pitch(Y), yaw(Z) in radians`;
+
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 interface TextBlock    { type: 'text'; text: string; }
@@ -464,12 +475,12 @@ export class URDFEditorController {
     }
 
     private _sanitizeHistory(): void {
+        // Drop trailing assistant messages with orphaned tool_use blocks (no tool_result follows)
         while (this._history.length > 0) {
             const last = this._history[this._history.length - 1];
-            if (last.role !== 'assistant') break;
-            const hasToolUse = (last.content as ContentBlock[]).some(b => b.type === 'tool_use');
-            if (hasToolUse) { this._history.pop(); continue; }
-            break;
+            if (last.role !== 'assistant') return;
+            if (!(last.content as ContentBlock[]).some(b => b.type === 'tool_use')) return;
+            this._history.pop();
         }
     }
 
@@ -521,17 +532,6 @@ export class URDFEditorController {
 
         const selectedPart = this._partSelEl.value;
 
-        const urdfRef = `URDF reference:
-• <link name="..."> rigid body — <visual>, <collision>, <inertial>
-• <joint name="..." type="fixed|revolute|continuous|prismatic|floating|planar">
-• <origin xyz="x y z" rpy="r p y"/> — position + Euler angles (radians)
-• <geometry>: <box size="x y z">, <cylinder radius length>, <sphere radius>, <mesh filename="..."/>
-• revolute joints need <limit lower upper effort velocity/>
-
-Coordinate conventions:
-• -X = front/bumper, +X = rear, -Y = left, +Y = right, +Z = up
-• rpy = roll(X), pitch(Y), yaw(Z) in radians`;
-
         if (selectedPart && this._partsList.length) {
             const partsDesc = this._partsList
                 .map(p => `  ${p}${p === selectedPart ? ' ← editing' : ''}`)
@@ -548,7 +548,7 @@ Part files contain <link> and <joint> elements only — no <?xml?> declaration, 
 ${preview}
 \`\`\`
 
-${urdfRef}
+${URDF_REF}
 
 Tool rules:
 • update_part — write the COMPLETE content of a part file; assembler rebuilds + viewer re-renders
@@ -566,7 +566,7 @@ CURRENT URDF (${nLines} lines):
 ${preview}
 \`\`\`
 
-${urdfRef}
+${URDF_REF}
 
 Tool rules:
 • update_urdf — COMPLETE XML only; viewer re-renders immediately
@@ -799,31 +799,30 @@ Be concise. Use tools proactively.`;
 // ── XML indenter ──────────────────────────────────────────────────────────────
 
 function _indentXml(xml: string): string {
+    const lines = xml.trim().replace(/>\s*</g, '>\n<').split('\n');
+    const out: string[] = [];
     let indent = 0;
-    return xml.trim()
-        .replace(/>\s*</g, '>\n<')
-        .split('\n')
-        .map(raw => {
-            const line = raw.trim();
-            if (!line) return '';
 
-            // Closing tag: dedent first
-            if (line.startsWith('</')) {
-                indent = Math.max(0, indent - 1);
-                return '  '.repeat(indent) + line;
-            }
+    for (const raw of lines) {
+        const line = raw.trim();
+        if (!line) continue;
 
-            const result = '  '.repeat(indent) + line;
+        // Closing tag: dedent first
+        if (line.startsWith('</')) {
+            indent = Math.max(0, indent - 1);
+        }
 
-            // Opening tag (not self-closing, comment, or PI): indent children
-            const isOpening = line.startsWith('<')
-                && !line.endsWith('/>')
-                && !line.startsWith('<!--')
-                && !line.startsWith('<?');
-            if (isOpening) indent++;
+        out.push('  '.repeat(indent) + line);
 
-            return result;
-        })
-        .filter(Boolean)
-        .join('\n');
+        // Opening tag (not self-closing, comment, or PI): indent children
+        if (line.startsWith('<')
+            && !line.startsWith('</')
+            && !line.endsWith('/>')
+            && !line.startsWith('<!--')
+            && !line.startsWith('<?')) {
+            indent++;
+        }
+    }
+
+    return out.join('\n');
 }

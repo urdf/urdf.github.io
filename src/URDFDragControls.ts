@@ -77,11 +77,14 @@ export class URDFDragControls {
             ray.at(hitDistance, _next);
 
             let delta = 0;
-            const type = manipulating.jointType;
-            if (type === 'revolute' || type === 'continuous') {
-                delta = this.getRevoluteDelta(manipulating, _prev, _next);
-            } else if (type === 'prismatic') {
-                delta = this.getPrismaticDelta(manipulating, _prev, _next);
+            switch (manipulating.jointType) {
+                case 'revolute':
+                case 'continuous':
+                    delta = this.getRevoluteDelta(manipulating, _prev, _next);
+                    break;
+                case 'prismatic':
+                    delta = this.getPrismaticDelta(manipulating, _prev, _next);
+                    break;
             }
 
             if (delta) this.updateJoint(manipulating, manipulating.angle + delta);

@@ -32,6 +32,7 @@ canvas { width: 100%; height: 100%; display: block; }
 
 const EMPTY_RAYCAST = () => {};
 const _ZERO_VEC = new THREE.Vector3();
+const _CAM_DIR = new THREE.Vector3(-1, 0.7, 1).normalize();
 
 // Dispose a material and all textures it references.
 // mat.dispose() only frees the shader program. Texture GPU units are separate.
@@ -266,8 +267,7 @@ export class URDFViewer extends HTMLElement {
         const fovRad = (this.camera.fov * Math.PI) / 180;
         const distance = (this._sphere.radius / Math.sin(fovRad / 2)) * 1.2;
 
-        const dir = new THREE.Vector3(-1, 0.7, 1).normalize();
-        this.camera.position.copy(this._sphere.center).addScaledVector(dir, distance);
+        this.camera.position.copy(this._sphere.center).addScaledVector(_CAM_DIR, distance);
         this.controls.target.copy(this._sphere.center);
         this.controls.maxDistance = distance * 5;
         this.controls.minDistance = this._sphere.radius * 0.1;
@@ -521,13 +521,21 @@ export class URDFViewer extends HTMLElement {
     }
 
     private _applyUp(up: string): void {
-        const sign = (up.includes('-') ? -1 : 1);
-        const axis = up.replace(/[^XYZxyz]/g, '')[0]?.toUpperCase() ?? 'Z';
-        const PI = Math.PI;
-        const H = PI / 2;
-        if (axis === 'X') this.world.rotation.set(0, 0, sign > 0 ? H : -H);
-        else if (axis === 'Z') this.world.rotation.set(sign > 0 ? -H : H, 0, 0);
-        else this.world.rotation.set(sign > 0 ? 0 : PI, 0, 0);
+        const sign = up.startsWith('-') ? -1 : 1;
+        const axis = (up.slice(-1).toUpperCase() || 'Z') as 'X' | 'Y' | 'Z';
+        const H = Math.PI / 2;
+
+        switch (axis) {
+            case 'X':
+                this.world.rotation.set(0, 0, sign * H);
+                break;
+            case 'Z':
+                this.world.rotation.set(-sign * H, 0, 0);
+                break;
+            default: // Y
+                this.world.rotation.set(sign > 0 ? 0 : Math.PI, 0, 0);
+                break;
+        }
     }
 
     private _applyIgnoreLimits(ignore: boolean): void {
@@ -562,14 +570,14 @@ export class URDFViewer extends HTMLElement {
     }
 
     private _resolvePackages(pkg: string): PackageMap {
-        // Detect "name: path, name2: path2" format (colon not immediately preceded by "//")
-        if (pkg.includes(':') && !pkg.trim().startsWith('http')) {
-            return pkg.split(',').reduce<Record<string, string>>((map, entry) => {
-                const [name, ...rest] = entry.split(':');
-                if (name && rest.length) map[name.trim()] = rest.join(':').trim();
-                return map;
-            }, {});
+        // Detect "name: path, name2: path2" format (skip plain URLs)
+        if (!pkg.includes(':') || /^\s*https?:/.test(pkg)) return pkg;
+
+        const map: Record<string, string> = {};
+        for (const entry of pkg.split(',')) {
+            const [name, ...rest] = entry.split(':');
+            if (name && rest.length) map[name.trim()] = rest.join(':').trim();
         }
-        return pkg;
+        return map;
     }
 }

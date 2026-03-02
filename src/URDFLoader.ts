@@ -296,58 +296,58 @@ export class URDFLoader {
             parent: THREE.Object3D,
             material: THREE.Material,
         ): void {
-            const type = geo.nodeName.toLowerCase();
+            switch (geo.nodeName.toLowerCase()) {
+                case 'mesh': {
+                    const filename = geo.getAttribute('filename');
+                    if (!filename) return;
+                    const path = resolvePath(filename);
+                    if (!path) return;
 
-            if (type === 'mesh') {
-                const filename = geo.getAttribute('filename');
-                if (!filename) return;
-                const path = resolvePath(filename);
-                if (!path) return;
+                    const scaleAttr = geo.getAttribute('scale');
+                    if (scaleAttr) {
+                        const [sx, sy, sz] = parseTuple(scaleAttr);
+                        parent.scale.set(sx, sy, sz);
+                    }
 
-                const scaleAttr = geo.getAttribute('scale');
-                if (scaleAttr) {
-                    const [sx, sy, sz] = parseTuple(scaleAttr);
-                    parent.scale.set(sx, sy, sz);
+                    manager.itemStart(path);
+                    loadMesh(path, manager)
+                        .then(obj => {
+                            if (!obj) return;
+                            if (obj instanceof THREE.Mesh) obj.material = material;
+                            obj.position.set(0, 0, 0);
+                            obj.quaternion.identity();
+                            parent.add(obj);
+                        })
+                        .catch(err => console.error(`URDFLoader: failed to load mesh "${path}"`, err))
+                        .finally(() => manager.itemEnd(path));
+                    break;
                 }
 
-                manager.itemStart(path);
-                loadMesh(path, manager)
-                    .then(obj => {
-                        if (!obj) return;
-                        if (obj instanceof THREE.Mesh) obj.material = material;
-                        obj.position.set(0, 0, 0);
-                        obj.quaternion.identity();
-                        parent.add(obj);
-                    })
-                    .catch(err => console.error(`URDFLoader: failed to load mesh "${path}"`, err))
-                    .finally(() => manager.itemEnd(path));
-                return;
-            }
+                case 'box': {
+                    const size = parseTuple(geo.getAttribute('size'));
+                    const mesh = new THREE.Mesh(_sharedBoxGeom, material);
+                    mesh.scale.set(size[0], size[1], size[2]);
+                    parent.add(mesh);
+                    break;
+                }
 
-            if (type === 'box') {
-                const size = parseTuple(geo.getAttribute('size'));
-                const mesh = new THREE.Mesh(_sharedBoxGeom, material);
-                mesh.scale.set(size[0], size[1], size[2]);
-                parent.add(mesh);
-                return;
-            }
+                case 'sphere': {
+                    const radius = parseFloat(geo.getAttribute('radius') ?? '0');
+                    const mesh = new THREE.Mesh(_sharedSphereGeom, material);
+                    mesh.scale.setScalar(radius);
+                    parent.add(mesh);
+                    break;
+                }
 
-            if (type === 'sphere') {
-                const radius = parseFloat(geo.getAttribute('radius') ?? '0');
-                const mesh = new THREE.Mesh(_sharedSphereGeom, material);
-                mesh.scale.setScalar(radius);
-                parent.add(mesh);
-                return;
-            }
-
-            if (type === 'cylinder') {
-                const radius = parseFloat(geo.getAttribute('radius') ?? '0');
-                const length = parseFloat(geo.getAttribute('length') ?? '0');
-                const mesh = new THREE.Mesh(_sharedCylinderGeom, material);
-                mesh.scale.set(radius, length, radius);
-                mesh.rotation.set(Math.PI / 2, 0, 0);
-                parent.add(mesh);
-                return;
+                case 'cylinder': {
+                    const radius = parseFloat(geo.getAttribute('radius') ?? '0');
+                    const length = parseFloat(geo.getAttribute('length') ?? '0');
+                    const mesh = new THREE.Mesh(_sharedCylinderGeom, material);
+                    mesh.scale.set(radius, length, radius);
+                    mesh.rotation.set(Math.PI / 2, 0, 0);
+                    parent.add(mesh);
+                    break;
+                }
             }
         }
 
@@ -392,53 +392,54 @@ export class URDFLoader {
     ): Promise<THREE.Object3D | null> {
         const ext = path.split('.').pop()?.toLowerCase() ?? '';
 
-        if (ext === 'stl') {
-            return new Promise((resolve, reject) => {
-                new STLLoader(manager).load(
-                    path,
-                    geom => resolve(new THREE.Mesh(geom, new THREE.MeshPhongMaterial())),
-                    undefined,
-                    reject,
-                );
-            });
-        }
+        switch (ext) {
+            case 'stl':
+                return new Promise((resolve, reject) => {
+                    new STLLoader(manager).load(
+                        path,
+                        geom => resolve(new THREE.Mesh(geom, new THREE.MeshPhongMaterial())),
+                        undefined,
+                        reject,
+                    );
+                });
 
-        if (ext === 'dae') {
-            return new Promise((resolve, reject) => {
-                new ColladaLoader(manager).load(
-                    path,
-                    result => resolve(result.scene),
-                    undefined,
-                    reject,
-                );
-            });
-        }
+            case 'dae':
+                return new Promise((resolve, reject) => {
+                    new ColladaLoader(manager).load(
+                        path,
+                        result => resolve(result.scene),
+                        undefined,
+                        reject,
+                    );
+                });
 
-        if (ext === 'glb' || ext === 'gltf') {
-            return new Promise((resolve, reject) => {
-                new GLTFLoader(manager).load(
-                    path,
-                    result => resolve(result.scene),
-                    undefined,
-                    reject,
-                );
-            });
-        }
+            case 'glb':
+            case 'gltf':
+                return new Promise((resolve, reject) => {
+                    new GLTFLoader(manager).load(
+                        path,
+                        result => resolve(result.scene),
+                        undefined,
+                        reject,
+                    );
+                });
 
-        console.warn(`URDFLoader: no loader for "${path}"`);
-        return null;
+            default:
+                console.warn(`URDFLoader: no loader for "${path}"`);
+                return null;
+        }
     }
 }
 
 // ─── Package resolver ─────────────────────────────────────────────────────────
 
-function makeResolver(packages: PackageMap, workingPath: string) {
+function makeResolver(packages: PackageMap, workingPath: string): (path: string) => string | null {
     return function resolvePath(path: string): string | null {
-        if (!/^package:\/\//.test(path)) {
+        if (!path.startsWith('package://')) {
             return workingPath ? workingPath + path : path;
         }
 
-        const [targetPkg, relPath] = path.replace(/^package:\/\//, '').split(/\/(.+)/);
+        const [targetPkg, relPath] = path.slice('package://'.length).split(/\/(.+)/);
 
         if (typeof packages === 'string') {
             return packages.endsWith(targetPkg)
@@ -464,11 +465,12 @@ function makeResolver(packages: PackageMap, workingPath: string) {
 function detectMimicLoop(joints: URDFJoint[]): void {
     for (const joint of joints) {
         const seen = new Set<URDFJoint>();
-        const walk = (j: URDFJoint) => {
+        const stack = [joint];
+        while (stack.length > 0) {
+            const j = stack.pop()!;
             if (seen.has(j)) throw new Error('URDFLoader: infinite mimic joint loop detected');
             seen.add(j);
-            for (const m of j.mimicJoints) walk(m);
-        };
-        walk(joint);
+            for (const m of j.mimicJoints) stack.push(m);
+        }
     }
 }

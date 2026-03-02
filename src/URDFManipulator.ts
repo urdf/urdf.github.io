@@ -101,10 +101,13 @@ export class URDFManipulator extends URDFViewer {
     private _highlightJoint(joint: URDFJoint, revert: boolean): void {
         type HighlightMesh = THREE.Mesh & { __orig?: THREE.Material | THREE.Material[] };
 
-        const isMovable = (j: THREE.Object3D) =>
-            (j as URDFJoint).isURDFJoint && (j as URDFJoint).jointType !== 'fixed';
+        function isMovable(j: THREE.Object3D): boolean {
+            return (j as URDFJoint).isURDFJoint && (j as URDFJoint).jointType !== 'fixed';
+        }
 
-        const walk = (node: THREE.Object3D) => {
+        const highlightMat = this._highlightMaterial;
+
+        function walk(node: THREE.Object3D): void {
             const mesh = node as HighlightMesh;
             if (mesh.isMesh) {
                 if (revert) {
@@ -114,19 +117,18 @@ export class URDFManipulator extends URDFViewer {
                     }
                 } else {
                     mesh.__orig = mesh.material;
-                    mesh.material = this._highlightMaterial;
+                    mesh.material = highlightMat;
                 }
             }
 
             // Recurse, but stop at child joints and skip colliders
+            if (node !== joint && isMovable(node)) return;
             for (const child of node.children) {
-                if (node === joint || !isMovable(node)) {
-                    if (!(child as { isURDFCollider?: boolean }).isURDFCollider) {
-                        walk(child);
-                    }
+                if (!(child as { isURDFCollider?: boolean }).isURDFCollider) {
+                    walk(child);
                 }
             }
-        };
+        }
 
         walk(joint);
     }

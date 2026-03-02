@@ -40,24 +40,44 @@ class OneEuroFilter {
         private readonly beta = 0.007,
         private readonly d_cutoff = 1.0,
     ) {}
-    private alpha(cutoff: number, dt: number) {
+
+    private alpha(cutoff: number, dt: number): number {
         const r = 2 * Math.PI * cutoff * dt;
         return r / (r + 1);
     }
+
     filter(x: number, t: number): number {
-        if (isNaN(this.t_prev)) { this.t_prev = t; this.x_prev = x; return x; }
+        if (isNaN(this.t_prev)) {
+            this.t_prev = t;
+            this.x_prev = x;
+            return x;
+        }
         const dt = Math.max((t - this.t_prev) / 1000, 1e-6);
         this.t_prev = t;
+
         const dx = (x - this.x_prev) / dt;
-        const dx_hat = dx * this.alpha(this.d_cutoff, dt) + this.dx_prev * (1 - this.alpha(this.d_cutoff, dt));
+        const ad = this.alpha(this.d_cutoff, dt);
+        const dx_hat = dx * ad + this.dx_prev * (1 - ad);
         this.dx_prev = dx_hat;
+
         const cutoff = this.f_min + this.beta * Math.abs(dx_hat);
-        const x_hat = x * this.alpha(cutoff, dt) + this.x_prev * (1 - this.alpha(cutoff, dt));
+        const ac = this.alpha(cutoff, dt);
+        const x_hat = x * ac + this.x_prev * (1 - ac);
         this.x_prev = x_hat;
         return x_hat;
     }
-    reset() { this.x_prev = NaN; this.t_prev = NaN; this.dx_prev = 0; }
+
+    reset(): void {
+        this.x_prev = NaN;
+        this.t_prev = NaN;
+        this.dx_prev = 0;
+    }
 }
+
+// Reusable scratch objects to avoid per-frame allocations
+const _sph = new THREE.Spherical();
+const _vec3 = new THREE.Vector3();
+const _ndc = new THREE.Vector2();
 
 export class GestureController {
     private viewer: URDFManipulator;
@@ -173,12 +193,10 @@ export class GestureController {
 
         // Capture current spherical coords from camera
         const { controls, camera } = this.viewer;
-        const sph = new THREE.Spherical().setFromVector3(
-            camera.position.clone().sub(controls.target),
-        );
-        this.sphTheta  = this.targetTheta  = sph.theta;
-        this.sphPhi    = this.targetPhi    = sph.phi;
-        this.sphRadius = this.targetRadius = sph.radius;
+        _sph.setFromVector3(_vec3.copy(camera.position).sub(controls.target));
+        this.sphTheta  = this.targetTheta  = _sph.theta;
+        this.sphPhi    = this.targetPhi    = _sph.phi;
+        this.sphRadius = this.targetRadius = _sph.radius;
 
         // Disable OrbitControls
         controls.enabled = false;
@@ -298,20 +316,17 @@ export class GestureController {
         const { controls, camera } = this.viewer;
         if (this.sphRadius === 0) return;
 
-        const expectedPos = new THREE.Vector3()
-            .setFromSpherical(new THREE.Spherical(this.sphRadius, this.sphPhi, this.sphTheta))
-            .add(controls.target);
+        _sph.set(this.sphRadius, this.sphPhi, this.sphTheta);
+        _vec3.setFromSpherical(_sph).add(controls.target);
 
         // If the camera was moved more than 10% of the current radius away from
         // where we last placed it, something external (fitCamera, robot switch)
         // repositioned it. Resync so we continue from the new position.
-        if (camera.position.distanceTo(expectedPos) > this.sphRadius * 0.1) {
-            const sph = new THREE.Spherical().setFromVector3(
-                camera.position.clone().sub(controls.target),
-            );
-            this.sphTheta  = this.targetTheta  = sph.theta;
-            this.sphPhi    = this.targetPhi    = sph.phi;
-            this.sphRadius = this.targetRadius = sph.radius;
+        if (camera.position.distanceTo(_vec3) > this.sphRadius * 0.1) {
+            _sph.setFromVector3(_vec3.copy(camera.position).sub(controls.target));
+            this.sphTheta  = this.targetTheta  = _sph.theta;
+            this.sphPhi    = this.targetPhi    = _sph.phi;
+            this.sphRadius = this.targetRadius = _sph.radius;
         }
     }
 
@@ -323,8 +338,8 @@ export class GestureController {
         this.sphPhi    += (this.targetPhi    - this.sphPhi)    * CAM_LERP;
         this.sphRadius += (this.targetRadius - this.sphRadius) * CAM_LERP;
 
-        const sph = new THREE.Spherical(this.sphRadius, this.sphPhi, this.sphTheta);
-        camera.position.setFromSpherical(sph).add(controls.target);
+        _sph.set(this.sphRadius, this.sphPhi, this.sphTheta);
+        camera.position.setFromSpherical(_sph).add(controls.target);
         camera.lookAt(controls.target);
         controls.update();
         this.viewer.redraw();
@@ -336,11 +351,11 @@ export class GestureController {
         const { camera } = this.viewer;
 
         // screenX/Y are in overlay canvas space (full window dimensions).
-        // The Three.js renderer viewport is the viewer element, which may be offset —
-        // e.g. sidebar pinned open shifts <main> left: 260px. Compute NDC relative to
-        // the actual viewer bounds so the raycaster aligns with what's on screen.
+        // The Three.js renderer viewport is the viewer element, which may be offset
+        // (e.g. sidebar pinned open shifts <main>). Compute NDC relative to the
+        // actual viewer bounds so the raycaster aligns with what's on screen.
         const rect = this.viewer.getBoundingClientRect();
-        const ndc = new THREE.Vector2(
+        _ndc.set(
             ((screenX - rect.left) / rect.width) * 2 - 1,
             -((screenY - rect.top) / rect.height) * 2 + 1,
         );
@@ -348,24 +363,22 @@ export class GestureController {
         // Drive the drag controls' raycaster so it fires onHover/onUnhover,
         // which applies mesh highlight and dispatches joint-mouseover/out events.
         if (this._dragCtrl) {
-            this._dragCtrl.raycaster.setFromCamera(ndc, camera);
+            this._dragCtrl.raycaster.setFromCamera(_ndc, camera);
             this._dragCtrl.update();
         }
 
         // Separate check against the full robot (including root/fixed links)
         // so orbit activates over any mesh, not just movable joints.
         if (!this.viewer.robot) return false;
-        this._raycaster.setFromCamera(ndc, camera);
+        this._raycaster.setFromCamera(_ndc, camera);
         return this._raycaster.intersectObject(this.viewer.robot, true).length > 0;
     }
 
     // Clear hover by pointing the drag-controls ray into empty space.
     private _clearHover(): void {
         if (!this._dragCtrl) return;
-        this._dragCtrl.raycaster.ray.set(
-            new THREE.Vector3(0, 10000, 0),
-            new THREE.Vector3(0, 1, 0),
-        );
+        this._dragCtrl.raycaster.ray.origin.set(0, 10000, 0);
+        this._dragCtrl.raycaster.ray.direction.set(0, 1, 0);
         this._dragCtrl.update();
     }
 
@@ -516,8 +529,10 @@ export class GestureController {
     }
 
     private _handleZoom(hands: NormalizedLandmark[][]): void {
-        const w0 = hands[0][0], w1 = hands[1][0];
-        const sw = this.canvas.width, sh = this.canvas.height;
+        const w0 = hands[0][0];
+        const w1 = hands[1][0];
+        const sw = this.canvas.width;
+        const sh = this.canvas.height;
 
         const dist = Math.hypot(
             (1 - w0.x - (1 - w1.x)) * sw,
@@ -536,12 +551,9 @@ export class GestureController {
     }
 
     private _resetTimers(): void {
-        this._resetDwell();
-        this.palmResetStart    = 0;
-        this.prevHandPos       = null;
-        this.prevWristAngle    = Infinity;
-        this.prevZoomDist      = 0;
-        this._prevGestureName  = '';
+        this._resetOneHandTimers();
+        this.prevWristAngle     = Infinity;
+        this._prevGestureName   = '';
         this._stableGestureName = '';
         this._wristFilterX.reset();
         this._wristFilterY.reset();
@@ -552,7 +564,7 @@ export class GestureController {
     private _resetOneHandTimers(): void {
         this._resetDwell();
         this.palmResetStart = 0;
-        this.prevHandPos   = null;
+        this.prevHandPos    = null;
         this.prevZoomDist   = 0;
     }
 

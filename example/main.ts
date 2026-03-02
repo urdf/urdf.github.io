@@ -31,7 +31,15 @@ const upAxisEl = document.getElementById('up-axis') as HTMLSelectElement;
 
 // ── Available robots ──────────────────────────────────────────────────────────
 
-const ROBOTS = [
+interface RobotConfig {
+    name: string;
+    label: string;
+    urdf: string;
+    up: string;
+    package?: string;
+}
+
+const ROBOTS: RobotConfig[] = [
     { name: 'Robot Car',          label: 'Car',      urdf: '/robots/robot-car/robot-car.urdf',                 up: '+Z' },
     { name: 'T12',                label: 'T12',      urdf: '/robots/T12/urdf/T12.URDF',                       up: '-Z' },
     { name: 'TriATHLETE',         label: 'Tri',      urdf: '/robots/TriATHLETE/urdf/TriATHLETE.URDF',         up: '-Z' },
@@ -80,7 +88,7 @@ function clearActiveRobot(): void {
     }
 }
 
-function loadRobot(robot: { name?: string; urdf: string; up: string; package?: string }, index: number): void {
+function loadRobot(robot: RobotConfig, index: number): void {
     currentRobotIndex = index;
     viewer.up = robot.up;
     upAxisEl.value = robot.up;
@@ -217,8 +225,7 @@ function applyInspector(): void {
 
 function selectPart(jointName: string | null): void {
     selectedJoint = jointName;
-    if (!jointName || !viewer.robot) { inspectorEl.style.display = 'none'; return; }
-    const joint = viewer.robot.joints[jointName];
+    const joint = jointName ? viewer.robot?.joints[jointName] : null;
     if (!joint) { inspectorEl.style.display = 'none'; return; }
 
     inspectorEl.style.display = '';
