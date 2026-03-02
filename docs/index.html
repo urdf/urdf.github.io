@@ -78,7 +78,8 @@
       -webkit-user-select: none;
     }
 
-    input, textarea, select { user-select: text; -webkit-user-select: text; }
+    input, textarea, select,
+    .chat-msg-user, .chat-msg-assistant { user-select: text; -webkit-user-select: text; }
 
     /* ── Right panel ─────────────────────────────────────────────────────── */
 
@@ -105,7 +106,7 @@
       top: 0;
       bottom: 0;
       width: 8px;        /* hit target */
-      cursor: col-resize; /* semantically correct for a vertical splitter */
+      cursor: col-resize;
       z-index: 10;
       touch-action: none;
     }
@@ -158,7 +159,6 @@
 
     .tab-btn:hover { color: var(--text-1); }
 
-    /* Robot tab: active by default */
     .tab-btn[data-tab="robot"] { color: var(--blue-text); border-bottom-color: var(--blue); }
     body.editor-open .tab-btn[data-tab="robot"] { color: var(--text-2); border-bottom-color: transparent; }
     body.editor-open .tab-btn[data-tab="editor"] { color: var(--blue-text); border-bottom-color: var(--blue); }
@@ -197,7 +197,6 @@
       overflow: hidden;
     }
 
-    /* Robot tab shown by default */
     .tab-body[data-tab="robot"] { display: flex; }
     body.editor-open .tab-body[data-tab="robot"] { display: none; }
     body.editor-open .tab-body[data-tab="editor"] { display: flex; }
@@ -291,7 +290,6 @@
       color: var(--text-2);
     }
 
-    /* Compact inline options bar. Overrides .section column layout. */
     .options-bar {
       flex-direction: row;
       flex-wrap: wrap;
@@ -749,7 +747,6 @@
 
     /* ── Editor tab content ──────────────────────────────────────────────── */
 
-    /* Part selector bar. Visible only when select is not hidden. */
     .editor-part-bar {
       display: none;
       align-items: center;
@@ -812,7 +809,7 @@
     }
 
     .chat-pane {
-      height: 40%;
+      height: var(--chat-h, 220px);
       flex-shrink: 0;
       display: flex;
       flex-direction: column;
@@ -1103,20 +1100,66 @@
     /* ── Chat section header ─────────────────────────────────────────────── */
 
     .chat-header {
-      padding: 0 12px;
+      padding: 0 8px 0 12px;
       height: 32px;
       display: flex;
       align-items: center;
+      justify-content: space-between;
       font-size: 0.6875rem;
       font-weight: 600;
       letter-spacing: 0.06em;
       text-transform: uppercase;
       color: var(--text-3);
-      border-top: 1px solid var(--border);
       flex-shrink: 0;
     }
+
+    #chat-brief-toggle {
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      color: var(--text-3);
+      cursor: pointer;
+      font-size: 0.625rem;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      padding: 2px 8px;
+      text-transform: uppercase;
+      transition: border-color 0.12s, color 0.12s, background 0.12s;
+    }
+
+    #chat-brief-toggle:hover { border-color: var(--text-2); color: var(--text-2); }
+
+    #chat-brief-toggle.active {
+      background: var(--blue-bg);
+      border-color: var(--blue);
+      color: var(--blue-text);
+    }
+
+    .chat-resize-handle {
+      height: 8px;
+      flex-shrink: 0;
+      cursor: row-resize;
+      position: relative;
+      touch-action: none;
+    }
+
+    .chat-resize-handle::after {
+      content: '';
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 50%;
+      height: 1px;
+      transform: translateY(-50%);
+      background: var(--border);
+      transition: height 0.12s, background 0.12s;
+    }
+
+    .chat-resize-handle:hover::after,
+    .chat-resize-handle.dragging::after { height: 2px; background: rgba(0, 122, 255, 0.6); }
+    .chat-resize-handle.dragging::after { background: var(--blue); }
   </style>
-  <script type="module" crossorigin src="/assets/index-CuKRRNDv.js"></script>
+  <script type="module" crossorigin src="/assets/index-vhZzPNfD.js"></script>
 </head>
 <body>
   <aside aria-label="Controls">
@@ -1129,7 +1172,6 @@
       aria-valuemax="700"
       tabindex="0"
     ></div>
-    <!-- Panel header: tabs + gesture toggle + close -->
     <div class="panel-header">
       <div class="panel-tabs">
         <button type="button" class="tab-btn" data-tab="robot" id="tab-robot">Robot</button>
@@ -1148,7 +1190,6 @@
       </div>
     </div>
 
-    <!-- Robot tab -->
     <div class="tab-body" data-tab="robot">
       <div class="section options-bar">
         <label class="option"><input type="checkbox" id="ignore-limits" /> Ignore limits</label>
@@ -1235,7 +1276,19 @@
           </div>
         </div>
       </div>
-      <div class="chat-header">AI Assistant</div>
+      <div class="chat-resize-handle"
+        role="separator"
+        aria-label="Resize chat"
+        aria-orientation="horizontal"
+        aria-valuenow="220"
+        aria-valuemin="100"
+        aria-valuemax="600"
+        tabindex="0"
+      ></div>
+      <div class="chat-header">
+        <span>AI Assistant</span>
+        <button type="button" id="chat-brief-toggle" aria-pressed="false" title="Toggle brief responses">Brief</button>
+      </div>
       <div class="chat-pane">
         <div class="chat-messages" id="chat-messages" aria-live="polite" aria-label="AI conversation"></div>
         <div class="chat-input-area">
@@ -1263,7 +1316,6 @@
 
     </div>
 
-    <!-- Editor tab -->
     <div class="tab-body" data-tab="editor" id="editor-panel">
       <div class="editor-part-bar">
         <select id="part-select" hidden aria-label="Edit part file"></select>
@@ -1342,6 +1394,69 @@
     closeBtn.addEventListener('click', closePanel);
     backdrop.addEventListener('click', closePanel);
 
+    // ── Chat resize (horizontal splitter) ────────────────────────────────────
+
+    const CHAT_H_KEY     = 'urdf-chat-h';
+    const CHAT_H_DEFAULT = 220;
+    const MIN_CH         = 100;
+
+    const chatHandle = document.querySelector('.chat-resize-handle');
+    const chatPane   = document.querySelector('.chat-pane');
+    const robotTab   = document.querySelector('.tab-body[data-tab="robot"]');
+
+    function maxCH() { return Math.floor(robotTab.offsetHeight * 0.75); }
+
+    function applyChatH(h) {
+      const clamped = Math.max(MIN_CH, Math.min(maxCH(), h));
+      document.documentElement.style.setProperty('--chat-h', clamped + 'px');
+      chatHandle.setAttribute('aria-valuenow', Math.round(clamped));
+      return clamped;
+    }
+
+    function saveChatH() {
+      try { localStorage.setItem(CHAT_H_KEY, chatPane.offsetHeight); } catch {}
+    }
+
+    {
+      const saved = parseInt(localStorage.getItem(CHAT_H_KEY), 10);
+      if (saved >= MIN_CH) applyChatH(saved);
+    }
+
+    chatHandle.addEventListener('pointerdown', e => {
+      e.preventDefault();
+      const startY = e.clientY;
+      const startH = chatPane.offsetHeight;
+      chatHandle.setPointerCapture(e.pointerId);
+      chatHandle.classList.add('dragging');
+
+      function onMove(ev) { applyChatH(startH + startY - ev.clientY); }
+      function onUp() {
+        chatHandle.classList.remove('dragging');
+        chatHandle.removeEventListener('pointermove', onMove);
+        chatHandle.removeEventListener('pointerup', onUp);
+        saveChatH();
+      }
+      chatHandle.addEventListener('pointermove', onMove);
+      chatHandle.addEventListener('pointerup', onUp);
+    });
+
+    chatHandle.addEventListener('dblclick', () => { applyChatH(CHAT_H_DEFAULT); saveChatH(); });
+
+    chatHandle.addEventListener('keydown', e => {
+      const cur = chatPane.offsetHeight;
+      let next;
+      switch (e.key) {
+        case 'ArrowUp':   next = cur + 16; break;
+        case 'ArrowDown': next = cur - 16; break;
+        case 'Home':      next = MIN_CH;   break;
+        case 'End':       next = maxCH();  break;
+        default: return;
+      }
+      e.preventDefault();
+      applyChatH(next);
+      saveChatH();
+    });
+
     // ── Panel resize (left edge drag, desktop only) ──────────────────────────
 
     const PANEL_W_KEY     = 'urdf-panel-w';
@@ -1366,13 +1481,11 @@
       try { localStorage.setItem(PANEL_W_KEY, panel.offsetWidth); } catch {}
     }
 
-    // Restore saved width (desktop only)
     if (isDesktop()) {
       const saved = parseInt(localStorage.getItem(PANEL_W_KEY), 10);
       if (saved >= MIN_W) applyWidth(saved);
     }
 
-    // Drag
     resizeHandle.addEventListener('pointerdown', e => {
       e.preventDefault();
       const startX = e.clientX;
@@ -1383,7 +1496,7 @@
 
       function onMove(ev) {
         let w = startW + startX - ev.clientX;
-        if (Math.abs(w - PANEL_W_DEFAULT) <= SNAP_RADIUS) w = PANEL_W_DEFAULT; // magnet snap
+        if (Math.abs(w - PANEL_W_DEFAULT) <= SNAP_RADIUS) w = PANEL_W_DEFAULT;
         const applied = applyWidth(w);
         widthTooltip.textContent = Math.round(applied) + 'px';
         widthTooltip.style.left    = (ev.clientX + 12) + 'px';
@@ -1407,7 +1520,6 @@
       saveWidth();
     });
 
-    // Keyboard: Arrow Left widens, Arrow Right narrows (16 px/step); Home = min, End = max
     resizeHandle.addEventListener('keydown', e => {
       const cur = panel.offsetWidth;
       let next;
@@ -1423,7 +1535,7 @@
       saveWidth();
     });
 
-    // Clamp on window resize. Do not overwrite stored value, only re-clamp if overflowing.
+    // Do not overwrite stored value; only re-clamp if overflowing.
     let _wResizeTimer = 0;
     window.addEventListener('resize', () => {
       clearTimeout(_wResizeTimer);
