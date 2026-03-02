@@ -1292,43 +1292,6 @@
           </div>
         </div>
       </div>
-      <div class="chat-resize-handle"
-        role="separator"
-        aria-label="Resize chat"
-        aria-orientation="horizontal"
-        aria-valuenow="220"
-        aria-valuemin="100"
-        aria-valuemax="600"
-        tabindex="0"
-      ></div>
-      <div class="chat-header">
-        <span>AI Assistant</span>
-        <button type="button" id="chat-brief-toggle" aria-pressed="false" title="Toggle brief responses">Brief</button>
-      </div>
-      <div class="chat-pane">
-        <div class="chat-messages" id="chat-messages" aria-live="polite" aria-label="AI conversation"></div>
-        <div class="chat-input-area">
-          <div id="cmd-ac" class="cmd-ac" hidden role="listbox" aria-label="Commands"></div>
-          <div class="chat-input-wrap">
-            <textarea
-              id="chat-input"
-              placeholder="Ask AI about this URDF…"
-              aria-label="Chat with AI"
-              rows="1"
-            ></textarea>
-            <button type="button" id="chat-send" class="chat-send-btn" aria-label="Send message" title="Send (Enter)">
-              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                <path d="M8 13V3M3.5 7.5L8 3l4.5 4.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-              </svg>
-            </button>
-            <button type="button" id="chat-abort" class="chat-abort-btn" hidden aria-label="Stop generating" title="Stop">
-              <svg width="10" height="10" viewBox="0 0 11 11" aria-hidden="true">
-                <rect width="11" height="11" rx="2" fill="currentColor"/>
-              </svg>
-            </button>
-          </div>
-        </div>
-      </div>
 
     </div>
 
@@ -1351,6 +1314,45 @@
         ></textarea>
       </div>
     </div>
+
+    <div class="chat-resize-handle"
+      role="separator"
+      aria-label="Resize chat"
+      aria-orientation="horizontal"
+      aria-valuenow="220"
+      aria-valuemin="100"
+      aria-valuemax="600"
+      tabindex="0"
+    ></div>
+    <div class="chat-header">
+      <span>AI Assistant</span>
+      <button type="button" id="chat-brief-toggle" aria-pressed="false" title="Toggle brief responses">Brief</button>
+    </div>
+    <div class="chat-pane">
+      <div class="chat-messages" id="chat-messages" aria-live="polite" aria-label="AI conversation"></div>
+      <div class="chat-input-area">
+        <div id="cmd-ac" class="cmd-ac" hidden role="listbox" aria-label="Commands"></div>
+        <div class="chat-input-wrap">
+          <textarea
+            id="chat-input"
+            placeholder="Ask AI about this URDF…"
+            aria-label="Chat with AI"
+            rows="1"
+          ></textarea>
+          <button type="button" id="chat-send" class="chat-send-btn" aria-label="Send message" title="Send (Enter)">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+              <path d="M8 13V3M3.5 7.5L8 3l4.5 4.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <button type="button" id="chat-abort" class="chat-abort-btn" hidden aria-label="Stop generating" title="Stop">
+            <svg width="10" height="10" viewBox="0 0 11 11" aria-hidden="true">
+              <rect width="11" height="11" rx="2" fill="currentColor"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+
   </aside>
 
   <main>
@@ -1420,9 +1422,8 @@
 
     const chatHandle = document.querySelector('.chat-resize-handle');
     const chatPane   = document.querySelector('.chat-pane');
-    const robotTab   = document.querySelector('.tab-body[data-tab="robot"]');
 
-    function maxCH() { return Math.floor(robotTab.offsetHeight * 0.75); }
+    function maxCH() { return Math.floor(panel.offsetHeight * 0.75); }
 
     function applyChatH(h) {
       const clamped = Math.max(MIN_CH, Math.min(maxCH(), h));
