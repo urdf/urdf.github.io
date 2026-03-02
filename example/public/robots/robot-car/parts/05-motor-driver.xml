@@ -75,5 +75,5 @@
   <joint name="l298n_joint" type="fixed">
     <parent link="base_link"/>
     <child link="l298n"/>
-    <origin xyz="0.0500 0.0000 0.0050" rpy="0.0000 0.0000 0.0000"/>
+    <origin xyz="0.0500 0.0000 0.0050" rpy="0.0000 0.0000 -1.5708"/>
   </joint>
