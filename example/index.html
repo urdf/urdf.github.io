@@ -755,7 +755,8 @@
     .inspector-row input[type=number]:focus-visible { outline: none; border-color: var(--blue); }
     .inspector-row input[type=range] { accent-color: var(--blue); height: 4px; }
 
-    .inspector-row select.build-select {
+    .inspector-row select.build-select,
+    .inspector-row input.build-text-input {
       flex: 1;
       min-width: 0;
       background: var(--surface-hi);
@@ -764,10 +765,12 @@
       font-size: 0.6875rem;
       padding: 1px 4px;
       border-radius: 3px;
-      appearance: none;
-      -webkit-appearance: none;
     }
-    .inspector-row select.build-select:focus-visible { outline: none; border-color: var(--blue); }
+    .inspector-row select.build-select { appearance: none; -webkit-appearance: none; }
+    .inspector-row select.build-select:focus-visible,
+    .inspector-row input.build-text-input:focus-visible { outline: none; border-color: var(--blue); }
+
+    body.build-custom #build-parametric { display: none; }
 
     .inspector-snippet-wrap { margin-top: 8px; position: relative; }
 
@@ -1492,8 +1495,18 @@
 
     <div class="tab-body" data-tab="build" id="build-panel">
       <div class="sidebar-scroll">
-        <p class="build-notice" id="build-notice" hidden>Load Robot Car to use the parametric builder.</p>
+        <p class="build-notice" id="build-notice" hidden>Load Robot Car to use the full builder, or create a new robot below.</p>
 
+        <div id="build-new-robot" style="padding: 8px 12px;">
+          <div class="section-label" style="padding: 0 0 6px;">New Robot</div>
+          <div class="inspector-row" style="margin-bottom: 6px;">
+            <label>Name</label>
+            <input type="text" id="build-new-name" class="build-text-input" placeholder="my-robot">
+          </div>
+          <button type="button" id="build-new-create" class="build-export-btn">Create Robot</button>
+        </div>
+
+        <div id="build-parametric">
         <div class="section-label" style="padding: 10px 12px 4px;">Chassis</div>
 
         <div class="build-param joint">
@@ -1582,11 +1595,37 @@
           </div>
         </div>
 
+        <div class="section-label" style="padding: 10px 12px 4px;">Power Bank</div>
+
+        <div class="build-param joint">
+          <div class="joint-name">Radius <span class="unit">mm</span></div>
+          <div class="joint-row">
+            <input type="range"  id="build-powerbank-r" min="8" max="25" step="0.5" value="11.5">
+            <input type="number" id="build-powerbank-r-num" min="8" max="25" step="0.5" value="11.5">
+          </div>
+        </div>
+
+        <div class="build-param joint">
+          <div class="joint-name">Length <span class="unit">mm</span></div>
+          <div class="joint-row">
+            <input type="range"  id="build-powerbank-l" min="50" max="200" step="1" value="119.9">
+            <input type="number" id="build-powerbank-l-num" min="50" max="200" step="1" value="119.9">
+          </div>
+        </div>
+
+        </div><!-- #build-parametric -->
+
         <div class="section-label" style="padding: 10px 12px 4px;">Add Component</div>
         <div class="component-palette" id="build-palette"></div>
         <div id="build-components-list"></div>
 
-        <div style="padding: 12px 12px 8px;">
+        <div style="padding: 4px 12px 4px; display: flex; gap: 6px;">
+          <button id="build-undo" class="robot-btn" title="Undo (Ctrl+Z)" disabled>Undo</button>
+          <button id="build-redo" class="robot-btn" title="Redo (Ctrl+Y)" disabled>Redo</button>
+          <button id="build-reset" class="robot-btn" style="margin-left: auto;" title="Reset to defaults">Reset</button>
+        </div>
+
+        <div style="padding: 4px 12px 8px;">
           <button id="build-export" class="build-export-btn">Download .zip</button>
         </div>
       </div>

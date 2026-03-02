@@ -73,6 +73,13 @@ async function loadViaBrowserAssembly(robot: RobotConfig): Promise<void> {
     if (_partsBlobUrl) URL.revokeObjectURL(_partsBlobUrl);
     _partsBlobUrl  = URL.createObjectURL(new Blob([xml], { type: 'application/xml' }));
     viewer.urdf    = _partsBlobUrl;
+
+    // Restore persisted build state (replaces viewer.urdf if anything was saved)
+    buildComponentsListEl.innerHTML = '';
+    const restored = buildCtrl.restore();
+    for (const { id, type } of restored) renderComponentItem(id, type);
+
+    if (restored.length > 0) syncSlidersFromController();
 }
 
 const ROBOTS: RobotConfig[] = [
@@ -584,11 +591,13 @@ syncPair(buildChassisRearHWEl,    document.getElementById('build-chassis-rear-hw
 syncPair(buildWheelRadiusEl,      document.getElementById('build-wheel-radius-num')      as HTMLInputElement, onWheelChange);
 syncPair(buildWheelWidthEl,       document.getElementById('build-wheel-width-num')       as HTMLInputElement, onWheelChange);
 
-const buildCasterRadiusEl = document.getElementById('build-caster-radius') as HTMLInputElement;
-const buildCasterWidthEl  = document.getElementById('build-caster-width')  as HTMLInputElement;
-const buildBatteryLEl     = document.getElementById('build-battery-l')     as HTMLInputElement;
-const buildBatteryWEl     = document.getElementById('build-battery-w')     as HTMLInputElement;
-const buildBatteryHEl     = document.getElementById('build-battery-h')     as HTMLInputElement;
+const buildCasterRadiusEl  = document.getElementById('build-caster-radius')  as HTMLInputElement;
+const buildCasterWidthEl   = document.getElementById('build-caster-width')   as HTMLInputElement;
+const buildBatteryLEl      = document.getElementById('build-battery-l')      as HTMLInputElement;
+const buildBatteryWEl      = document.getElementById('build-battery-w')      as HTMLInputElement;
+const buildBatteryHEl      = document.getElementById('build-battery-h')      as HTMLInputElement;
+const buildPowerbankREl    = document.getElementById('build-powerbank-r')    as HTMLInputElement;
+const buildPowerbankLEl    = document.getElementById('build-powerbank-l')    as HTMLInputElement;
 
 function onCasterChange(): void {
     if (!buildCtrl.isSupported) return;
@@ -607,17 +616,92 @@ function onBatteryChange(): void {
     );
 }
 
+function onPowerbankChange(): void {
+    if (!buildCtrl.isSupported) return;
+    buildCtrl.updatePowerbank(
+        parseFloat(buildPowerbankREl.value) / 1000,
+        parseFloat(buildPowerbankLEl.value) / 1000,
+    );
+}
+
 syncPair(buildCasterRadiusEl, document.getElementById('build-caster-radius-num') as HTMLInputElement, onCasterChange);
 syncPair(buildCasterWidthEl,  document.getElementById('build-caster-width-num')  as HTMLInputElement, onCasterChange);
 syncPair(buildBatteryLEl,     document.getElementById('build-battery-l-num')     as HTMLInputElement, onBatteryChange);
 syncPair(buildBatteryWEl,     document.getElementById('build-battery-w-num')     as HTMLInputElement, onBatteryChange);
 syncPair(buildBatteryHEl,     document.getElementById('build-battery-h-num')     as HTMLInputElement, onBatteryChange);
+syncPair(buildPowerbankREl,   document.getElementById('build-powerbank-r-num')   as HTMLInputElement, onPowerbankChange);
+syncPair(buildPowerbankLEl,   document.getElementById('build-powerbank-l-num')   as HTMLInputElement, onPowerbankChange);
 
-const buildExportBtn       = document.getElementById('build-export')          as HTMLButtonElement;
-const buildPaletteEl       = document.getElementById('build-palette')          as HTMLElement;
+const buildExportBtn        = document.getElementById('build-export')          as HTMLButtonElement;
+const buildUndoBtn          = document.getElementById('build-undo')            as HTMLButtonElement;
+const buildRedoBtn          = document.getElementById('build-redo')            as HTMLButtonElement;
+const buildResetBtn         = document.getElementById('build-reset')           as HTMLButtonElement;
+const buildPaletteEl        = document.getElementById('build-palette')          as HTMLElement;
 const buildComponentsListEl = document.getElementById('build-components-list') as HTMLElement;
+const buildNewNameEl        = document.getElementById('build-new-name')         as HTMLInputElement;
+const buildNewCreateBtn     = document.getElementById('build-new-create')       as HTMLButtonElement;
+
+// Helper: sync all parametric sliders from controller state
+function syncSlidersFromController(): void {
+    const cp = buildCtrl.chassisParams;
+    const wp = buildCtrl.wheelParams;
+    const pb = buildCtrl.powerbank;
+    const bb = buildCtrl.batteryBox;
+    const setSlider = (el: HTMLInputElement, numId: string, v: number) => {
+        el.value = String(v);
+        const num = document.getElementById(numId) as HTMLInputElement | null;
+        if (num) num.value = String(v);
+    };
+    setSlider(buildChassisThicknessEl, 'build-chassis-thickness-num', cp.thickness     * 1000);
+    setSlider(buildChassisBodyHWEl,    'build-chassis-body-hw-num',   cp.bodyHalfWidth * 1000);
+    setSlider(buildChassisRearHWEl,    'build-chassis-rear-hw-num',   cp.rearHalfWidth * 1000);
+    setSlider(buildWheelRadiusEl,      'build-wheel-radius-num',      wp.radius        * 1000);
+    setSlider(buildWheelWidthEl,       'build-wheel-width-num',       wp.width         * 1000);
+    setSlider(buildCasterRadiusEl,     'build-caster-radius-num',     buildCtrl.casterRadius * 1000);
+    setSlider(buildCasterWidthEl,      'build-caster-width-num',      buildCtrl.casterWidth  * 1000);
+    setSlider(buildBatteryLEl,         'build-battery-l-num',         bb.l * 1000);
+    setSlider(buildBatteryWEl,         'build-battery-w-num',         bb.w * 1000);
+    setSlider(buildBatteryHEl,         'build-battery-h-num',         bb.h * 1000);
+    setSlider(buildPowerbankREl,       'build-powerbank-r-num',       pb.radius * 1000);
+    setSlider(buildPowerbankLEl,       'build-powerbank-l-num',       pb.length * 1000);
+}
+
+// Undo/redo/reset buttons
+buildUndoBtn.addEventListener('click',  () => buildCtrl.undo());
+buildRedoBtn.addEventListener('click',  () => buildCtrl.redo());
+buildResetBtn.addEventListener('click', () => {
+    if (!buildCtrl.isCatalogActive) return;
+    buildCtrl.resetToDefaults();
+    syncSlidersFromController();
+});
+
+buildCtrl.onHistoryChange = () => {
+    buildUndoBtn.disabled = !buildCtrl.canUndo;
+    buildRedoBtn.disabled = !buildCtrl.canRedo;
+};
+
+buildCtrl.onDOMRebuild = () => {
+    buildComponentsListEl.innerHTML = '';
+    for (const { id, type } of buildCtrl.getComponentEntries()) renderComponentItem(id, type);
+    syncSlidersFromController();
+    buildCtrl.onHistoryChange?.();
+};
+
+// Keyboard shortcuts
+document.addEventListener('keydown', (e: KeyboardEvent) => {
+    if (!buildCtrl.isActive) return;
+    if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) { e.preventDefault(); buildCtrl.undo(); }
+    if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) { e.preventDefault(); buildCtrl.redo(); }
+});
 
 buildExportBtn.addEventListener('click', () => void buildCtrl.exportZip(buildExportBtn));
+
+buildNewCreateBtn.addEventListener('click', () => {
+    buildComponentsListEl.innerHTML = '';
+    buildCtrl.initFromScratch(buildNewNameEl.value);
+    buildCtrl.open();
+    document.getElementById('tab-build')?.click();
+});
 
 // Populate component palette
 for (const [type, def] of Object.entries(COMPONENT_CATALOG)) {
@@ -627,7 +711,7 @@ for (const [type, def] of Object.entries(COMPONENT_CATALOG)) {
     btn.textContent = def.label;
     btn.dataset.comp = type;
     btn.addEventListener('click', () => {
-        if (!buildCtrl.isSupported) return;
+        if (!buildCtrl.isCatalogActive) return;
         const id = buildCtrl.addComponent(type);
         renderComponentItem(id, type);
     });
