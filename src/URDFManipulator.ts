@@ -3,20 +3,6 @@ import { URDFJoint } from './URDFClasses.js';
 import { PointerURDFDragControls } from './URDFDragControls.js';
 import { URDFViewer } from './URDFViewer.js';
 
-// ─── URDFManipulator ──────────────────────────────────────────────────────────
-//
-// Extends URDFViewer with mouse-driven joint manipulation.
-//
-// Additional attributes
-//   highlight-color   – hex color for hovered joint highlight (default "#FFFFFF")
-//   disable-dragging  – boolean; disables drag interaction
-//
-// Additional events
-//   joint-mouseover   – fired (detail = jointName) on hover
-//   joint-mouseout    – fired (detail = jointName) on unhover
-//   manipulate-start  – fired (detail = jointName) when drag begins
-//   manipulate-end    – fired (detail = jointName) when drag ends
-
 export class URDFManipulator extends URDFViewer {
 
     static get observedAttributes() {
@@ -96,8 +82,6 @@ export class URDFManipulator extends URDFViewer {
         }
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-
     private _highlightJoint(joint: URDFJoint, revert: boolean): void {
         type HighlightMesh = THREE.Mesh & { __orig?: THREE.Material | THREE.Material[] };
 
@@ -121,7 +105,6 @@ export class URDFManipulator extends URDFViewer {
                 }
             }
 
-            // Recurse, but stop at child joints and skip colliders
             if (node !== joint && isMovable(node)) return;
             for (const child of node.children) {
                 if (!(child as { isURDFCollider?: boolean }).isURDFCollider) {

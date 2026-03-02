@@ -6,8 +6,6 @@ const RENDER_DEBOUNCE_MS = 600;
 const MAX_XML_CHARS      = 30_000;
 const IS_DEV             = import.meta.env.DEV;
 
-// ── Tool schemas ──────────────────────────────────────────────────────────────
-
 const TOOL_FULL_URDF = {
     name: 'update_urdf',
     description:
@@ -70,8 +68,6 @@ Coordinate conventions:
 • -X = front/bumper, +X = rear, -Y = left, +Y = right, +Z = up
 • rpy = roll(X), pitch(Y), yaw(Z) in radians`;
 
-// ── Types ─────────────────────────────────────────────────────────────────────
-
 interface TextBlock    { type: 'text'; text: string; }
 interface ToolUseBlock { type: 'tool_use'; id: string; name: string; input: Record<string, unknown>; }
 interface ToolResBlock { type: 'tool_result'; tool_use_id: string; content: string; }
@@ -87,9 +83,6 @@ type Action = {
     arg?: string;
 };
 
-// ── Markdown renderer ─────────────────────────────────────────────────────────
-
-// CDN globals loaded via <script> tags in index.html
 declare const marked: { parse(s: string): string } | undefined;
 declare const DOMPurify: { sanitize(s: string, o?: object): string } | undefined;
 
@@ -101,8 +94,6 @@ function renderMd(text: string): string {
         .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
         .replace(/\n/g, '<br>');
 }
-
-// ── EditorController ──────────────────────────────────────────────────────────
 
 export class URDFEditorController {
     private readonly _viewer:       URDFManipulator;
@@ -144,19 +135,16 @@ export class URDFEditorController {
 
         this._partSelEl.addEventListener('change', () => void this._onPartChange());
 
-        // Slash command registry. Only actions that can't be expressed as natural language.
         this._actions = {
             clear:  { fn: () => this._clearChat(), desc: 'Clear chat history' },
             format: { fn: () => this._formatXml(), desc: 'Prettify URDF XML'  },
         };
 
-        // Code editor events
         this._textareaEl.addEventListener('input',  () => this._onEdit());
         this._textareaEl.addEventListener('scroll', () => {
             this._lineNumsEl.scrollTop = this._textareaEl.scrollTop;
         });
 
-        // Chat input: auto-expand + autocomplete trigger
         this._chatInputEl.addEventListener('input', () => {
             this._chatInputEl.style.height = 'auto';
             this._chatInputEl.style.height = `${Math.min(this._chatInputEl.scrollHeight, 120)}px`;
@@ -168,7 +156,6 @@ export class URDFEditorController {
             }
         });
 
-        // Chat input keydown: Enter to send, arrows/tab/esc for autocomplete
         this._chatInputEl.addEventListener('keydown', (e) => {
             if (!this._cmdAcEl.hidden) {
                 const items = this._cmdAcEl.querySelectorAll<HTMLElement>('.cmd-ac-item');
@@ -196,7 +183,6 @@ export class URDFEditorController {
         this._sendBtn.addEventListener('click', () => this._handleSend());
         this._abortBtn.addEventListener('click', () => this._abort?.abort());
 
-        // Global: route printable keys to chat input when panel open and robot tab visible
         document.addEventListener('keydown', (e) => {
             if (!this._panelEl.closest('aside')?.classList.contains('open')) return;
             if (document.body.classList.contains('editor-open')) return;
@@ -208,7 +194,6 @@ export class URDFEditorController {
         });
     }
 
-    get ownBlobUrl(): string | null { return this._ownBlobUrl; }
     get isOpen(): boolean { return this._panelEl.classList.contains('open'); }
 
     async jumpToJoint(name: string): Promise<void> {
@@ -247,11 +232,6 @@ export class URDFEditorController {
         this._hideCmdAc();
     }
 
-    toggle(): void {
-        if (this.isOpen) this.close();
-        else this.open();
-    }
-
     setSourceUrl(url: string): void {
         this._sourceUrl = url;
         this._history   = [];
@@ -265,8 +245,6 @@ export class URDFEditorController {
             void this._loadPartsManifest();
         }
     }
-
-    // ── Slash commands ────────────────────────────────────────────────────────
 
     private _showCmdAc(filter: string): void {
         const matches = Object.entries(this._actions).filter(([k]) => k.startsWith(filter));
@@ -317,8 +295,6 @@ export class URDFEditorController {
         this._chatInputEl.value = '';
         this._chatInputEl.style.height = '';
     }
-
-    // ── Editor ────────────────────────────────────────────────────────────────
 
     private async _fetchAndPopulate(url: string): Promise<void> {
         try {
@@ -377,8 +353,6 @@ export class URDFEditorController {
             this._updateLineNums();
         } catch { /* keep original */ }
     }
-
-    // ── Parts ─────────────────────────────────────────────────────────────────
 
     private _rebuildPartOptions(): void {
         this._partSelEl.innerHTML = '<option value="">Full URDF</option>' +
@@ -445,14 +419,11 @@ export class URDFEditorController {
             btn.classList.toggle('active', (btn.dataset.part ?? '') === this._partSelEl.value);
     }
 
-    // ── AI Chat ───────────────────────────────────────────────────────────────
-
     private _handleSend(): void {
         this._hideCmdAc();
         const raw = this._chatInputEl.value.trim();
         if (!raw) return;
 
-        // Slash command dispatch
         if (raw.startsWith('/')) {
             const [rawCmd, ...rest] = raw.slice(1).trim().split(/\s+/);
             const cmd    = rawCmd.toLowerCase();
@@ -464,9 +435,8 @@ export class URDFEditorController {
             }
             if (action?.prompt) {
                 this._chatInputEl.value = action.prompt(rest.join(' '));
-                return; // let user review + press Enter again
+                return;
             }
-            // Unknown slash command. Fall through to send as text.
         }
 
         if (this._abort) return;
@@ -475,7 +445,6 @@ export class URDFEditorController {
     }
 
     private _sanitizeHistory(): void {
-        // Drop trailing assistant messages with orphaned tool_use blocks (no tool_result follows)
         while (this._history.length > 0) {
             const last = this._history[this._history.length - 1];
             if (last.role !== 'assistant') return;
@@ -713,7 +682,6 @@ Be concise. Use tools proactively.`;
                 });
                 if (!res.ok) return { error: await res.text() };
                 this._setEditorContent(xml);
-                // Register new part file if it was just created
                 if (this._partsList.length && !this._partsList.includes(filename)) {
                     this._partsList = [...this._partsList, filename].sort();
                     this._rebuildPartOptions();
@@ -721,7 +689,6 @@ Be concise. Use tools proactively.`;
                 }
                 this._partSelEl.value = filename;
                 this._updateActiveTab();
-                // Reload the assembled URDF in the viewer with a cache-bust
                 if (this._sourceUrl) {
                     const base = this._sourceUrl.split('?')[0];
                     this._viewer.urdf = `${base}?t=${Date.now()}`;
@@ -746,8 +713,6 @@ Be concise. Use tools proactively.`;
                 return { error: `unknown tool: ${name}` };
         }
     }
-
-    // ── DOM helpers ───────────────────────────────────────────────────────────
 
     private _appendChat(el: HTMLElement): void {
         this._chatMsgsEl.appendChild(el);
@@ -796,8 +761,6 @@ Be concise. Use tools proactively.`;
     }
 }
 
-// ── XML indenter ──────────────────────────────────────────────────────────────
-
 function _indentXml(xml: string): string {
     const lines = xml.trim().replace(/>\s*</g, '>\n<').split('\n');
     const out: string[] = [];
@@ -807,14 +770,12 @@ function _indentXml(xml: string): string {
         const line = raw.trim();
         if (!line) continue;
 
-        // Closing tag: dedent first
         if (line.startsWith('</')) {
             indent = Math.max(0, indent - 1);
         }
 
         out.push('  '.repeat(indent) + line);
 
-        // Opening tag (not self-closing, comment, or PI): indent children
         if (line.startsWith('<')
             && !line.startsWith('</')
             && !line.endsWith('/>')

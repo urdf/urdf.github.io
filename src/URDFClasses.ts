@@ -6,8 +6,6 @@ import {
     Vector3,
 } from 'three';
 
-// ─── Shared temp objects ────────────────────────────────────────────────────
-
 const _axis = new Vector3();
 const _euler = new Euler();
 const _mat = new Matrix4();
@@ -16,8 +14,6 @@ const _quat = new Quaternion();
 const _pos = new Vector3();
 const _scale = new Vector3(1, 1, 1);
 
-// ─── Joint types ─────────────────────────────────────────────────────────────
-
 export type JointType =
     | 'fixed'
     | 'continuous'
@@ -25,8 +21,6 @@ export type JointType =
     | 'prismatic'
     | 'planar'
     | 'floating';
-
-// ─── Base ────────────────────────────────────────────────────────────────────
 
 export class URDFBase extends Object3D {
     urdfNode: Element | null = null;
@@ -39,8 +33,6 @@ export class URDFBase extends Object3D {
         return this;
     }
 }
-
-// ─── Structural nodes ────────────────────────────────────────────────────────
 
 export class URDFCollider extends URDFBase {
     readonly isURDFCollider = true;
@@ -56,8 +48,6 @@ export class URDFLink extends URDFBase {
     readonly isURDFLink = true;
     override type = 'URDFLink';
 }
-
-// ─── Joint ───────────────────────────────────────────────────────────────────
 
 export class URDFJoint extends URDFBase {
     readonly isURDFJoint = true;
@@ -119,10 +109,6 @@ export class URDFJoint extends URDFBase {
         return this;
     }
 
-    /**
-     * Sets the joint value(s). Pass `null` for a component to leave it unchanged.
-     * Returns `true` if the joint actually moved.
-     */
     setJointValue(...values: (number | null)[]): boolean {
         const nums = values.map(v => (v === null ? null : Number(v)));
 
@@ -216,8 +202,6 @@ export class URDFJoint extends URDFBase {
     }
 }
 
-// ─── Mimic joint ─────────────────────────────────────────────────────────────
-
 export class URDFMimicJoint extends URDFJoint {
     override type = 'URDFMimicJoint';
 
@@ -239,8 +223,6 @@ export class URDFMimicJoint extends URDFJoint {
         return this;
     }
 }
-
-// ─── Robot ───────────────────────────────────────────────────────────────────
 
 export class URDFRobot extends URDFLink {
     readonly isURDFRobot = true;
@@ -290,22 +272,7 @@ export class URDFRobot extends URDFLink {
         return this;
     }
 
-    getFrame(name: string): URDFBase | undefined {
-        return this.frames[name];
-    }
-
     setJointValue(name: string, ...values: (number | null)[]): boolean {
         return this.joints[name]?.setJointValue(...values) ?? false;
-    }
-
-    setJointValues(values: Record<string, number | number[]>): boolean {
-        let changed = false;
-        for (const [name, value] of Object.entries(values)) {
-            const result = Array.isArray(value)
-                ? this.setJointValue(name, ...value)
-                : this.setJointValue(name, value);
-            changed = result || changed;
-        }
-        return changed;
     }
 }

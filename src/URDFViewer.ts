@@ -4,24 +4,6 @@ import { mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { URDFLoader, PackageMap } from './URDFLoader.js';
 import { URDFRobot, URDFVisual, URDFCollider } from './URDFClasses.js';
 
-// ─── URDFViewer ───────────────────────────────────────────────────────────────
-//
-// Custom element that loads and displays a URDF robot model.
-//
-// Attributes
-//   urdf            – URL of the URDF file
-//   package         – package path / map string (see URDFLoader)
-//   up              – up axis, e.g. "+Z" (default) or "-Y"
-//   ignore-limits   – boolean; when present, joint limits are ignored
-//   show-collision  – boolean; shows collision geometry
-//   display-shadow  – boolean; enables shadow casting
-//   ambient-color   – hex color for ambient light (default "#8ea0a8")
-//
-// Events
-//   urdf-change      – fired when a new URDF starts loading
-//   urdf-processed   – fired when the robot model is fully loaded
-//   angle-change     – fired (detail = jointName) when a joint value changes
-
 const STYLE = `
 :host {
     display: block;
@@ -34,10 +16,8 @@ const EMPTY_RAYCAST = () => {};
 const _ZERO_VEC = new THREE.Vector3();
 const _CAM_DIR = new THREE.Vector3(-1, 0.7, 1).normalize();
 
-// Dispose a material and all textures it references.
-// mat.dispose() only frees the shader program. Texture GPU units are separate.
-// For GLB/ImageBitmap-sourced textures, the CPU-side bitmap must also be closed first.
-// Three.js intentionally does not do this automatically (see github.com/mrdoob/three.js/issues/23953).
+// mat.dispose() only frees the shader program; textures must be disposed separately.
+// ImageBitmap sources (from GLB) must be closed first (three.js #23953).
 function disposeMat(mat: THREE.Material): void {
     for (const value of Object.values(mat)) {
         if (value instanceof THREE.Texture) {
@@ -48,7 +28,6 @@ function disposeMat(mat: THREE.Material): void {
     mat.dispose();
 }
 
-// Dispose all non-shared geometries and materials in a subtree.
 function disposeTree(root: THREE.Object3D): void {
     root.traverse(c => {
         const mesh = c as THREE.Mesh;
@@ -59,9 +38,6 @@ function disposeTree(root: THREE.Object3D): void {
 }
 
 const _reduceMotionMQ = window.matchMedia?.('(prefers-reduced-motion: reduce)');
-// Fixed scene-space slide axis. Matches the default fitCamera() view direction
-// so robots always enter from screen-right and exit screen-left, regardless of
-// where the user has orbited the camera.
 const _SLIDE_RIGHT = new THREE.Vector3(1, 0, 1).normalize();
 const _SLIDE_LEFT  = new THREE.Vector3(-1, 0, -1).normalize();
 
@@ -70,8 +46,6 @@ export class URDFViewer extends HTMLElement {
     static get observedAttributes() {
         return ['urdf', 'package', 'up', 'ignore-limits', 'show-collision', 'display-shadow', 'ambient-color'];
     }
-
-    // ── Attributes ────────────────────────────────────────────────────────
 
     get urdf(): string { return this.getAttribute('urdf') ?? ''; }
     set urdf(v: string) { this.setAttribute('urdf', v); }
@@ -94,14 +68,8 @@ export class URDFViewer extends HTMLElement {
     get ambientColor(): string { return this.getAttribute('ambient-color') ?? '#8ea0a8'; }
     set ambientColor(v: string) { this.setAttribute('ambient-color', v); }
 
-    // ── Public state ──────────────────────────────────────────────────────
-
     robot: URDFRobot | null = null;
-
-    /** Override to provide a custom mesh loader (same signature as URDFLoader.loadMesh). */
     loadMesh: URDFLoader['loadMesh'] | null = null;
-
-    // ── Three.js objects ──────────────────────────────────────────────────
 
     readonly scene: THREE.Scene;
     readonly camera: THREE.PerspectiveCamera;
@@ -118,12 +86,11 @@ export class URDFViewer extends HTMLElement {
     private _loadId = 0;
     private _introAnim: { start: THREE.Vector3; t0: number; dur: number } | null = null;
     private _outgoing: { obj: THREE.Object3D; from: THREE.Vector3; to: THREE.Vector3; t0: number; dur: number } | null = null;
-    private _exitRotation = new THREE.Euler(); // world.rotation saved when robot finishes loading
+    private _exitRotation = new THREE.Euler();
     private _lastLoadKey = '';
     private _resizeObserver: ResizeObserver;
     private _shadow: ShadowRoot;
 
-    // Reusable scratch objects – avoids per-frame allocations in _updateScene / fitCamera
     private _bbox = new THREE.Box3();
     private _center = new THREE.Vector3();
     private _sphere = new THREE.Sphere();
@@ -138,7 +105,6 @@ export class URDFViewer extends HTMLElement {
         style.textContent = STYLE;
         this._shadow.appendChild(style);
 
-        // Scene
         this.scene = new THREE.Scene();
 
         this.ambientLight = new THREE.HemisphereLight('#8ea0a8', '#000', 0.5);
@@ -148,7 +114,6 @@ export class URDFViewer extends HTMLElement {
 
         this.directionalLight = new THREE.DirectionalLight(0xffffff, Math.PI);
         this.directionalLight.position.set(4, 10, 1);
-        // Use a smaller shadow map on touch devices to save GPU memory
         const shadowMapSize = navigator.maxTouchPoints > 0 ? 1024 : 2048;
         this.directionalLight.shadow.mapSize.set(shadowMapSize, shadowMapSize);
         this.directionalLight.shadow.normalBias = 0.001;
@@ -164,21 +129,18 @@ export class URDFViewer extends HTMLElement {
         );
         this.shadowPlane.rotation.x = -Math.PI / 2;
         this.shadowPlane.receiveShadow = true;
-        this.shadowPlane.raycast = () => {};  // purely visual, never block pointer events
+        this.shadowPlane.raycast = () => {};
         this.scene.add(this.shadowPlane);
 
-        // Renderer
         this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
         this.renderer.setClearAlpha(0);
         this.renderer.shadowMap.enabled = true;
         this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
         this.renderer.outputColorSpace = THREE.SRGBColorSpace;
 
-        // Camera
         this.camera = new THREE.PerspectiveCamera(75, 1, 0.1, 1000);
         this.camera.position.set(-5.5, 3.5, 5.5);
 
-        // Controls
         this.controls = new OrbitControls(this.camera, this.renderer.domElement);
         this.controls.rotateSpeed = 2;
         this.controls.zoomSpeed = 5;
@@ -186,7 +148,6 @@ export class URDFViewer extends HTMLElement {
         this.controls.maxDistance = 50;
         this.controls.minDistance = 0.25;
         this.controls.addEventListener('change', () => this.redraw());
-        // Disable inertia/damping for users who have requested reduced motion (vestibular disorders)
         this.controls.enableDamping = !_reduceMotionMQ?.matches;
         _reduceMotionMQ?.addEventListener('change', e => {
             this.controls.enableDamping = !e.matches;
@@ -206,8 +167,6 @@ export class URDFViewer extends HTMLElement {
         this._applyUp(this.up);
         this._startRenderLoop();
     }
-
-    // ── Lifecycle ─────────────────────────────────────────────────────────
 
     connectedCallback() {
         this._shadow.appendChild(this.renderer.domElement);
@@ -248,9 +207,6 @@ export class URDFViewer extends HTMLElement {
         }
     }
 
-    // ── Public API ────────────────────────────────────────────────────────
-
-    /** Repositions the camera to frame the loaded robot. */
     fitCamera(): void {
         if (!this.robot) return;
 
@@ -287,14 +243,6 @@ export class URDFViewer extends HTMLElement {
         }
     }
 
-    setJointValues(values: Record<string, number | number[]>): void {
-        for (const [name, v] of Object.entries(values)) {
-            if (Array.isArray(v)) this.setJointValue(name, ...v);
-            else this.setJointValue(name, v);
-        }
-    }
-
-    // ── Private ───────────────────────────────────────────────────────────
 
     private _startRenderLoop(): void {
         const loop = () => {
@@ -377,7 +325,6 @@ export class URDFViewer extends HTMLElement {
 
         loader.load(this.urdf).then(robot => {
             if (id !== this._loadId) {
-                // Superseded by a newer load request
                 robot.traverse(c => (c as THREE.Mesh).geometry?.dispose());
                 return;
             }
@@ -387,8 +334,6 @@ export class URDFViewer extends HTMLElement {
             this._prepareMeshes(robot);
             this._applyIgnoreLimits(this.ignoreLimits);
             this._updateCollision();
-            // Only fit + reveal here when there are no mesh files; otherwise
-            // mgr.onLoad handles both after all meshes have loaded.
             if (!meshManagerHooked) {
                 this.fitCamera();
                 this._exitRotation.copy(this.world.rotation);
@@ -409,7 +354,6 @@ export class URDFViewer extends HTMLElement {
         });
     }
 
-    // Slides the world in from screen-right after fitCamera() has been called.
     private _startIntro(): void {
         this.world.visible = true;
         if (_reduceMotionMQ?.matches) {
@@ -421,12 +365,9 @@ export class URDFViewer extends HTMLElement {
         this._introAnim = { start, t0: performance.now(), dur: 450 };
     }
 
-    // Slides the current robot out to screen-left, then disposes it.
     private _startExit(): void {
         if (!this.robot || this._sphere.radius === 0) return;
 
-        // Rapid switching: drop any still-animating outgoing before starting a new one,
-        // otherwise the orphaned scene object is never removed.
         if (this._outgoing) {
             this.scene.remove(this._outgoing.obj);
             disposeTree(this._outgoing.obj);
@@ -441,8 +382,8 @@ export class URDFViewer extends HTMLElement {
         const to = _SLIDE_LEFT.clone().multiplyScalar(this._sphere.radius * 5);
 
         const outgoing = new THREE.Object3D();
-        outgoing.rotation.copy(this._exitRotation); // rotation saved at load time, not current world.rotation
-        outgoing.position.copy(this.world.position); // preserve mid-intro offset if any
+        outgoing.rotation.copy(this._exitRotation);
+        outgoing.position.copy(this.world.position);
         this.world.remove(this.robot);
         outgoing.add(this.robot);
         this.robot = null;
@@ -464,8 +405,6 @@ export class URDFViewer extends HTMLElement {
             if (!mesh.isMesh) return;
             mesh.castShadow = true;
             mesh.receiveShadow = true;
-            // STL files store per-face normals, causing visible shading seams on flat
-            // surfaces rendered with transparency. Recompute vertex normals to smooth them.
             if (mesh.geometry && !mesh.geometry.userData.shared) {
                 mesh.geometry = mergeVertices(mesh.geometry);
                 mesh.geometry.computeVertexNormals();
@@ -474,7 +413,6 @@ export class URDFViewer extends HTMLElement {
                 const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
                 for (const m of mats) {
                     if (m instanceof THREE.MeshBasicMaterial) {
-                        // Upgrade to Phong so it reacts to lights; dispose the original shader
                         const phong = new THREE.MeshPhongMaterial();
                         phong.copy(m as unknown as THREE.MeshPhongMaterial);
                         mesh.material = phong;
@@ -570,7 +508,6 @@ export class URDFViewer extends HTMLElement {
     }
 
     private _resolvePackages(pkg: string): PackageMap {
-        // Detect "name: path, name2: path2" format (skip plain URLs)
         if (!pkg.includes(':') || /^\s*https?:/.test(pkg)) return pkg;
 
         const map: Record<string, string> = {};

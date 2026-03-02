@@ -11,33 +11,18 @@ import {
     URDFVisual,
 } from './URDFClasses.js';
 
-// ─── Types ───────────────────────────────────────────────────────────────────
-
 export type PackageMap = string | Record<string, string> | ((pkg: string) => string);
 
 export interface LoaderOptions {
-    /** Base path or package map for resolving `package://` URIs. */
     packages?: PackageMap;
-    /** Working path prepended to relative mesh paths. */
     workingPath?: string;
-    /** Whether to parse `<visual>` elements (default: true). */
     parseVisual?: boolean;
-    /** Whether to parse `<collision>` elements (default: false). */
     parseCollision?: boolean;
-    /** Options forwarded to `fetch()` when loading the URDF file. */
     fetchOptions?: RequestInit;
-    /**
-     * Override mesh loading. Receives the resolved file path and returns a
-     * Promise that resolves to a THREE.Object3D (or null to skip).
-     */
     loadMesh?: (path: string, manager: THREE.LoadingManager) => Promise<THREE.Object3D | null>;
 }
 
-// ─── Shared primitive geometries ─────────────────────────────────────────────
-//
-// Unit geometries reused across all URDF <box>, <sphere>, <cylinder> elements.
-// Sized via mesh.scale at parse time; marked shared so _disposeRobot skips them.
-
+// Shared unit geometries. Sized via mesh.scale; marked so _disposeRobot skips them.
 const _sharedBoxGeom = new THREE.BoxGeometry(1, 1, 1);
 _sharedBoxGeom.userData.shared = true;
 
@@ -46,8 +31,6 @@ _sharedSphereGeom.userData.shared = true;
 
 const _sharedCylinderGeom = new THREE.CylinderGeometry(1, 1, 1, 32);
 _sharedCylinderGeom.userData.shared = true;
-
-// ─── Helpers ─────────────────────────────────────────────────────────────────
 
 const _tempQuat = new THREE.Quaternion();
 const _tempEuler = new THREE.Euler();
@@ -64,8 +47,6 @@ function applyRPY(obj: THREE.Object3D, rpy: [number, number, number]): void {
     obj.quaternion.copy(_tempQuat);
 }
 
-// ─── Loader ──────────────────────────────────────────────────────────────────
-
 export class URDFLoader {
     packages: PackageMap = '';
     workingPath = '';
@@ -78,7 +59,6 @@ export class URDFLoader {
         this.loadMesh = URDFLoader.defaultMeshLoader;
     }
 
-    /** Fetches and parses a URDF file, returning the robot model. */
     async load(url: string, options?: LoaderOptions): Promise<URDFRobot> {
         const opts = { ...options };
         const workingPath = opts.workingPath ?? THREE.LoaderUtils.extractUrlBase(url);
@@ -92,7 +72,6 @@ export class URDFLoader {
         return this.parse(xml, { ...opts, workingPath });
     }
 
-    /** Parses a URDF XML string and returns the robot model. */
     parse(content: string | Document | Element, options?: LoaderOptions): URDFRobot {
         const packages = options?.packages ?? this.packages;
         const workingPath = options?.workingPath ?? this.workingPath;
@@ -107,8 +86,6 @@ export class URDFLoader {
         const linkMap: Record<string, URDFLink> = {};
         const jointMap: Record<string, URDFJoint> = {};
 
-        // ── Parse XML ──────────────────────────────────────────────────────
-
         let robotEl: Element;
         if (content instanceof Document) {
             robotEl = content.querySelector('robot')!;
@@ -121,14 +98,10 @@ export class URDFLoader {
 
         if (!robotEl) throw new Error('URDFLoader: no <robot> element found');
 
-        // ── Materials ──────────────────────────────────────────────────────
-
         for (const m of robotEl.querySelectorAll(':scope > material')) {
             const name = m.getAttribute('name') ?? '';
             materialMap[name] = parseMaterial(m);
         }
-
-        // ── Links ─────────────────────────────────────────────────────────
 
         const visualMap: Record<string, URDFVisual> = {};
         const colliderMap: Record<string, URDFCollider> = {};
@@ -139,14 +112,10 @@ export class URDFLoader {
             linkMap[name] = parseLink(linkEl, isRoot ? new URDFRobot() : new URDFLink());
         }
 
-        // ── Joints ────────────────────────────────────────────────────────
-
         for (const jointEl of robotEl.querySelectorAll(':scope > joint')) {
             const name = jointEl.getAttribute('name') ?? '';
             jointMap[name] = parseJoint(jointEl);
         }
-
-        // ── Assemble robot ────────────────────────────────────────────────
 
         const robot = Object.values(linkMap).find(l => l instanceof URDFRobot) as URDFRobot;
         robot.robotName = robotEl.getAttribute('name') ?? '';
@@ -156,7 +125,6 @@ export class URDFLoader {
         robot.colliders = colliderMap;
         robot.visual = visualMap;
 
-        // Wire up mimic joints
         for (const joint of Object.values(jointMap)) {
             if (joint instanceof URDFMimicJoint) {
                 jointMap[joint.mimicJoint]?.mimicJoints.push(joint);
@@ -168,8 +136,6 @@ export class URDFLoader {
         robot.frames = { ...colliderMap, ...visualMap, ...linkMap, ...jointMap };
 
         return robot;
-
-        // ── Helpers ───────────────────────────────────────────────────────
 
         function parseLink(el: Element, target: URDFLink): URDFLink {
             target.name = el.getAttribute('name') ?? '';
@@ -384,8 +350,6 @@ export class URDFLoader {
         }
     }
 
-    // ── Default mesh loader ────────────────────────────────────────────────
-
     static async defaultMeshLoader(
         path: string,
         manager: THREE.LoadingManager,
@@ -431,8 +395,6 @@ export class URDFLoader {
     }
 }
 
-// ─── Package resolver ─────────────────────────────────────────────────────────
-
 function makeResolver(packages: PackageMap, workingPath: string): (path: string) => string | null {
     return function resolvePath(path: string): string | null {
         if (!path.startsWith('package://')) {
@@ -459,8 +421,6 @@ function makeResolver(packages: PackageMap, workingPath: string): (path: string)
         return null;
     };
 }
-
-// ─── Mimic loop detection ────────────────────────────────────────────────────
 
 function detectMimicLoop(joints: URDFJoint[]): void {
     for (const joint of joints) {

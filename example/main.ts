@@ -29,8 +29,6 @@ const showCollisionEl = document.getElementById('show-collision') as HTMLInputEl
 const displayShadowEl = document.getElementById('display-shadow') as HTMLInputElement;
 const upAxisEl = document.getElementById('up-axis') as HTMLSelectElement;
 
-// ── Available robots ──────────────────────────────────────────────────────────
-
 interface RobotConfig {
     name: string;
     label: string;
@@ -63,8 +61,6 @@ const ROBOTS: RobotConfig[] = [
 ];
 
 let currentRobotIndex = 0;
-
-// ── Robot track slider ─────────────────────────────────────────────────────────
 
 const robotTrackSlider = document.getElementById('robot-track-slider') as HTMLElement;
 
@@ -118,17 +114,13 @@ for (let i = 0; i < ROBOTS.length; i++) {
     robotsPanel.appendChild(btn);
 }
 
-// Keep slider in sync when panel is pinned and viewport resizes
 new ResizeObserver(moveSliderToActive).observe(robotsPanel);
 
-// Snap to initial position without animation, then enable transitions
 robotTrackSlider.style.transition = 'none';
 loadRobot(ROBOTS[0], 0);
 requestAnimationFrame(() => requestAnimationFrame(() => {
     robotTrackSlider.style.transition = '';
 }));
-
-// ── Keyboard robot navigation (← →) ──────────────────────────────────────────
 
 document.addEventListener('keydown', (e) => {
     if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
@@ -139,8 +131,6 @@ document.addEventListener('keydown', (e) => {
     loadRobot(ROBOTS[idx], idx);
 });
 
-// ── Controls ──────────────────────────────────────────────────────────────────
-
 ignoreLimitsEl.addEventListener('change', () => { viewer.ignoreLimits = ignoreLimitsEl.checked; });
 showCollisionEl.addEventListener('change', () => { viewer.showCollision = showCollisionEl.checked; });
 displayShadowEl.addEventListener('change', () => { viewer.displayShadow = displayShadowEl.checked; });
@@ -148,8 +138,6 @@ upAxisEl.addEventListener('change', () => { viewer.up = upAxisEl.value; });
 
 displayShadowEl.checked = viewer.displayShadow;
 upAxisEl.value = viewer.up;
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
 
 function toLabel(jointName: string): string {
     return jointName
@@ -161,8 +149,6 @@ function toLabel(jointName: string): string {
 function linkNameFor(jointName: string): string {
     return jointName.replace(/_joint$/, '');
 }
-
-// ── Part Inspector ────────────────────────────────────────────────────────────
 
 const inspectorEl       = document.getElementById('inspector')!;
 const inspectorName     = document.getElementById('inspector-name')!;
@@ -263,8 +249,6 @@ viewer.addEventListener('click', () => {
     if (editorCtrl.isOpen) void editorCtrl.jumpToJoint(hoveredJointName);
 });
 
-// ── Loading indicator ─────────────────────────────────────────────────────────
-
 viewer.addEventListener('urdf-change', () => {
     loadingEl.classList.add('visible');
     jointsPanel.innerHTML = '';
@@ -278,8 +262,6 @@ viewer.addEventListener('urdf-error', () => {
 viewer.addEventListener('urdf-processed', () => {
     loadingEl.classList.remove('visible');
 });
-
-// ── Joint panel ───────────────────────────────────────────────────────────────
 
 const DEG = Math.PI / 180;
 
@@ -386,13 +368,9 @@ viewer.addEventListener('joint-mouseout', (e: Event) => {
     partLabel.style.display = 'none';
 });
 
-// ── Gesture mode ───────────────────────────────────────────────────────────────
-
 function onDwellSelect(clientX: number, clientY: number): void {
-    // If finger is over a robot button, select it
     const robotBtn = document.elementFromPoint(clientX, clientY)?.closest<HTMLButtonElement>('.robot-btn');
     if (robotBtn) { robotBtn.click(); return; }
-    // Otherwise: 3D joint selection
     const opts: PointerEventInit = { clientX, clientY, bubbles: true, pointerId: 1 };
     viewer.dispatchEvent(new PointerEvent('pointerdown', opts));
     viewer.dispatchEvent(new PointerEvent('pointerup', opts));

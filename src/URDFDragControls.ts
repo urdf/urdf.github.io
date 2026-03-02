@@ -1,8 +1,6 @@
 import { Camera, Object3D, Plane, Raycaster, Ray, Vector2, Vector3 } from 'three';
 import { URDFJoint } from './URDFClasses.js';
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
 function findAncestorJoint(object: Object3D, includeFixed: boolean): URDFJoint | null {
     let curr: Object3D | null = object;
     while (curr) {
@@ -15,8 +13,6 @@ function findAncestorJoint(object: Object3D, includeFixed: boolean): URDFJoint |
     return null;
 }
 
-// ─── Shared temps ─────────────────────────────────────────────────────────────
-
 const _prev = new Vector3();
 const _next = new Vector3();
 const _pivot = new Vector3();
@@ -25,8 +21,6 @@ const _b = new Vector3();
 const _projStart = new Vector3();
 const _projEnd = new Vector3();
 const _plane = new Plane();
-
-// ─── URDFDragControls ────────────────────────────────────────────────────────
 
 export class URDFDragControls {
     enabled = true;
@@ -128,8 +122,6 @@ export class URDFDragControls {
         return _a.dot(_plane.normal);
     }
 
-    // ── Override hooks ─────────────────────────────────────────────────────
-
     updateJoint(joint: URDFJoint, angle: number): void {
         joint.setJointValue(angle);
     }
@@ -141,8 +133,6 @@ export class URDFDragControls {
     onHoverAny(_joint: URDFJoint): void {}
     onUnhoverAny(_joint: URDFJoint): void {}
 }
-
-// ─── PointerURDFDragControls ─────────────────────────────────────────────────
 
 export class PointerURDFDragControls extends URDFDragControls {
     camera: Camera;
@@ -211,12 +201,10 @@ export class PointerURDFDragControls extends URDFDragControls {
 
         _b.copy(this.camera.position).sub(this.initialGrabPoint).normalize();
 
-        // If looking roughly into the rotation plane, use standard delta
         if (Math.abs(_b.dot(_plane.normal)) > 0.3) {
             return super.getRevoluteDelta(joint, start, end);
         }
 
-        // Otherwise project onto camera screen-space
         _plane.projectPoint(start, _projStart);
         _plane.projectPoint(end, _projEnd);
         _a.set(0, 0, -1).transformDirection(this.camera.matrixWorld).cross(_plane.normal);

@@ -12,7 +12,6 @@ interface GestureControllerOptions {
     onStop(): void;
 }
 
-// Standard MediaPipe hand connections
 const HAND_CONNECTIONS: [number, number][] = [
     [0, 1], [1, 2], [2, 3], [3, 4],
     [0, 5], [5, 6], [6, 7], [7, 8],
@@ -24,13 +23,8 @@ const HAND_CONNECTIONS: [number, number][] = [
 
 const WASM_CDN = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.21/wasm';
 
-// Lerp factor per rAF frame (~60fps). Higher = snappier, lower = smoother.
 const CAM_LERP = 0.14;
 
-// One Euro Filter for wrist landmark smoothing.
-// Casiez et al., CHI 2012. Adaptive cutoff: heavy smoothing when still, low latency when moving.
-// β (speed coefficient) controls how quickly lag reduces with velocity.
-// f_min (minimum cutoff Hz) controls smoothing strength when stationary.
 class OneEuroFilter {
     private x_prev = NaN;
     private dx_prev = 0;
@@ -74,7 +68,6 @@ class OneEuroFilter {
     }
 }
 
-// Reusable scratch objects to avoid per-frame allocations
 const _sph = new THREE.Spherical();
 const _vec3 = new THREE.Vector3();
 const _ndc = new THREE.Vector2();
@@ -94,21 +87,17 @@ export class GestureController {
     private selectedJoint: string | null = null;
     private running = false;
 
-    // Current animated spherical coords (lerped toward targets each frame)
     private sphTheta = 0;
     private sphPhi = Math.PI / 3;
     private sphRadius = 0;
 
-    // Target spherical coords (written by gesture handlers)
     private targetTheta = 0;
     private targetPhi = Math.PI / 3;
     private targetRadius = 0;
 
-    // One Euro Filters for wrist x/y. Adaptive smoothing, low latency when moving fast.
     private _wristFilterX = new OneEuroFilter(1.0, 0.007);
     private _wristFilterY = new OneEuroFilter(1.0, 0.007);
 
-    // Dwell select state. prevHandPos tracks the smoothed wrist (lm[0]) for orbit.
     private prevHandPos: { x: number; y: number } | null = null;
     private dwellStart = 0;
     private dwellMoved = false;
@@ -116,33 +105,23 @@ export class GestureController {
     private dwellScreenY = 0;
     private dwellStartScreenX = 0;
     private dwellStartScreenY = 0;
-    // 800ms: research sweet spot (700-900ms) that avoids Midas Touch (>400ms minimum)
-    // while being faster than the 1000-1200ms range used for gaze-only systems.
     private readonly DWELL_MS = 800;
 
-    // Open-palm reset state
     private palmResetStart = 0;
     private readonly PALM_RESET_MS = 1000;
 
-    // Wrist roll state
     private prevWristAngle = Infinity;
 
-    // Zoom state
     private prevZoomDist = 0;
 
-    // Last processed video timestamp. Guards against duplicate recognizeForVideo calls.
     private _lastVideoTime = -1;
 
-    // Gesture debounce: require the same gesture name for 2 consecutive frames before
-    // acting on it. Prevents single-frame classifier oscillation from flashing hover state.
     private _prevGestureName = '';
     private _stableGestureName = '';
 
-    // Raycaster for hit-testing the robot
     private _raycaster = new THREE.Raycaster();
     private _overRobot = false;
 
-    // Drag controls reference, grabbed at start() to drive hover/highlight
     private _dragCtrl: { enabled: boolean; raycaster: THREE.Raycaster; update(): void } | null = null;
 
     constructor(opts: GestureControllerOptions) {
@@ -156,26 +135,18 @@ export class GestureController {
     }
 
     async start(): Promise<void> {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const cdnMjs: any = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.21/vision_bundle.mjs';
+        const cdnMjs = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.21/vision_bundle.mjs';
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const { GestureRecognizer, FilesetResolver } = await import(/* @vite-ignore */ cdnMjs) as any;
 
         const vision = await FilesetResolver.forVisionTasks(WASM_CDN);
         this.recognizer = await GestureRecognizer.createFromOptions(vision, {
             baseOptions: {
-                // GPU delegate is silently ignored for the gesture subgraph (mediapipe issue #4712)
-                // and requires a dedicated uninitialized canvas. CPU is both correct and simpler.
                 modelAssetPath:
                     'https://storage.googleapis.com/mediapipe-models/gesture_recognizer/gesture_recognizer/float16/1/gesture_recognizer.task',
             },
             runningMode: 'VIDEO',
             numHands: 2,
-            // Detection: 0.7 reduces false initial palm detections without hurting tracking.
-            // Presence: keep at 0.5. Higher values cause frequent tracking drops that look
-            // like hand blinking (each drop → re-detection → visible skeleton flash).
-            // scoreThreshold: 0.5 (default). Higher values cause gesture name to oscillate
-            // between a valid name and '' on borderline frames, flashing hover state on/off.
             minHandDetectionConfidence: 0.7,
             minHandPresenceConfidence: 0.5,
             minTrackingConfidence: 0.5,
@@ -191,17 +162,14 @@ export class GestureController {
         this.canvas.height = window.innerHeight;
         window.addEventListener('resize', this._onResize);
 
-        // Capture current spherical coords from camera
         const { controls, camera } = this.viewer;
         _sph.setFromVector3(_vec3.copy(camera.position).sub(controls.target));
         this.sphTheta  = this.targetTheta  = _sph.theta;
         this.sphPhi    = this.targetPhi    = _sph.phi;
         this.sphRadius = this.targetRadius = _sph.radius;
 
-        // Disable OrbitControls
         controls.enabled = false;
 
-        // Grab drag controls so we can drive hover/highlight from the gesture loop
         const dc = (this.viewer as unknown as {
             _dragControls?: { enabled: boolean; raycaster: THREE.Raycaster; update(): void };
         })._dragControls;
@@ -224,10 +192,8 @@ export class GestureController {
         this.recognizer = null;
         this._lastVideoTime = -1;
 
-        // Re-enable OrbitControls
         this.viewer.controls.enabled = true;
 
-        // Re-enable drag controls and clear any lingering hover state
         if (this._dragCtrl) {
             this._clearHover();
             this._dragCtrl.enabled = true;
@@ -252,9 +218,6 @@ export class GestureController {
         if (!this.running) return;
         this.rafId = requestAnimationFrame(this._loop);
 
-        // ── Gesture recognition ──────────────────────────────────────────────
-        // Guard: camera delivers ~30fps; rAF runs at ~60fps. Only call
-        // recognizeForVideo when the video has advanced to a new frame.
         if (this.recognizer && this.video.readyState >= 2 &&
                 this.video.currentTime !== this._lastVideoTime) {
             this._lastVideoTime = this.video.currentTime;
@@ -275,8 +238,6 @@ export class GestureController {
                 const lms     = hands[0];
                 const rawName = gestures[0]?.[0]?.categoryName ?? '';
 
-                // Only commit to a new gesture when it holds for 2 consecutive frames.
-                // Prevents single-frame classifier flicker from flashing hover/orbit state.
                 if (rawName === this._prevGestureName) this._stableGestureName = rawName;
                 this._prevGestureName = rawName;
                 const name = this._stableGestureName;
@@ -306,12 +267,10 @@ export class GestureController {
             }
         }
 
-        // ── Camera animation (runs every frame regardless of gesture state) ──
         this._syncCameraIfNeeded();
         this._applyCamera();
     };
 
-    // Re-sync targets if fitCamera() or any external code moved the camera.
     private _syncCameraIfNeeded(): void {
         const { controls, camera } = this.viewer;
         if (this.sphRadius === 0) return;
@@ -319,9 +278,6 @@ export class GestureController {
         _sph.set(this.sphRadius, this.sphPhi, this.sphTheta);
         _vec3.setFromSpherical(_sph).add(controls.target);
 
-        // If the camera was moved more than 10% of the current radius away from
-        // where we last placed it, something external (fitCamera, robot switch)
-        // repositioned it. Resync so we continue from the new position.
         if (camera.position.distanceTo(_vec3) > this.sphRadius * 0.1) {
             _sph.setFromVector3(_vec3.copy(camera.position).sub(controls.target));
             this.sphTheta  = this.targetTheta  = _sph.theta;
@@ -330,7 +286,6 @@ export class GestureController {
         }
     }
 
-    // Lerp sph* toward target* and push to the camera.
     private _applyCamera(): void {
         const { controls, camera } = this.viewer;
 
@@ -345,36 +300,25 @@ export class GestureController {
         this.viewer.redraw();
     }
 
-    // Updates drag-controls hover state (highlight + label) and returns whether
-    // the fingertip is over any part of the robot.
     private _updateHoverState(screenX: number, screenY: number): boolean {
         const { camera } = this.viewer;
 
-        // screenX/Y are in overlay canvas space (full window dimensions).
-        // The Three.js renderer viewport is the viewer element, which may be offset
-        // (e.g. sidebar pinned open shifts <main>). Compute NDC relative to the
-        // actual viewer bounds so the raycaster aligns with what's on screen.
         const rect = this.viewer.getBoundingClientRect();
         _ndc.set(
             ((screenX - rect.left) / rect.width) * 2 - 1,
             -((screenY - rect.top) / rect.height) * 2 + 1,
         );
 
-        // Drive the drag controls' raycaster so it fires onHover/onUnhover,
-        // which applies mesh highlight and dispatches joint-mouseover/out events.
         if (this._dragCtrl) {
             this._dragCtrl.raycaster.setFromCamera(_ndc, camera);
             this._dragCtrl.update();
         }
 
-        // Separate check against the full robot (including root/fixed links)
-        // so orbit activates over any mesh, not just movable joints.
         if (!this.viewer.robot) return false;
         this._raycaster.setFromCamera(_ndc, camera);
         return this._raycaster.intersectObject(this.viewer.robot, true).length > 0;
     }
 
-    // Clear hover by pointing the drag-controls ray into empty space.
     private _clearHover(): void {
         if (!this._dragCtrl) return;
         this._dragCtrl.raycaster.ray.origin.set(0, 10000, 0);
@@ -382,7 +326,6 @@ export class GestureController {
         this._dragCtrl.update();
     }
 
-    // Closed_Fist: orbit only, no hover or dwell (grab-and-drag / arcball metaphor)
     private _handleOrbit(lms: NormalizedLandmark[]): void {
         const t = performance.now();
         const wristX = this._wristFilterX.filter(1 - lms[0].x, t);
@@ -402,7 +345,6 @@ export class GestureController {
         }
     }
 
-    // Pointing_Up only: hover highlight + dwell select, no orbit
     private _handleDwellAndHover(ctx: CanvasRenderingContext2D, lms: NormalizedLandmark[]): void {
         const tipX = 1 - lms[8].x;
         const tipY = lms[8].y;
@@ -414,13 +356,10 @@ export class GestureController {
         this._overRobot = this._updateHoverState(screenX, screenY);
         const overTrack = !!document.elementFromPoint(screenX, screenY)?.closest('[data-gesture-track]');
 
-        // Dispatch synthetic pointermove so main.ts positions the part-label tooltip
-        // at the fingertip rather than at the last real mouse position.
         this.viewer.dispatchEvent(new PointerEvent('pointermove', {
             clientX: screenX, clientY: screenY, bubbles: true, pointerId: 1,
         }));
 
-        // Notify main.ts of pointer position (robot track slider preview)
         this.onPointerMove?.(screenX, screenY);
 
         const overTarget = this._overRobot || overTrack;
