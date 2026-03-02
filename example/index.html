@@ -78,7 +78,8 @@
       -webkit-user-select: none;
     }
 
-    input, textarea, select { user-select: text; -webkit-user-select: text; }
+    input, textarea, select,
+    .chat-msg-user, .chat-msg-assistant { user-select: text; -webkit-user-select: text; }
 
     /* ── Right panel ─────────────────────────────────────────────────────── */
 
@@ -808,7 +809,7 @@
     }
 
     .chat-pane {
-      height: 40%;
+      height: var(--chat-h, 220px);
       flex-shrink: 0;
       display: flex;
       flex-direction: column;
@@ -1099,18 +1100,64 @@
     /* ── Chat section header ─────────────────────────────────────────────── */
 
     .chat-header {
-      padding: 0 12px;
+      padding: 0 8px 0 12px;
       height: 32px;
       display: flex;
       align-items: center;
+      justify-content: space-between;
       font-size: 0.6875rem;
       font-weight: 600;
       letter-spacing: 0.06em;
       text-transform: uppercase;
       color: var(--text-3);
-      border-top: 1px solid var(--border);
       flex-shrink: 0;
     }
+
+    #chat-brief-toggle {
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      color: var(--text-3);
+      cursor: pointer;
+      font-size: 0.625rem;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      padding: 2px 8px;
+      text-transform: uppercase;
+      transition: border-color 0.12s, color 0.12s, background 0.12s;
+    }
+
+    #chat-brief-toggle:hover { border-color: var(--text-2); color: var(--text-2); }
+
+    #chat-brief-toggle.active {
+      background: var(--blue-bg);
+      border-color: var(--blue);
+      color: var(--blue-text);
+    }
+
+    .chat-resize-handle {
+      height: 8px;
+      flex-shrink: 0;
+      cursor: row-resize;
+      position: relative;
+      touch-action: none;
+    }
+
+    .chat-resize-handle::after {
+      content: '';
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 50%;
+      height: 1px;
+      transform: translateY(-50%);
+      background: var(--border);
+      transition: height 0.12s, background 0.12s;
+    }
+
+    .chat-resize-handle:hover::after,
+    .chat-resize-handle.dragging::after { height: 2px; background: rgba(0, 122, 255, 0.6); }
+    .chat-resize-handle.dragging::after { background: var(--blue); }
   </style>
 </head>
 <body>
@@ -1228,7 +1275,19 @@
           </div>
         </div>
       </div>
-      <div class="chat-header">AI Assistant</div>
+      <div class="chat-resize-handle"
+        role="separator"
+        aria-label="Resize chat"
+        aria-orientation="horizontal"
+        aria-valuenow="220"
+        aria-valuemin="100"
+        aria-valuemax="600"
+        tabindex="0"
+      ></div>
+      <div class="chat-header">
+        <span>AI Assistant</span>
+        <button type="button" id="chat-brief-toggle" aria-pressed="false" title="Toggle brief responses">Brief</button>
+      </div>
       <div class="chat-pane">
         <div class="chat-messages" id="chat-messages" aria-live="polite" aria-label="AI conversation"></div>
         <div class="chat-input-area">
@@ -1334,6 +1393,69 @@
     toggleBtn.addEventListener('click', openPanel);
     closeBtn.addEventListener('click', closePanel);
     backdrop.addEventListener('click', closePanel);
+
+    // ── Chat resize (horizontal splitter) ────────────────────────────────────
+
+    const CHAT_H_KEY     = 'urdf-chat-h';
+    const CHAT_H_DEFAULT = 220;
+    const MIN_CH         = 100;
+
+    const chatHandle = document.querySelector('.chat-resize-handle');
+    const chatPane   = document.querySelector('.chat-pane');
+    const robotTab   = document.querySelector('.tab-body[data-tab="robot"]');
+
+    function maxCH() { return Math.floor(robotTab.offsetHeight * 0.75); }
+
+    function applyChatH(h) {
+      const clamped = Math.max(MIN_CH, Math.min(maxCH(), h));
+      document.documentElement.style.setProperty('--chat-h', clamped + 'px');
+      chatHandle.setAttribute('aria-valuenow', Math.round(clamped));
+      return clamped;
+    }
+
+    function saveChatH() {
+      try { localStorage.setItem(CHAT_H_KEY, chatPane.offsetHeight); } catch {}
+    }
+
+    {
+      const saved = parseInt(localStorage.getItem(CHAT_H_KEY), 10);
+      if (saved >= MIN_CH) applyChatH(saved);
+    }
+
+    chatHandle.addEventListener('pointerdown', e => {
+      e.preventDefault();
+      const startY = e.clientY;
+      const startH = chatPane.offsetHeight;
+      chatHandle.setPointerCapture(e.pointerId);
+      chatHandle.classList.add('dragging');
+
+      function onMove(ev) { applyChatH(startH + startY - ev.clientY); }
+      function onUp() {
+        chatHandle.classList.remove('dragging');
+        chatHandle.removeEventListener('pointermove', onMove);
+        chatHandle.removeEventListener('pointerup', onUp);
+        saveChatH();
+      }
+      chatHandle.addEventListener('pointermove', onMove);
+      chatHandle.addEventListener('pointerup', onUp);
+    });
+
+    chatHandle.addEventListener('dblclick', () => { applyChatH(CHAT_H_DEFAULT); saveChatH(); });
+
+    chatHandle.addEventListener('keydown', e => {
+      const cur = chatPane.offsetHeight;
+      let next;
+      switch (e.key) {
+        case 'ArrowUp':   next = cur + 16; break;
+        case 'ArrowDown': next = cur - 16; break;
+        case 'Home':      next = MIN_CH;   break;
+        case 'End':       next = maxCH();  break;
+        default: return;
+      }
+      e.preventDefault();
+      applyChatH(next);
+      saveChatH();
+    });
 
     // ── Panel resize (left edge drag, desktop only) ──────────────────────────
 

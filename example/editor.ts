@@ -117,6 +117,8 @@ export class URDFEditorController {
     private _partsList:   string[] = [];
     private _partCache    = new Map<string, string>();
     private _robotName = '';
+    private _urdfFetched = false;
+    private _brief = false;
     private readonly _partSelEl: HTMLSelectElement;
     private readonly _tabsEl: HTMLElement;
 
@@ -183,10 +185,30 @@ export class URDFEditorController {
         this._sendBtn.addEventListener('click', () => this._handleSend());
         this._abortBtn.addEventListener('click', () => this._abort?.abort());
 
+        const briefToggle = document.getElementById('chat-brief-toggle') as HTMLButtonElement;
+        briefToggle.addEventListener('click', () => {
+            this._brief = !this._brief;
+            briefToggle.classList.toggle('active', this._brief);
+            briefToggle.setAttribute('aria-pressed', String(this._brief));
+        });
+
+        let _lastEsc = 0;
         document.addEventListener('keydown', (e) => {
             if (!this._panelEl.closest('aside')?.classList.contains('open')) return;
             if (document.body.classList.contains('editor-open')) return;
             const active = document.activeElement as HTMLElement | null;
+
+            if (e.key === 'Escape') {
+                const now = Date.now();
+                if (now - _lastEsc < 400) {
+                    if (confirm('Clear chat history?')) this._clearChat();
+                    _lastEsc = 0;
+                    return;
+                }
+                _lastEsc = now;
+                return;
+            }
+
             if (active && /^(INPUT|TEXTAREA|SELECT)$/.test(active.tagName)) return;
             if (active?.isContentEditable) return;
             if (e.key.length !== 1 || e.metaKey || e.ctrlKey || e.altKey) return;
@@ -233,13 +255,18 @@ export class URDFEditorController {
     }
 
     setSourceUrl(url: string): void {
-        this._sourceUrl = url;
-        this._history   = [];
-        this._partsList = [];
+        this._abort?.abort();
+        this._sourceUrl   = url;
+        this._history     = [];
+        this._partsList   = [];
         this._partCache.clear();
-        this._robotName = '';
+        this._robotName   = '';
+        this._urdfFetched = false;
+        this._textareaEl.value = '';
         this._rebuildPartOptions();
         this._partSelEl.hidden = true;
+        this._loadPersistedHistory();
+        setTimeout(() => this._maybeResume(), 0);
         if (this.isOpen) {
             void this._fetchAndPopulate(url);
             void this._loadPartsManifest();
@@ -300,6 +327,7 @@ export class URDFEditorController {
         try {
             const text = await fetch(url).then(r => r.text());
             this._textareaEl.value = text;
+            this._urdfFetched = true;
             this._updateLineNums();
         } catch { /* ignore CORS / revoked blob */ }
     }
@@ -340,6 +368,8 @@ export class URDFEditorController {
     private _clearChat(): void {
         this._history = [];
         this._chatMsgsEl.innerHTML = '';
+        const key = this._historyKey();
+        if (key) try { localStorage.removeItem(key); } catch {}
     }
 
     private _formatXml(): void {
@@ -444,6 +474,42 @@ export class URDFEditorController {
         void this._runConversation(raw);
     }
 
+    // ── History persistence ───────────────────────────────────────────────────
+
+    private _historyKey(): string | null {
+        return this._sourceUrl ? `urdf-chat:${this._sourceUrl}` : null;
+    }
+
+    private _saveHistory(): void {
+        const key = this._historyKey();
+        if (!key) return;
+        try { localStorage.setItem(key, JSON.stringify(this._history)); } catch {}
+    }
+
+    private _loadPersistedHistory(): void {
+        this._chatMsgsEl.innerHTML = '';
+        const key = this._historyKey();
+        if (!key) return;
+        try {
+            const raw = localStorage.getItem(key);
+            if (!raw) return;
+            this._history = JSON.parse(raw) as Msg[];
+            for (const msg of this._history) {
+                if (msg.role === 'user' && typeof msg.content === 'string') {
+                    this._appendUserBubble(msg.content);
+                } else if (msg.role === 'assistant') {
+                    for (const b of msg.content as ContentBlock[]) {
+                        if (b.type === 'text' && b.text) this._appendAssistantBubble(b.text);
+                        else if (b.type === 'tool_use' && TOOL_CARDS.has(b.name))
+                            this._appendToolCard(b.name).setResult(true);
+                    }
+                }
+            }
+        } catch { this._history = []; }
+    }
+
+    // ── Conversation engine ───────────────────────────────────────────────────
+
     private _sanitizeHistory(): void {
         while (this._history.length > 0) {
             const last = this._history[this._history.length - 1];
@@ -453,43 +519,84 @@ export class URDFEditorController {
         }
     }
 
-    private async _runConversation(userText: string): Promise<void> {
-        this._sanitizeHistory();
-        this._appendUserBubble(userText);
-        this._history.push({ role: 'user', content: userText });
+    private async _executeTools(
+        toolCalls: ToolUseBlock[],
+        cardMap?: Map<string, { setResult(ok: boolean): void }>,
+    ): Promise<void> {
+        const results: ToolResBlock[] = [];
+        for (const tc of toolCalls) {
+            const card = cardMap?.get(tc.id) ?? (TOOL_CARDS.has(tc.name) ? this._appendToolCard(tc.name) : null);
+            const res  = await this._executeTool(tc.name, tc.input);
+            card?.setResult(!(res as Record<string, unknown>).error);
+            results.push({ type: 'tool_result', tool_use_id: tc.id, content: JSON.stringify(res) });
+        }
+        this._history.push({ role: 'user', content: results });
+        this._saveHistory();
+    }
+
+    private async _runLoop(): Promise<void> {
+        while (true) {
+            const spinnerEl = this._appendSpinner();
+            const stream    = await this._callAPI();
+            const { content, toolCalls, toolCards } = await this._processStream(stream, spinnerEl);
+            this._history.push({ role: 'assistant', content });
+            this._saveHistory();
+            if (!toolCalls.length) break;
+            await this._executeTools(toolCalls, toolCards);
+        }
+    }
+
+    private async _withSession(fn: () => Promise<void>): Promise<void> {
         this._abort          = new AbortController();
         this._sendBtn.disabled = true;
         this._abortBtn.hidden  = false;
-
         try {
-            while (true) {
-                const spinnerEl = this._appendSpinner();
-                const stream    = await this._callAPI();
-                const { content, toolCalls } = await this._processStream(stream, spinnerEl);
-                this._history.push({ role: 'assistant', content });
-
-                if (!toolCalls.length) break;
-
-                const results: ToolResBlock[] = [];
-                for (const tc of toolCalls) {
-                    const card = TOOL_CARDS.has(tc.name) ? this._appendToolCard(tc.name) : null;
-                    const res  = await this._executeTool(tc.name, tc.input);
-                    card?.setResult(!(res as Record<string, unknown>).error);
-                    results.push({ type: 'tool_result', tool_use_id: tc.id, content: JSON.stringify(res) });
-                }
-                this._history.push({ role: 'user', content: results });
-            }
+            await fn();
         } catch (err) {
             const e = err as Error;
             if (e.name !== 'AbortError') {
                 this._sanitizeHistory();
+                this._saveHistory();
                 this._appendAssistantBubble(`\u26a0 ${e.message || 'Request failed'}`);
             }
         } finally {
-            this._abort            = null;
+            this._abort          = null;
             this._sendBtn.disabled = false;
             this._abortBtn.hidden  = true;
         }
+    }
+
+    // Called after setSourceUrl: re-execute any pending tool calls left from a previous session.
+    private _maybeResume(): void {
+        const last = this._history[this._history.length - 1];
+        if (!last || last.role !== 'assistant') return;
+        const pending = (last.content as ContentBlock[])
+            .filter(b => b.type === 'tool_use' && Object.keys((b as ToolUseBlock).input).length > 0) as ToolUseBlock[];
+        if (!pending.length) return;
+        void this._withSession(async () => {
+            await this._executeTools(pending);
+            await this._runLoop();
+        });
+    }
+
+    private async _runConversation(userText: string): Promise<void> {
+        this._sanitizeHistory();
+        this._appendUserBubble(userText);
+        this._history.push({ role: 'user', content: userText });
+        this._saveHistory();
+
+        if (!this._urdfFetched && this._sourceUrl) {
+            await this._fetchAndPopulate(this._sourceUrl);
+            await this._loadPartsManifest();
+        }
+
+        await this._withSession(() => this._runLoop());
+    }
+
+    private get _displayRobotName(): string {
+        if (this._robotName) return this._robotName;
+        const m = this._sourceUrl?.match(/([^/]+)\.urdf/i);
+        return m?.[1] ?? '';
     }
 
     private _buildSystem(): string {
@@ -499,6 +606,11 @@ export class URDFEditorController {
             ? xml.slice(0, MAX_XML_CHARS) + '\n<!-- ... truncated ... -->'
             : xml;
 
+        const robotName    = this._displayRobotName;
+        const robotHeader  = robotName ? `ROBOT: ${robotName}\n\n` : '';
+        const briefNote    = this._brief
+            ? '\nBRIEF MODE: Answer in fewer than 4 lines. No preamble, no postamble, no elaboration. Minimize tokens. Direct answers only.'
+            : '';
         const selectedPart = this._partSelEl.value;
 
         if (selectedPart && this._partsList.length) {
@@ -508,7 +620,7 @@ export class URDFEditorController {
             return `You are an expert URDF robot description assistant embedded in a live 3D robot viewer.
 The robot URDF is split into part files assembled at build time. You are editing one part at a time.
 
-ROBOT PARTS (${this._robotName}):
+${robotHeader}ROBOT PARTS:
 ${partsDesc}
 
 CURRENTLY EDITING: ${selectedPart} (${nLines} lines)
@@ -524,13 +636,13 @@ Tool rules:
 • update_part with a new filename (e.g. "07-lidar.xml") to add a new component
 • highlight_lines / scroll_to_line — editor navigation
 
-Be concise. Use tools proactively.`;
+Be concise. Use tools proactively.${briefNote}`;
         }
 
         return `You are an expert URDF robot description assistant embedded in a live 3D robot viewer.
 The viewer re-renders in real time when you call update_urdf. The user sees the 3D result instantly.
 
-CURRENT URDF (${nLines} lines):
+${robotHeader}CURRENT URDF (${nLines} lines):
 \`\`\`xml
 ${preview}
 \`\`\`
@@ -542,7 +654,7 @@ Tool rules:
 • highlight_lines — call after every explanation with the relevant line numbers
 • scroll_to_line — navigate editor to a specific line
 
-Be concise. Use tools proactively.`;
+Be concise. Use tools proactively.${briefNote}`;
     }
 
     private _buildTools(): readonly object[] {
@@ -573,9 +685,10 @@ Be concise. Use tools proactively.`;
     private async _processStream(
         body: ReadableStream<Uint8Array>,
         spinnerEl: HTMLElement,
-    ): Promise<{ content: ContentBlock[]; toolCalls: ToolUseBlock[] }> {
+    ): Promise<{ content: ContentBlock[]; toolCalls: ToolUseBlock[]; toolCards: Map<string, { setResult(ok: boolean): void }> }> {
         const content: ContentBlock[] = [];
         const toolCalls: ToolUseBlock[] = [];
+        const toolCards = new Map<string, { setResult(ok: boolean): void }>();
         let curMsgEl: HTMLElement | null = null;
         let curText = '';
         let curTool: { id: string; name: string; idx: number } | null = null;
@@ -606,6 +719,9 @@ Be concise. Use tools proactively.`;
                     curTool = { id: cb.id!, name: cb.name!, idx: content.length };
                     curJson = '';
                     content.push({ type: 'tool_use', id: cb.id!, name: cb.name!, input: {} });
+                    if (TOOL_CARDS.has(cb.name!)) {
+                        toolCards.set(cb.id!, this._appendToolCard(cb.name!));
+                    }
                 }
             } else if (event === 'content_block_delta') {
                 const delta = d.delta;
@@ -636,7 +752,7 @@ Be concise. Use tools proactively.`;
         }
 
         removeSpinner();
-        return { content, toolCalls };
+        return { content, toolCalls, toolCards };
     }
 
     private async *_parseSSE(
@@ -682,11 +798,7 @@ Be concise. Use tools proactively.`;
                 });
                 if (!res.ok) return { error: await res.text() };
                 this._setEditorContent(xml);
-                if (this._partsList.length && !this._partsList.includes(filename)) {
-                    this._partsList = [...this._partsList, filename].sort();
-                    this._rebuildPartOptions();
-                    this._renderTabs();
-                }
+                await this._loadPartsManifest();
                 this._partSelEl.value = filename;
                 this._updateActiveTab();
                 if (this._sourceUrl) {
