@@ -118,8 +118,7 @@ s.holes.push(circH( 0.040, -0.062, hr));
 const geo = new THREE.ExtrudeGeometry(s, {
   depth: thick, bevelEnabled: false, curveSegments: 48,
 });
-geo.rotateX(-Math.PI / 2);
-geo.rotateY(-Math.PI / 2);
+geo.rotateZ(-Math.PI / 2);
 
 // ── Write binary STL ────────────────────────────────────────────────────────
 
