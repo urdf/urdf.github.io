@@ -26,7 +26,7 @@ const STYLE = `
     display: block;
     background: linear-gradient(160deg, #0f1117 0%, #1a1f2e 100%);
 }
-canvas { width: 100%; height: 100%; display: block; }
+canvas { width: 100%; height: 100%; display: block; transition: opacity 0.2s ease; }
 `;
 
 const EMPTY_RAYCAST = () => {};
@@ -286,7 +286,11 @@ export class URDFViewer extends HTMLElement {
 
         if (!this.urdf) return;
 
+        const canvas = this.renderer.domElement;
+        canvas.style.opacity = '0';
+
         const id = ++this._loadId;
+        const reveal = () => { if (id === this._loadId) canvas.style.opacity = '1'; };
 
         const loader = new URDFLoader();
         loader.packages = this._resolvePackages(this.package);
@@ -296,7 +300,7 @@ export class URDFViewer extends HTMLElement {
         loader.loadMesh = (path, mgr) => {
             if (!meshManagerHooked) {
                 meshManagerHooked = true;
-                mgr.onLoad = () => { if (id === this._loadId) this.fitCamera(); };
+                mgr.onLoad = () => { if (id === this._loadId) { this.fitCamera(); reveal(); } };
             }
             return baseMeshLoader(path, mgr).then(obj => { this.redraw(); return obj; });
         };
@@ -313,12 +317,18 @@ export class URDFViewer extends HTMLElement {
             this._prepareMeshes(robot);
             this._applyIgnoreLimits(this.ignoreLimits);
             this._updateCollision();
-            this.fitCamera();
+            // Only fit + reveal here when there are no mesh files; otherwise
+            // mgr.onLoad handles both after all meshes have loaded.
+            if (!meshManagerHooked) {
+                this.fitCamera();
+                reveal();
+            }
 
             this.dispatchEvent(new CustomEvent('urdf-processed', { bubbles: true }));
         }).catch(err => {
             console.error('URDFViewer: load error', err);
             if (id === this._loadId) {
+                reveal();
                 this.dispatchEvent(new CustomEvent('urdf-error', {
                     bubbles: true,
                     detail: String((err as Error).message ?? err),
