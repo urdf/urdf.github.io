@@ -31,6 +31,11 @@ canvas { width: 100%; height: 100%; display: block; }
 
 const EMPTY_RAYCAST = () => {};
 const _ZERO_VEC = new THREE.Vector3();
+// Fixed scene-space slide axis — matches the default fitCamera() view direction
+// so robots always enter from screen-right and exit screen-left, regardless of
+// where the user has orbited the camera.
+const _SLIDE_RIGHT = new THREE.Vector3(1, 0, 1).normalize();
+const _SLIDE_LEFT  = new THREE.Vector3(-1, 0, -1).normalize();
 
 export class URDFViewer extends HTMLElement {
 
@@ -85,6 +90,7 @@ export class URDFViewer extends HTMLElement {
     private _loadId = 0;
     private _introAnim: { start: THREE.Vector3; t0: number; dur: number } | null = null;
     private _outgoing: { obj: THREE.Object3D; from: THREE.Vector3; to: THREE.Vector3; t0: number; dur: number } | null = null;
+    private _exitRotation = new THREE.Euler(); // world.rotation saved when robot finishes loading
     private _resizeObserver: ResizeObserver;
     private _shadow: ShadowRoot;
 
@@ -335,7 +341,7 @@ export class URDFViewer extends HTMLElement {
         loader.loadMesh = (path, mgr) => {
             if (!meshManagerHooked) {
                 meshManagerHooked = true;
-                mgr.onLoad = () => { if (id === this._loadId) { this.fitCamera(); this._startIntro(); reveal(); } };
+                mgr.onLoad = () => { if (id === this._loadId) { this.fitCamera(); this._exitRotation.copy(this.world.rotation); this._startIntro(); reveal(); } };
             }
             return baseMeshLoader(path, mgr).then(obj => { this.redraw(); return obj; });
         };
@@ -356,6 +362,7 @@ export class URDFViewer extends HTMLElement {
             // mgr.onLoad handles both after all meshes have loaded.
             if (!meshManagerHooked) {
                 this.fitCamera();
+                this._exitRotation.copy(this.world.rotation);
                 this._startIntro();
                 reveal();
             }
@@ -375,39 +382,27 @@ export class URDFViewer extends HTMLElement {
 
     // Slides the world in from screen-right after fitCamera() has been called.
     private _startIntro(): void {
-        const forward = new THREE.Vector3()
-            .subVectors(this.controls.target, this.camera.position)
-            .normalize();
-        const right = new THREE.Vector3()
-            .crossVectors(forward, new THREE.Vector3(0, 1, 0))
-            .normalize()
-            .multiplyScalar(this._sphere.radius * 5);
-        this.world.position.copy(right);
+        const start = _SLIDE_RIGHT.clone().multiplyScalar(this._sphere.radius * 5);
+        this.world.position.copy(start);
         this.world.visible = true;
-        this._introAnim = { start: right, t0: performance.now(), dur: 450 };
+        this._introAnim = { start, t0: performance.now(), dur: 450 };
     }
 
     // Slides the current robot out to screen-left, then disposes it.
     private _startExit(): void {
         if (!this.robot || this._sphere.radius === 0) return;
 
-        const forward = new THREE.Vector3()
-            .subVectors(this.controls.target, this.camera.position)
-            .normalize();
-        const left = new THREE.Vector3()
-            .crossVectors(forward, new THREE.Vector3(0, 1, 0))
-            .normalize()
-            .multiplyScalar(-this._sphere.radius * 5);
+        const to = _SLIDE_LEFT.clone().multiplyScalar(this._sphere.radius * 5);
 
         const outgoing = new THREE.Object3D();
-        outgoing.rotation.copy(this.world.rotation);
-        outgoing.position.copy(this.world.position); // preserve mid-intro position if any
+        outgoing.rotation.copy(this._exitRotation); // rotation saved at load time, not current world.rotation
+        outgoing.position.copy(this.world.position); // preserve mid-intro offset if any
         this.world.remove(this.robot);
         outgoing.add(this.robot);
         this.robot = null;
         this.scene.add(outgoing);
 
-        this._outgoing = { obj: outgoing, from: outgoing.position.clone(), to: left, t0: performance.now(), dur: 350 };
+        this._outgoing = { obj: outgoing, from: outgoing.position.clone(), to, t0: performance.now(), dur: 350 };
     }
 
     private _disposeRobot(): void {
