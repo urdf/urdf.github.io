@@ -195,8 +195,32 @@ export class GestureController {
         }
 
         // ── Camera animation — runs every frame regardless of gesture state ──
+        this._syncCameraIfNeeded();
         this._applyCamera();
     };
+
+    // Re-sync targets if fitCamera() or any external code moved the camera.
+    private _syncCameraIfNeeded(): void {
+        const controls = (this.viewer as unknown as { controls: { target: THREE.Vector3 } }).controls;
+        const cam = this.viewer.camera as THREE.PerspectiveCamera;
+        if (!cam || !controls || this.sphRadius === 0) return;
+
+        const expectedPos = new THREE.Vector3()
+            .setFromSpherical(new THREE.Spherical(this.sphRadius, this.sphPhi, this.sphTheta))
+            .add(controls.target);
+
+        // If the camera was moved more than 10 % of the current radius away from
+        // where we last placed it, something external (fitCamera, robot switch)
+        // repositioned it — resync so we continue from the new position.
+        if (cam.position.distanceTo(expectedPos) > this.sphRadius * 0.1) {
+            const sph = new THREE.Spherical().setFromVector3(
+                cam.position.clone().sub(controls.target),
+            );
+            this.sphTheta  = this.targetTheta  = sph.theta;
+            this.sphPhi    = this.targetPhi    = sph.phi;
+            this.sphRadius = this.targetRadius = sph.radius;
+        }
+    }
 
     // Lerp sph* toward target* and push to the camera.
     private _applyCamera(): void {
