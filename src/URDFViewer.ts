@@ -26,7 +26,7 @@ const STYLE = `
     display: block;
     background: linear-gradient(160deg, #0f1117 0%, #1a1f2e 100%);
 }
-canvas { width: 100%; height: 100%; display: block; transition: opacity 0.2s ease; }
+canvas { width: 100%; height: 100%; display: block; }
 `;
 
 const EMPTY_RAYCAST = () => {};
@@ -84,6 +84,7 @@ export class URDFViewer extends HTMLElement {
     private _dirty = false;
     private _loadId = 0;
     private _introAnim: { start: THREE.Vector3; t0: number; dur: number } | null = null;
+    private _outgoing: { obj: THREE.Object3D; from: THREE.Vector3; to: THREE.Vector3; t0: number; dur: number } | null = null;
     private _resizeObserver: ResizeObserver;
     private _shadow: ShadowRoot;
 
@@ -271,6 +272,24 @@ export class URDFViewer extends HTMLElement {
                 }
             }
 
+            const out = this._outgoing;
+            if (out) {
+                const t = Math.min((performance.now() - out.t0) / out.dur, 1);
+                const ease = t * t * t; // cubic ease-in — accelerates away
+                out.obj.position.lerpVectors(out.from, out.to, ease);
+                this._dirty = true;
+                if (t >= 1) {
+                    this.scene.remove(out.obj);
+                    out.obj.traverse(c => {
+                        const mesh = c as THREE.Mesh;
+                        if (!mesh.geometry?.userData.shared) mesh.geometry?.dispose();
+                        if (Array.isArray(mesh.material)) mesh.material.forEach(m => m.dispose());
+                        else mesh.material?.dispose();
+                    });
+                    this._outgoing = null;
+                }
+            }
+
             this.controls.update();
             if (this._dirty) {
                 this._updateScene();
@@ -297,17 +316,16 @@ export class URDFViewer extends HTMLElement {
         (this as unknown as { _lastKey?: string })._lastKey = key;
 
         this._introAnim = null;
+        this._startExit(); // slide current robot out before disposing
+        this._disposeRobot(); // no-op if _startExit transferred the robot
         this.world.position.setScalar(0);
-        this._disposeRobot();
+        this.world.visible = false;
         this.dispatchEvent(new CustomEvent('urdf-change', { bubbles: true }));
 
         if (!this.urdf) return;
 
-        const canvas = this.renderer.domElement;
-        canvas.style.opacity = '0';
-
         const id = ++this._loadId;
-        const reveal = () => { if (id === this._loadId) canvas.style.opacity = '1'; };
+        const reveal = () => { if (id === this._loadId) this.world.visible = true; };
 
         const loader = new URDFLoader();
         loader.packages = this._resolvePackages(this.package);
@@ -365,7 +383,31 @@ export class URDFViewer extends HTMLElement {
             .normalize()
             .multiplyScalar(this._sphere.radius * 5);
         this.world.position.copy(right);
+        this.world.visible = true;
         this._introAnim = { start: right, t0: performance.now(), dur: 450 };
+    }
+
+    // Slides the current robot out to screen-left, then disposes it.
+    private _startExit(): void {
+        if (!this.robot || this._sphere.radius === 0) return;
+
+        const forward = new THREE.Vector3()
+            .subVectors(this.controls.target, this.camera.position)
+            .normalize();
+        const left = new THREE.Vector3()
+            .crossVectors(forward, new THREE.Vector3(0, 1, 0))
+            .normalize()
+            .multiplyScalar(-this._sphere.radius * 5);
+
+        const outgoing = new THREE.Object3D();
+        outgoing.rotation.copy(this.world.rotation);
+        outgoing.position.copy(this.world.position); // preserve mid-intro position if any
+        this.world.remove(this.robot);
+        outgoing.add(this.robot);
+        this.robot = null;
+        this.scene.add(outgoing);
+
+        this._outgoing = { obj: outgoing, from: outgoing.position.clone(), to: left, t0: performance.now(), dur: 350 };
     }
 
     private _disposeRobot(): void {

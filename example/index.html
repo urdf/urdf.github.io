@@ -307,7 +307,6 @@
 
     .sidebar-backdrop.visible { display: block; }
 
-    .sidebar-pin,
     .sidebar-close {
       background: none;
       border: none;
@@ -320,15 +319,11 @@
       align-items: center;
       justify-content: center;
       border-radius: 4px;
+      margin-left: auto;
     }
 
-    .sidebar-pin:focus-visible,
     .sidebar-close:focus-visible { outline: 2px solid var(--blue); outline-offset: 1px; }
-
-    .sidebar-pin  { margin-left: auto; }
-    .sidebar-pin:hover,
     .sidebar-close:hover { color: var(--text-1); }
-    .sidebar-pin.active  { color: var(--blue); }
 
     @media (max-width: 768px) {
       .drop-hint { display: none; }
@@ -558,13 +553,7 @@
   <aside aria-label="Controls">
     <header>
       <h1>URDF Viewer</h1>
-      <button type="button" class="sidebar-pin" id="sidebar-pin" aria-label="Pin sidebar open" aria-pressed="false">
-        <svg width="15" height="11" viewBox="0 0 15 11" fill="none" aria-hidden="true">
-          <rect x="0.75" y="0.75" width="13.5" height="9.5" rx="1.5" stroke="currentColor" stroke-width="1.3"/>
-          <line x1="4.5" y1="0.75" x2="4.5" y2="10.25" stroke="currentColor" stroke-width="1.3"/>
-        </svg>
-      </button>
-      <button type="button" class="sidebar-close" id="sidebar-close" aria-label="Close controls">✕</button>
+      <button type="button" class="sidebar-close" id="sidebar-close" aria-label="Close panel">✕</button>
     </header>
 
     <div class="section">
@@ -664,37 +653,28 @@
     const backdrop  = document.getElementById('sidebar-backdrop');
     const toggleBtn = document.getElementById('sidebar-toggle');
     const closeBtn  = document.getElementById('sidebar-close');
-    const pinBtn    = document.getElementById('sidebar-pin');
+
+    const isDesktop = () => window.innerWidth > 768;
 
     function openSidebar() {
       sidebar.classList.add('open');
-      if (!sidebar.classList.contains('pinned')) backdrop.classList.add('visible');
+      if (isDesktop()) {
+        sidebar.classList.add('pinned');
+      } else {
+        backdrop.classList.add('visible');
+      }
     }
 
-    function closeSidebar(force = false) {
-      if (!force && sidebar.classList.contains('pinned')) return;
-      sidebar.classList.remove('open');
+    function closeSidebar() {
+      sidebar.classList.remove('open', 'pinned');
       backdrop.classList.remove('visible');
     }
 
-    function toggleSidebar() {
-      if (sidebar.classList.contains('open')) closeSidebar(true);
-      else openSidebar();
-    }
+    toggleBtn.addEventListener('click', openSidebar);
+    closeBtn.addEventListener('click', closeSidebar);
+    backdrop.addEventListener('click', closeSidebar);
 
-    pinBtn.addEventListener('click', () => {
-      const pinned = sidebar.classList.toggle('pinned');
-      pinBtn.classList.toggle('active', pinned);
-      pinBtn.setAttribute('aria-pressed', String(pinned));
-      if (pinned) backdrop.classList.remove('visible');
-      else if (sidebar.classList.contains('open')) backdrop.classList.add('visible');
-    });
-
-    toggleBtn.addEventListener('click', toggleSidebar);
-    closeBtn.addEventListener('click', () => closeSidebar(true));
-    backdrop.addEventListener('click', () => closeSidebar());
-
-    if (window.innerWidth > 768) openSidebar();
+    if (isDesktop()) openSidebar();
   </script>
 </body>
 </html>
