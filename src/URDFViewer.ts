@@ -151,6 +151,7 @@ export class URDFViewer extends HTMLElement {
         );
         this.shadowPlane.rotation.x = -Math.PI / 2;
         this.shadowPlane.receiveShadow = true;
+        this.shadowPlane.raycast = () => {};  // purely visual — never block pointer events
         this.scene.add(this.shadowPlane);
 
         // Renderer
@@ -416,6 +417,19 @@ export class URDFViewer extends HTMLElement {
     // Slides the current robot out to screen-left, then disposes it.
     private _startExit(): void {
         if (!this.robot || this._sphere.radius === 0) return;
+
+        // Rapid switching: drop any still-animating outgoing before starting a new one,
+        // otherwise the orphaned scene object is never removed.
+        if (this._outgoing) {
+            this.scene.remove(this._outgoing.obj);
+            this._outgoing.obj.traverse(c => {
+                const mesh = c as THREE.Mesh;
+                if (!mesh.geometry?.userData.shared) mesh.geometry?.dispose();
+                if (Array.isArray(mesh.material)) mesh.material.forEach(disposeMat);
+                else if (mesh.material) disposeMat(mesh.material);
+            });
+            this._outgoing = null;
+        }
 
         if (_reduceMotionMQ?.matches) {
             this._disposeRobot();
