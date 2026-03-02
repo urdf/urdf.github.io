@@ -613,6 +613,9 @@
       color: var(--text-2);
       width: 38px;
       flex-shrink: 0;
+      cursor: ew-resize;
+      user-select: none;
+      touch-action: none;
     }
 
     .inspector-row input[type=number],
@@ -1391,6 +1394,21 @@
             <input type="range"  id="build-wheel-width" min="8" max="30" step="1" value="26">
             <input type="number" id="build-wheel-width-num" min="8" max="30" step="1" value="26">
           </div>
+        </div>
+
+        <div style="padding: 12px 12px 8px;">
+          <button id="build-export" style="
+            width: 100%;
+            padding: 7px 0;
+            background: var(--blue);
+            color: #fff;
+            border: none;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            letter-spacing: 0.02em;
+          ">Download .zip</button>
         </div>
       </div>
     </div>

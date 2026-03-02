@@ -281,6 +281,42 @@ for (const el of [inspectorX, inspectorY, inspectorZ, inspectorScaleX, inspector
     el.addEventListener('input', applyInspector);
 }
 
+/**
+ * Make an inspector label scrub its paired number input on horizontal drag.
+ * step attribute controls sensitivity (e.g. 0.001 → 1 mm/px, 0.01 → 1%/px).
+ * A plain click (no drag) falls through to focus the input.
+ */
+function makeScrubLabel(label: HTMLElement, input: HTMLInputElement): void {
+    let startX = 0, startVal = 0, dragging = false;
+    const step = parseFloat(input.step) || 0.001;
+
+    label.addEventListener('pointerdown', (e) => {
+        startX   = e.clientX;
+        startVal = parseFloat(input.value) || 0;
+        dragging = false;
+        label.setPointerCapture(e.pointerId);
+    });
+
+    label.addEventListener('pointermove', (e) => {
+        if (!label.hasPointerCapture(e.pointerId)) return;
+        const dx = e.clientX - startX;
+        if (!dragging && Math.abs(dx) < 3) return;   // 3 px dead zone
+        dragging = true;
+        input.value = String(parseFloat((startVal + dx * step).toFixed(6)));
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+
+    label.addEventListener('pointerup', () => {
+        if (!dragging) input.focus();   // plain click → focus the input
+        dragging = false;
+    });
+}
+
+for (const input of [inspectorX, inspectorY, inspectorZ, inspectorScaleX, inspectorScaleY, inspectorScaleZ]) {
+    const label = input.closest('.inspector-row')?.querySelector('label') as HTMLElement | null;
+    if (label) makeScrubLabel(label, input);
+}
+
 inspectorClose.addEventListener('click', () => selectPart(null));
 
 inspectorCopy.addEventListener('click', () => {
@@ -519,3 +555,6 @@ syncPair(buildChassisBodyHWEl,    document.getElementById('build-chassis-body-hw
 syncPair(buildChassisRearHWEl,    document.getElementById('build-chassis-rear-hw-num')   as HTMLInputElement, onChassisChange);
 syncPair(buildWheelRadiusEl,      document.getElementById('build-wheel-radius-num')      as HTMLInputElement, onWheelChange);
 syncPair(buildWheelWidthEl,       document.getElementById('build-wheel-width-num')       as HTMLInputElement, onWheelChange);
+
+const buildExportBtn = document.getElementById('build-export') as HTMLButtonElement;
+buildExportBtn.addEventListener('click', () => void buildCtrl.exportZip(buildExportBtn));
