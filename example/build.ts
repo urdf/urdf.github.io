@@ -22,6 +22,8 @@ export class URDFBuildController {
     private _dir        = '';
     private _partMap    = new Map<string, string>();
     private _stlBlobs   = new Map<string, string>();  // filename → object URL
+    private _jointZPatches = new Map<string, number>(); // joint name → new Z value
+    private _wheelGroundZ  = 0; // joint_Z − radius at load time; constant ground offset
     private _blobUrl:   string | null = null;
 
     readonly noticeEl:  HTMLElement;
@@ -41,9 +43,15 @@ export class URDFBuildController {
         this._dir       = dir;
         this._partMap   = new Map(partMap);
 
-        // Discard old generated STLs — they belong to the previous robot
-        for (const url of this._stlBlobs.values()) URL.revokeObjectURL(url);
+        for (const url of this._stlBlobs.values()) URL.revokeObjectURL(url.split('#')[0]);
         this._stlBlobs.clear();
+        this._jointZPatches.clear();
+
+        // Capture the wheel axle height so that when radius changes the wheel
+        // bottom stays at the same Z (ground plane stays visually consistent).
+        //   ground_z = joint_Z − radius  →  new joint_Z = new_radius + ground_z
+        const origWheelZ   = this._parseJointZ('wheel_left_joint') ?? (-WHEEL_DEFAULTS.radius);
+        this._wheelGroundZ = origWheelZ - WHEEL_DEFAULTS.radius;
 
         this.noticeEl.hidden = this.isSupported;
     }
@@ -56,7 +64,22 @@ export class URDFBuildController {
     }
 
     updateWheel(params: WheelParams): void {
+        // Keep wheel bottom at the same ground-plane Z as at load time.
+        const z = params.radius + this._wheelGroundZ;
+        this._jointZPatches.set('wheel_left_joint',  z);
+        this._jointZPatches.set('wheel_right_joint', z);
         this._setSTL('wheel.stl', generateWheel(params));
+    }
+
+    /** Read the Z component of a named joint's origin xyz from the source partMap. */
+    private _parseJointZ(joint: string): number | null {
+        for (const xml of this._partMap.values()) {
+            const m = xml.match(
+                new RegExp(`<joint[^>]*name="${joint}"[\\s\\S]*?<origin[^>]*\\bxyz="([^"]+)"`)
+            );
+            if (m) return parseFloat(m[1].trim().split(/\s+/)[2]);
+        }
+        return null;
     }
 
     private _setSTL(filename: string, stl: ArrayBuffer): void {
@@ -74,6 +97,19 @@ export class URDFBuildController {
     private _reload(): void {
         if (!this._robotName) return;
         let xml = assembleXML(this._robotName, this._partMap);
+
+        // Patch joint Z values where geometry drives kinematics (e.g. wheel radius).
+        // Always applied to the original _partMap assembly so there is no drift across calls.
+        for (const [joint, z] of this._jointZPatches) {
+            xml = xml.replace(
+                new RegExp(`(<joint\\b[^>]*?\\bname="${joint}"[\\s\\S]*?<origin\\b[^>]*?\\bxyz=")([^"]+)(")`),
+                (_, pre, xyz, post) => {
+                    const parts = xyz.trim().split(/\s+/);
+                    parts[2] = z.toFixed(4);
+                    return `${pre}${parts.join(' ')}${post}`;
+                }
+            );
+        }
 
         // Replace matching filenames with generated blob URLs
         for (const [filename, blobUrl] of this._stlBlobs) {
