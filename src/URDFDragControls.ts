@@ -127,22 +127,15 @@ export class URDFDragControls {
 
     // ── Override hooks ─────────────────────────────────────────────────────
 
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     updateJoint(joint: URDFJoint, angle: number): void {
         joint.setJointValue(angle);
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     onDragStart(_joint: URDFJoint): void {}
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     onDragEnd(_joint: URDFJoint): void {}
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     onHover(_joint: URDFJoint): void {}
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     onUnhover(_joint: URDFJoint): void {}
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     onHoverAny(_joint: URDFJoint): void {}
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     onUnhoverAny(_joint: URDFJoint): void {}
 }
 

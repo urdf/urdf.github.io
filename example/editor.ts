@@ -78,10 +78,14 @@ type Action = {
 
 // ── Markdown renderer ─────────────────────────────────────────────────────────
 
+// CDN globals loaded via <script> tags in index.html
+declare const marked: { parse(s: string): string } | undefined;
+declare const DOMPurify: { sanitize(s: string, o?: object): string } | undefined;
+
 function renderMd(text: string): string {
-    const m = (window as Record<string, unknown>).marked as { parse(s: string): string } | undefined;
-    const d = (window as Record<string, unknown>).DOMPurify as { sanitize(s: string, o?: object): string } | undefined;
-    if (m && d) return d.sanitize(m.parse(text), { ADD_ATTR: ['style'] });
+    if (typeof marked !== 'undefined' && typeof DOMPurify !== 'undefined') {
+        return DOMPurify.sanitize(marked.parse(text), { ADD_ATTR: ['style'] });
+    }
     return text
         .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
         .replace(/\n/g, '<br>');
@@ -98,7 +102,6 @@ export class URDFEditorController {
     private readonly _chatInputEl:  HTMLTextAreaElement;
     private readonly _sendBtn:      HTMLButtonElement;
     private readonly _abortBtn:     HTMLButtonElement;
-    private readonly _editorPaneEl: HTMLElement;
     private readonly _cmdAcEl:      HTMLElement;
     private readonly _actions:      Record<string, Action>;
 
@@ -110,6 +113,7 @@ export class URDFEditorController {
     private _highlights   = new Set<number>();
     private _cmdAcIdx     = -1;
     private _partsList:   string[] = [];
+    private _partCache    = new Map<string, string>();
     private _robotName = '';
     private readonly _partSelEl: HTMLSelectElement;
     private readonly _tabsEl: HTMLElement;
@@ -123,14 +127,13 @@ export class URDFEditorController {
         this._chatInputEl  = document.getElementById('chat-input') as HTMLTextAreaElement;
         this._sendBtn      = document.getElementById('chat-send') as HTMLButtonElement;
         this._abortBtn     = document.getElementById('chat-abort') as HTMLButtonElement;
-        this._editorPaneEl = panelEl.querySelector<HTMLElement>('.editor-pane')!;
         this._cmdAcEl      = document.getElementById('cmd-ac') as HTMLElement;
         this._partSelEl    = panelEl.querySelector<HTMLSelectElement>('#part-select')!;
         this._tabsEl       = document.getElementById('editor-tabs') as HTMLElement;
 
         this._partSelEl.addEventListener('change', () => void this._onPartChange());
 
-        // Slash command registry — only actions that can't be expressed as natural language
+        // Slash command registry. Only actions that can't be expressed as natural language.
         this._actions = {
             clear:  { fn: () => this._clearChat(), desc: 'Clear chat history' },
             format: { fn: () => this._formatXml(), desc: 'Prettify URDF XML'  },
@@ -142,7 +145,7 @@ export class URDFEditorController {
             this._lineNumsEl.scrollTop = this._textareaEl.scrollTop;
         });
 
-        // Chat input — auto-expand + autocomplete trigger
+        // Chat input: auto-expand + autocomplete trigger
         this._chatInputEl.addEventListener('input', () => {
             this._chatInputEl.style.height = 'auto';
             this._chatInputEl.style.height = `${Math.min(this._chatInputEl.scrollHeight, 120)}px`;
@@ -242,8 +245,9 @@ export class URDFEditorController {
         this._sourceUrl = url;
         this._history   = [];
         this._partsList = [];
+        this._partCache.clear();
         this._robotName = '';
-        this._partSelEl.innerHTML = '<option value="">Full URDF</option>';
+        this._rebuildPartOptions();
         this._partSelEl.hidden = true;
         if (this.isOpen) {
             void this._fetchAndPopulate(url);
@@ -290,13 +294,17 @@ export class URDFEditorController {
         if (!action) return;
         this._hideCmdAc();
         if (action.fn) {
-            this._chatInputEl.value = '';
-            this._chatInputEl.style.height = '';
+            this._clearInput();
             action.fn([]);
         } else if (action.prompt) {
             this._chatInputEl.value = `/${cmd} `;
             this._chatInputEl.focus();
         }
+    }
+
+    private _clearInput(): void {
+        this._chatInputEl.value = '';
+        this._chatInputEl.style.height = '';
     }
 
     // ── Editor ────────────────────────────────────────────────────────────────
@@ -361,6 +369,11 @@ export class URDFEditorController {
 
     // ── Parts ─────────────────────────────────────────────────────────────────
 
+    private _rebuildPartOptions(): void {
+        this._partSelEl.innerHTML = '<option value="">Full URDF</option>' +
+            this._partsList.map(p => `<option value="${p}">${p}</option>`).join('');
+    }
+
     private async _loadPartsManifest(): Promise<void> {
         if (!this._sourceUrl) return;
         const manifestUrl = this._sourceUrl.replace(/\.urdf(\?.*)?$/, '.parts.json');
@@ -368,24 +381,26 @@ export class URDFEditorController {
             const data = await fetch(manifestUrl).then(r => r.json()) as { robot: string; parts: string[] };
             this._robotName = data.robot;
             this._partsList = data.parts;
-            this._partSelEl.innerHTML = '<option value="">Full URDF</option>' +
-                data.parts.map(p => `<option value="${p}">${p}</option>`).join('');
+            this._rebuildPartOptions();
             this._partSelEl.hidden = false;
             this._renderTabs();
-        } catch { /* no manifest — parts not available */ }
+        } catch { /* no manifest, parts not available */ }
     }
 
     private async _onPartChange(): Promise<void> {
         const filename = this._partSelEl.value;
-        this._highlights.clear();
         if (filename) {
             const partUrl = this._sourceUrl!.replace(/[^/]+\.urdf(\?.*)?$/, `parts/${filename}`);
             try {
-                const text = await fetch(partUrl).then(r => r.text());
-                this._textareaEl.value = text;
-                this._updateLineNums();
+                const cached = this._partCache.get(partUrl);
+                const text = cached !== undefined
+                    ? cached
+                    : await fetch(partUrl).then(r => r.text());
+                this._partCache.set(partUrl, text);
+                this._setEditorContent(text);
             } catch { /* ignore */ }
         } else if (this._sourceUrl) {
+            this._highlights.clear();
             await this._fetchAndPopulate(this._sourceUrl);
         }
         this._updateActiveTab();
@@ -432,8 +447,7 @@ export class URDFEditorController {
             const cmd    = rawCmd.toLowerCase();
             const action = this._actions[cmd];
             if (action?.fn) {
-                this._chatInputEl.value = '';
-                this._chatInputEl.style.height = '';
+                this._clearInput();
                 action.fn(rest);
                 return;
             }
@@ -441,12 +455,11 @@ export class URDFEditorController {
                 this._chatInputEl.value = action.prompt(rest.join(' '));
                 return; // let user review + press Enter again
             }
-            // Unknown slash command — fall through to send as text
+            // Unknown slash command. Fall through to send as text.
         }
 
         if (this._abort) return;
-        this._chatInputEl.value = '';
-        this._chatInputEl.style.height = '';
+        this._clearInput();
         void this._runConversation(raw);
     }
 
@@ -563,7 +576,7 @@ Tool rules:
 Be concise. Use tools proactively.`;
     }
 
-    private _buildTools() {
+    private _buildTools(): readonly object[] {
         const canEditParts = IS_DEV && this._partSelEl.value && this._partsList.length > 0;
         const editTool = canEditParts ? TOOL_UPDATE_PART : TOOL_FULL_URDF;
         return [editTool, TOOL_HIGHLIGHT, TOOL_SCROLL];
@@ -683,6 +696,12 @@ Be concise. Use tools proactively.`;
         }
     }
 
+    private _setEditorContent(xml: string): void {
+        this._textareaEl.value = xml;
+        this._highlights.clear();
+        this._updateLineNums();
+    }
+
     private async _executeTool(name: string, args: Record<string, unknown>): Promise<unknown> {
         switch (name) {
             case 'update_part': {
@@ -693,15 +712,11 @@ Be concise. Use tools proactively.`;
                     body: JSON.stringify({ robot: this._robotName, filename, content: xml }),
                 });
                 if (!res.ok) return { error: await res.text() };
-                // Update textarea with the saved part content
-                this._textareaEl.value = xml;
-                this._highlights.clear();
-                this._updateLineNums();
-                // Update part selector if a new file was created
+                this._setEditorContent(xml);
+                // Register new part file if it was just created
                 if (this._partsList.length && !this._partsList.includes(filename)) {
                     this._partsList = [...this._partsList, filename].sort();
-                    this._partSelEl.innerHTML = '<option value="">Full URDF</option>' +
-                        this._partsList.map(p => `<option value="${p}">${p}</option>`).join('');
+                    this._rebuildPartOptions();
                     this._renderTabs();
                 }
                 this._partSelEl.value = filename;
@@ -715,9 +730,7 @@ Be concise. Use tools proactively.`;
             }
             case 'update_urdf': {
                 const xml = args.xml as string;
-                this._textareaEl.value = xml;
-                this._highlights.clear();
-                this._updateLineNums();
+                this._setEditorContent(xml);
                 this._applyRender();
                 return { ok: true, lines: xml.split('\n').length };
             }
@@ -736,20 +749,23 @@ Be concise. Use tools proactively.`;
 
     // ── DOM helpers ───────────────────────────────────────────────────────────
 
+    private _appendChat(el: HTMLElement): void {
+        this._chatMsgsEl.appendChild(el);
+        this._chatMsgsEl.scrollTop = this._chatMsgsEl.scrollHeight;
+    }
+
     private _appendUserBubble(text: string): void {
         const div = document.createElement('div');
         div.className   = 'chat-msg-user';
         div.textContent = text;
-        this._chatMsgsEl.appendChild(div);
-        this._chatMsgsEl.scrollTop = this._chatMsgsEl.scrollHeight;
+        this._appendChat(div);
     }
 
     private _appendAssistantBubble(html: string): HTMLElement {
         const div = document.createElement('div');
         div.className = 'chat-msg-assistant';
         div.innerHTML  = renderMd(html);
-        this._chatMsgsEl.appendChild(div);
-        this._chatMsgsEl.scrollTop = this._chatMsgsEl.scrollHeight;
+        this._appendChat(div);
         return div;
     }
 
@@ -757,8 +773,7 @@ Be concise. Use tools proactively.`;
         const div = document.createElement('div');
         div.className = 'chat-spinner';
         div.innerHTML = '<span></span><span></span><span></span>';
-        this._chatMsgsEl.appendChild(div);
-        this._chatMsgsEl.scrollTop = this._chatMsgsEl.scrollHeight;
+        this._appendChat(div);
         return div;
     }
 
@@ -771,8 +786,7 @@ Be concise. Use tools proactively.`;
         const statusEl = document.createElement('span');
         statusEl.className = 'chat-tool-card-status';
         card.append(nameEl, statusEl);
-        this._chatMsgsEl.appendChild(card);
-        this._chatMsgsEl.scrollTop = this._chatMsgsEl.scrollHeight;
+        this._appendChat(card);
         return {
             setResult(ok: boolean) {
                 statusEl.textContent = ok ? '✓' : '✕';

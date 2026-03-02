@@ -124,7 +124,7 @@ export class URDFJoint extends URDFBase {
      * Returns `true` if the joint actually moved.
      */
     setJointValue(...values: (number | null)[]): boolean {
-        const nums = values.map(v => (v === null ? null : parseFloat(String(v))));
+        const nums = values.map(v => (v === null ? null : Number(v)));
 
         if (!this.origPosition || !this.origQuaternion) {
             this.origPosition = this.position.clone();

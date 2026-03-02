@@ -1,5 +1,6 @@
 import { URDFManipulator } from '../src/index.js';
 import { URDFEditorController } from './editor.js';
+import type { GestureController } from './gesture.js';
 
 customElements.define('urdf-viewer', URDFManipulator);
 
@@ -87,10 +88,12 @@ function loadRobot(robot: { name?: string; urdf: string; up: string; package?: s
     viewer.urdf = robot.urdf;
 
     clearActiveRobot();
-    if (robot.name) {
-        const btn = robotsPanel.querySelector<HTMLButtonElement>(`.robot-btn[data-name="${robot.name}"]`);
-        btn?.classList.add('active');
-        if (btn) moveSliderTo(btn);
+    const btn = robot.name
+        ? robotsPanel.querySelector<HTMLButtonElement>(`.robot-btn[data-name="${robot.name}"]`)
+        : null;
+    if (btn) {
+        btn.classList.add('active');
+        moveSliderTo(btn);
     }
     editorCtrl.setSourceUrl(robot.urdf);
 }
@@ -375,7 +378,6 @@ viewer.addEventListener('joint-mouseout', (e: Event) => {
     jointsPanel.querySelector(`[data-joint="${name}"]`)?.removeAttribute('data-hovered');
     partLabel.style.display = 'none';
 });
-
 
 // ── Gesture mode ───────────────────────────────────────────────────────────────
 

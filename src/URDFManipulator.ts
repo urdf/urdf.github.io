@@ -99,20 +99,21 @@ export class URDFManipulator extends URDFViewer {
     // ─────────────────────────────────────────────────────────────────────────
 
     private _highlightJoint(joint: URDFJoint, revert: boolean): void {
+        type HighlightMesh = THREE.Mesh & { __orig?: THREE.Material | THREE.Material[] };
+
         const isMovable = (j: THREE.Object3D) =>
             (j as URDFJoint).isURDFJoint && (j as URDFJoint).jointType !== 'fixed';
 
         const walk = (node: THREE.Object3D) => {
-            const mesh = node as THREE.Mesh;
+            const mesh = node as HighlightMesh;
             if (mesh.isMesh) {
                 if (revert) {
-                    const orig = (mesh as THREE.Mesh & { __orig?: THREE.Material | THREE.Material[] }).__orig;
-                    if (orig !== undefined) {
-                        mesh.material = orig;
-                        delete (mesh as THREE.Mesh & { __orig?: THREE.Material | THREE.Material[] }).__orig;
+                    if (mesh.__orig !== undefined) {
+                        mesh.material = mesh.__orig;
+                        delete mesh.__orig;
                     }
                 } else {
-                    (mesh as THREE.Mesh & { __orig?: THREE.Material | THREE.Material[] }).__orig = mesh.material;
+                    mesh.__orig = mesh.material;
                     mesh.material = this._highlightMaterial;
                 }
             }

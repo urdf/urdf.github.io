@@ -34,9 +34,9 @@ const EMPTY_RAYCAST = () => {};
 const _ZERO_VEC = new THREE.Vector3();
 
 // Dispose a material and all textures it references.
-// mat.dispose() alone only frees the shader program — texture GPU units are separate.
-// For GLB/ImageBitmap-sourced textures, the CPU-side bitmap must also be closed first
-// (Three.js intentionally does not do this automatically — see github.com/mrdoob/three.js/issues/23953).
+// mat.dispose() only frees the shader program. Texture GPU units are separate.
+// For GLB/ImageBitmap-sourced textures, the CPU-side bitmap must also be closed first.
+// Three.js intentionally does not do this automatically (see github.com/mrdoob/three.js/issues/23953).
 function disposeMat(mat: THREE.Material): void {
     for (const value of Object.values(mat)) {
         if (value instanceof THREE.Texture) {
@@ -47,8 +47,18 @@ function disposeMat(mat: THREE.Material): void {
     mat.dispose();
 }
 
+// Dispose all non-shared geometries and materials in a subtree.
+function disposeTree(root: THREE.Object3D): void {
+    root.traverse(c => {
+        const mesh = c as THREE.Mesh;
+        if (!mesh.geometry?.userData.shared) mesh.geometry?.dispose();
+        if (Array.isArray(mesh.material)) mesh.material.forEach(disposeMat);
+        else if (mesh.material) disposeMat(mesh.material);
+    });
+}
+
 const _reduceMotionMQ = window.matchMedia?.('(prefers-reduced-motion: reduce)');
-// Fixed scene-space slide axis — matches the default fitCamera() view direction
+// Fixed scene-space slide axis. Matches the default fitCamera() view direction
 // so robots always enter from screen-right and exit screen-left, regardless of
 // where the user has orbited the camera.
 const _SLIDE_RIGHT = new THREE.Vector3(1, 0, 1).normalize();
@@ -108,6 +118,7 @@ export class URDFViewer extends HTMLElement {
     private _introAnim: { start: THREE.Vector3; t0: number; dur: number } | null = null;
     private _outgoing: { obj: THREE.Object3D; from: THREE.Vector3; to: THREE.Vector3; t0: number; dur: number } | null = null;
     private _exitRotation = new THREE.Euler(); // world.rotation saved when robot finishes loading
+    private _lastLoadKey = '';
     private _resizeObserver: ResizeObserver;
     private _shadow: ShadowRoot;
 
@@ -152,7 +163,7 @@ export class URDFViewer extends HTMLElement {
         );
         this.shadowPlane.rotation.x = -Math.PI / 2;
         this.shadowPlane.receiveShadow = true;
-        this.shadowPlane.raycast = () => {};  // purely visual — never block pointer events
+        this.shadowPlane.raycast = () => {};  // purely visual, never block pointer events
         this.scene.add(this.shadowPlane);
 
         // Renderer
@@ -304,17 +315,12 @@ export class URDFViewer extends HTMLElement {
             const out = this._outgoing;
             if (out) {
                 const t = Math.min((performance.now() - out.t0) / out.dur, 1);
-                const ease = t * t * t; // cubic ease-in — accelerates away
+                const ease = t * t * t; // cubic ease-in, accelerates away
                 out.obj.position.lerpVectors(out.from, out.to, ease);
                 this._dirty = true;
                 if (t >= 1) {
                     this.scene.remove(out.obj);
-                    out.obj.traverse(c => {
-                        const mesh = c as THREE.Mesh;
-                        if (!mesh.geometry?.userData.shared) mesh.geometry?.dispose();
-                        if (Array.isArray(mesh.material)) mesh.material.forEach(disposeMat);
-                        else if (mesh.material) disposeMat(mesh.material);
-                    });
+                    disposeTree(out.obj);
                     this._outgoing = null;
                 }
             }
@@ -341,8 +347,8 @@ export class URDFViewer extends HTMLElement {
 
     private _scheduleLoad(): void {
         const key = `${this.package}|${this.urdf}`;
-        if ((this as unknown as { _lastKey?: string })._lastKey === key) return;
-        (this as unknown as { _lastKey?: string })._lastKey = key;
+        if (this._lastLoadKey === key) return;
+        this._lastLoadKey = key;
 
         this._introAnim = null;
         this._startExit(); // slide current robot out before disposing
@@ -423,12 +429,7 @@ export class URDFViewer extends HTMLElement {
         // otherwise the orphaned scene object is never removed.
         if (this._outgoing) {
             this.scene.remove(this._outgoing.obj);
-            this._outgoing.obj.traverse(c => {
-                const mesh = c as THREE.Mesh;
-                if (!mesh.geometry?.userData.shared) mesh.geometry?.dispose();
-                if (Array.isArray(mesh.material)) mesh.material.forEach(disposeMat);
-                else if (mesh.material) disposeMat(mesh.material);
-            });
+            disposeTree(this._outgoing.obj);
             this._outgoing = null;
         }
 
@@ -452,12 +453,7 @@ export class URDFViewer extends HTMLElement {
 
     private _disposeRobot(): void {
         if (!this.robot) return;
-        this.robot.traverse(c => {
-            const mesh = c as THREE.Mesh;
-            if (!mesh.geometry?.userData.shared) mesh.geometry?.dispose();
-            if (Array.isArray(mesh.material)) mesh.material.forEach(disposeMat);
-            else if (mesh.material) disposeMat(mesh.material);
-        });
+        disposeTree(this.robot);
         this.robot.parent?.remove(this.robot);
         this.robot = null;
     }

@@ -291,7 +291,7 @@
       color: var(--text-2);
     }
 
-    /* Compact inline options bar — overrides .section column layout */
+    /* Compact inline options bar. Overrides .section column layout. */
     .options-bar {
       flex-direction: row;
       flex-wrap: wrap;
@@ -464,10 +464,6 @@
     }
 
     .sidebar-backdrop.visible { display: block; }
-
-    @media (max-width: 768px) {
-
-    }
 
     /* ── Viewer area ─────────────────────────────────────────────────────── */
 
@@ -753,7 +749,7 @@
 
     /* ── Editor tab content ──────────────────────────────────────────────── */
 
-    /* Part selector bar — visible only when select is not hidden */
+    /* Part selector bar. Visible only when select is not hidden. */
     .editor-part-bar {
       display: none;
       align-items: center;
@@ -1175,23 +1171,23 @@
         <div id="gesture-cheatsheet" role="region">
           <div class="gesture-row">
             <span class="gesture-icon">✊</span>
-            <span class="gesture-desc"><strong>Fist + move</strong> — orbit camera</span>
+            <span class="gesture-desc"><strong>Fist + move</strong> orbit camera</span>
           </div>
           <div class="gesture-row">
             <span class="gesture-icon">☝️</span>
-            <span class="gesture-desc"><strong>Point + hold 1.2 s over joint</strong> — select joint</span>
+            <span class="gesture-desc"><strong>Point + hold 1.2 s over joint</strong> select joint</span>
           </div>
           <div class="gesture-row">
             <span class="gesture-icon">🤚</span>
-            <span class="gesture-desc"><strong>Tilt wrist</strong> (joint selected) — rotate joint</span>
+            <span class="gesture-desc"><strong>Tilt wrist</strong> (joint selected) rotate joint</span>
           </div>
           <div class="gesture-row">
             <span class="gesture-icon">🖐️</span>
-            <span class="gesture-desc"><strong>Open palm, hold 1 s</strong> — reset all joints</span>
+            <span class="gesture-desc"><strong>Open palm, hold 1 s</strong> reset all joints</span>
           </div>
           <div class="gesture-row">
             <span class="gesture-icon">🤲</span>
-            <span class="gesture-desc"><strong>Two hands, pinch/spread</strong> — zoom</span>
+            <span class="gesture-desc"><strong>Two hands, pinch/spread</strong> zoom</span>
           </div>
         </div>
       </div>
@@ -1326,7 +1322,7 @@
     const toggleBtn = document.getElementById('panel-toggle');
     const closeBtn  = document.getElementById('panel-close');
 
-    const isDesktop = () => window.innerWidth > 768;
+    function isDesktop() { return window.innerWidth > 768; }
 
     function openPanel() {
       panel.classList.add('open');
@@ -1347,7 +1343,6 @@
     backdrop.addEventListener('click', closePanel);
 
     // ── Panel resize (left edge drag, desktop only) ──────────────────────────
-    // Best practices: W3C APG Window Splitter, VS Code sash, Grafana/Figma precedent
 
     const PANEL_W_KEY     = 'urdf-panel-w';
     const PANEL_W_DEFAULT = 380;

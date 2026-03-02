@@ -28,7 +28,7 @@ const WASM_CDN = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.21/w
 const CAM_LERP = 0.14;
 
 // One Euro Filter for wrist landmark smoothing.
-// Casiez et al., CHI 2012 — adaptive cutoff: heavy smoothing when still, low latency when moving.
+// Casiez et al., CHI 2012. Adaptive cutoff: heavy smoothing when still, low latency when moving.
 // β (speed coefficient) controls how quickly lag reduces with velocity.
 // f_min (minimum cutoff Hz) controls smoothing strength when stationary.
 class OneEuroFilter {
@@ -84,11 +84,11 @@ export class GestureController {
     private targetPhi = Math.PI / 3;
     private targetRadius = 0;
 
-    // One Euro Filters for wrist x/y — adaptive smoothing, low latency when moving fast
+    // One Euro Filters for wrist x/y. Adaptive smoothing, low latency when moving fast.
     private _wristFilterX = new OneEuroFilter(1.0, 0.007);
     private _wristFilterY = new OneEuroFilter(1.0, 0.007);
 
-    // Dwell select state — prevHandPos tracks the smoothed wrist (lm[0]) for orbit
+    // Dwell select state. prevHandPos tracks the smoothed wrist (lm[0]) for orbit.
     private prevHandPos: { x: number; y: number } | null = null;
     private dwellStart = 0;
     private dwellMoved = false;
@@ -110,7 +110,7 @@ export class GestureController {
     // Zoom state
     private prevZoomDist = 0;
 
-    // Last processed video timestamp — guard against duplicate recognizeForVideo calls
+    // Last processed video timestamp. Guards against duplicate recognizeForVideo calls.
     private _lastVideoTime = -1;
 
     // Gesture debounce: require the same gesture name for 2 consecutive frames before
@@ -122,7 +122,7 @@ export class GestureController {
     private _raycaster = new THREE.Raycaster();
     private _overRobot = false;
 
-    // Drag controls reference — grabbed at start() to drive hover/highlight
+    // Drag controls reference, grabbed at start() to drive hover/highlight
     private _dragCtrl: { enabled: boolean; raycaster: THREE.Raycaster; update(): void } | null = null;
 
     constructor(opts: GestureControllerOptions) {
@@ -145,16 +145,16 @@ export class GestureController {
         this.recognizer = await GestureRecognizer.createFromOptions(vision, {
             baseOptions: {
                 // GPU delegate is silently ignored for the gesture subgraph (mediapipe issue #4712)
-                // and requires a dedicated uninitialized canvas — CPU is both correct and simpler.
+                // and requires a dedicated uninitialized canvas. CPU is both correct and simpler.
                 modelAssetPath:
                     'https://storage.googleapis.com/mediapipe-models/gesture_recognizer/gesture_recognizer/float16/1/gesture_recognizer.task',
             },
             runningMode: 'VIDEO',
             numHands: 2,
             // Detection: 0.7 reduces false initial palm detections without hurting tracking.
-            // Presence: keep at 0.5 — higher values cause frequent tracking drops that look
+            // Presence: keep at 0.5. Higher values cause frequent tracking drops that look
             // like hand blinking (each drop → re-detection → visible skeleton flash).
-            // scoreThreshold: 0.5 (default) — higher values cause gesture name to oscillate
+            // scoreThreshold: 0.5 (default). Higher values cause gesture name to oscillate
             // between a valid name and '' on borderline frames, flashing hover state on/off.
             minHandDetectionConfidence: 0.7,
             minHandPresenceConfidence: 0.5,
@@ -172,20 +172,16 @@ export class GestureController {
         window.addEventListener('resize', this._onResize);
 
         // Capture current spherical coords from camera
-        const controls = (this.viewer as unknown as { controls: THREE.EventDispatcher & { target: THREE.Vector3 } }).controls;
-        const cam = this.viewer.camera as THREE.PerspectiveCamera;
-        if (cam && controls) {
-            const sph = new THREE.Spherical().setFromVector3(
-                cam.position.clone().sub((controls as unknown as { target: THREE.Vector3 }).target)
-            );
-            this.sphTheta  = this.targetTheta  = sph.theta;
-            this.sphPhi    = this.targetPhi    = sph.phi;
-            this.sphRadius = this.targetRadius = sph.radius;
-        }
+        const { controls, camera } = this.viewer;
+        const sph = new THREE.Spherical().setFromVector3(
+            camera.position.clone().sub(controls.target),
+        );
+        this.sphTheta  = this.targetTheta  = sph.theta;
+        this.sphPhi    = this.targetPhi    = sph.phi;
+        this.sphRadius = this.targetRadius = sph.radius;
 
         // Disable OrbitControls
-        const ctrl = (this.viewer as unknown as { controls: { enabled: boolean } }).controls;
-        if (ctrl) ctrl.enabled = false;
+        controls.enabled = false;
 
         // Grab drag controls so we can drive hover/highlight from the gesture loop
         const dc = (this.viewer as unknown as {
@@ -211,8 +207,7 @@ export class GestureController {
         this._lastVideoTime = -1;
 
         // Re-enable OrbitControls
-        const ctrl = (this.viewer as unknown as { controls: { enabled: boolean } }).controls;
-        if (ctrl) ctrl.enabled = true;
+        this.viewer.controls.enabled = true;
 
         // Re-enable drag controls and clear any lingering hover state
         if (this._dragCtrl) {
@@ -275,7 +270,6 @@ export class GestureController {
                     this._resetDwell();
                     this.prevHandPos = null;
                     this._clearHover();
-                    this.palmResetStart = 0;
                 } else if (name === 'Closed_Fist') {
                     this._handleOrbit(lms);
                     this._resetDwell();
@@ -294,27 +288,26 @@ export class GestureController {
             }
         }
 
-        // ── Camera animation — runs every frame regardless of gesture state ──
+        // ── Camera animation (runs every frame regardless of gesture state) ──
         this._syncCameraIfNeeded();
         this._applyCamera();
     };
 
     // Re-sync targets if fitCamera() or any external code moved the camera.
     private _syncCameraIfNeeded(): void {
-        const controls = (this.viewer as unknown as { controls: { target: THREE.Vector3 } }).controls;
-        const cam = this.viewer.camera as THREE.PerspectiveCamera;
-        if (!cam || !controls || this.sphRadius === 0) return;
+        const { controls, camera } = this.viewer;
+        if (this.sphRadius === 0) return;
 
         const expectedPos = new THREE.Vector3()
             .setFromSpherical(new THREE.Spherical(this.sphRadius, this.sphPhi, this.sphTheta))
             .add(controls.target);
 
-        // If the camera was moved more than 10 % of the current radius away from
+        // If the camera was moved more than 10% of the current radius away from
         // where we last placed it, something external (fitCamera, robot switch)
-        // repositioned it — resync so we continue from the new position.
-        if (cam.position.distanceTo(expectedPos) > this.sphRadius * 0.1) {
+        // repositioned it. Resync so we continue from the new position.
+        if (camera.position.distanceTo(expectedPos) > this.sphRadius * 0.1) {
             const sph = new THREE.Spherical().setFromVector3(
-                cam.position.clone().sub(controls.target),
+                camera.position.clone().sub(controls.target),
             );
             this.sphTheta  = this.targetTheta  = sph.theta;
             this.sphPhi    = this.targetPhi    = sph.phi;
@@ -324,19 +317,15 @@ export class GestureController {
 
     // Lerp sph* toward target* and push to the camera.
     private _applyCamera(): void {
-        const controls = (this.viewer as unknown as {
-            controls: { target: THREE.Vector3; update(): void };
-        }).controls;
-        const cam = this.viewer.camera as THREE.PerspectiveCamera;
-        if (!cam || !controls) return;
+        const { controls, camera } = this.viewer;
 
         this.sphTheta  += (this.targetTheta  - this.sphTheta)  * CAM_LERP;
         this.sphPhi    += (this.targetPhi    - this.sphPhi)    * CAM_LERP;
         this.sphRadius += (this.targetRadius - this.sphRadius) * CAM_LERP;
 
         const sph = new THREE.Spherical(this.sphRadius, this.sphPhi, this.sphTheta);
-        cam.position.setFromSpherical(sph).add(controls.target);
-        cam.lookAt(controls.target);
+        camera.position.setFromSpherical(sph).add(controls.target);
+        camera.lookAt(controls.target);
         controls.update();
         this.viewer.redraw();
     }
@@ -344,8 +333,7 @@ export class GestureController {
     // Updates drag-controls hover state (highlight + label) and returns whether
     // the fingertip is over any part of the robot.
     private _updateHoverState(screenX: number, screenY: number): boolean {
-        const cam = this.viewer.camera as THREE.PerspectiveCamera;
-        if (!cam) return false;
+        const { camera } = this.viewer;
 
         // screenX/Y are in overlay canvas space (full window dimensions).
         // The Three.js renderer viewport is the viewer element, which may be offset —
@@ -360,14 +348,14 @@ export class GestureController {
         // Drive the drag controls' raycaster so it fires onHover/onUnhover,
         // which applies mesh highlight and dispatches joint-mouseover/out events.
         if (this._dragCtrl) {
-            this._dragCtrl.raycaster.setFromCamera(ndc, cam);
+            this._dragCtrl.raycaster.setFromCamera(ndc, camera);
             this._dragCtrl.update();
         }
 
         // Separate check against the full robot (including root/fixed links)
         // so orbit activates over any mesh, not just movable joints.
         if (!this.viewer.robot) return false;
-        this._raycaster.setFromCamera(ndc, cam);
+        this._raycaster.setFromCamera(ndc, camera);
         return this._raycaster.intersectObject(this.viewer.robot, true).length > 0;
     }
 
@@ -381,7 +369,7 @@ export class GestureController {
         this._dragCtrl.update();
     }
 
-    // ✊ Closed_Fist — orbit only, no hover or dwell (grab-and-drag / arcball metaphor)
+    // Closed_Fist: orbit only, no hover or dwell (grab-and-drag / arcball metaphor)
     private _handleOrbit(lms: NormalizedLandmark[]): void {
         const t = performance.now();
         const wristX = this._wristFilterX.filter(1 - lms[0].x, t);
@@ -401,7 +389,7 @@ export class GestureController {
         }
     }
 
-    // ☝️ Pointing_Up only — hover highlight + dwell select, no orbit
+    // Pointing_Up only: hover highlight + dwell select, no orbit
     private _handleDwellAndHover(ctx: CanvasRenderingContext2D, lms: NormalizedLandmark[]): void {
         const tipX = 1 - lms[8].x;
         const tipY = lms[8].y;
@@ -505,7 +493,7 @@ export class GestureController {
 
         const angle = Math.atan2(
             lms[5].y - lms[0].y,
-            (1 - lms[5].x) - (1 - lms[0].x),
+            lms[0].x - lms[5].x,
         );
 
         if (this.prevWristAngle === Infinity) {
@@ -523,7 +511,7 @@ export class GestureController {
         const lo = (ignoreLimits || continuous) ? -6.28 : joint.limit.lower;
         const hi = (ignoreLimits || continuous) ?  6.28 : joint.limit.upper;
 
-        const current = (joint as unknown as { angle: number }).angle ?? 0;
+        const current = joint.angle;
         this.viewer.setJointValue(this.selectedJoint, Math.max(lo, Math.min(hi, current + delta * 1.5)));
     }
 
@@ -538,10 +526,7 @@ export class GestureController {
 
         if (this.prevZoomDist === 0) { this.prevZoomDist = dist; return; }
 
-        const controls = (this.viewer as unknown as {
-            controls: { minDistance: number; maxDistance: number };
-        }).controls;
-
+        const { controls } = this.viewer;
         const ratio = this.prevZoomDist / dist;
         this.targetRadius = Math.max(
             controls.minDistance ?? 0.1,
