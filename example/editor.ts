@@ -519,19 +519,26 @@ export class URDFEditorController {
         }
     }
 
+    // Write tools produce a visible result — no follow-up narration needed.
+    private static readonly _WRITE_TOOLS = new Set(['update_urdf', 'update_part']);
+
     private async _executeTools(
         toolCalls: ToolUseBlock[],
         cardMap?: Map<string, { setResult(ok: boolean): void }>,
-    ): Promise<void> {
+    ): Promise<{ noFollowUp: boolean }> {
+        let noFollowUp = false;
         const results: ToolResBlock[] = [];
         for (const tc of toolCalls) {
             const card = cardMap?.get(tc.id) ?? (TOOL_CARDS.has(tc.name) ? this._appendToolCard(tc.name) : null);
             const res  = await this._executeTool(tc.name, tc.input);
-            card?.setResult(!(res as Record<string, unknown>).error);
+            const ok   = !(res as Record<string, unknown>).error;
+            card?.setResult(ok);
+            if (ok && URDFEditorController._WRITE_TOOLS.has(tc.name)) noFollowUp = true;
             results.push({ type: 'tool_result', tool_use_id: tc.id, content: JSON.stringify(res) });
         }
         this._history.push({ role: 'user', content: results });
         this._saveHistory();
+        return { noFollowUp };
     }
 
     private async _runLoop(): Promise<void> {
@@ -542,11 +549,13 @@ export class URDFEditorController {
             this._history.push({ role: 'assistant', content });
             this._saveHistory();
             if (!toolCalls.length) break;
-            await this._executeTools(toolCalls, toolCards);
+            const { noFollowUp } = await this._executeTools(toolCalls, toolCards);
+            if (noFollowUp) break;
         }
     }
 
     private async _withSession(fn: () => Promise<void>): Promise<void> {
+        if (this._abort) return;  // guard against concurrent sessions
         this._abort          = new AbortController();
         this._sendBtn.disabled = true;
         this._abortBtn.hidden  = false;
