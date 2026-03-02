@@ -1,5 +1,4 @@
 import { URDFManipulator } from '../src/index.js';
-import { GestureController } from './gesture.js';
 
 customElements.define('urdf-viewer', URDFManipulator);
 
@@ -361,11 +360,12 @@ function onDwellSelect(clientX: number, clientY: number): void {
     viewer.dispatchEvent(new PointerEvent('pointerup', opts));
 }
 
-gestureToggleBtn.addEventListener('click', () => {
+gestureToggleBtn.addEventListener('click', async () => {
     if (gestureCtrl) {
         gestureCtrl.stop();
         return;
     }
+    const { GestureController } = await import('./gesture.js');
     gestureCtrl = new GestureController({
         viewer, overlayCanvas: gestureOverlay, videoEl: gestureVideo,
         onDwellSelect,
