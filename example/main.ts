@@ -778,11 +778,13 @@ buildNewCreateBtn.addEventListener('click', () => {
     buildComponentsListEl.innerHTML = '';
     componentInputs.clear();
     componentSelects.clear();
+    _buildSelCompId = null;
     buildCtrl.initFromScratch(buildNewNameEl.value);
     buildCtrl.open();
     document.getElementById('tab-build')?.click();
     refreshResumeBtn();
     refreshBuildHeader();
+    refreshPaletteCounts();
 });
 
 function refreshResumeBtn(): void {
