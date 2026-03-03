@@ -663,6 +663,8 @@ const buildActiveNameEl     = document.getElementById('build-active-name')      
 const buildClearCustomBtn   = document.getElementById('build-clear-custom')     as HTMLButtonElement;
 const buildShortcutsToggle  = document.getElementById('build-shortcuts-toggle') as HTMLButtonElement;
 const buildShortcutsEl      = document.getElementById('build-shortcuts')        as HTMLElement;
+const buildCompCountEl      = document.getElementById('build-comp-count')       as HTMLElement;
+const buildCompEmptyEl      = document.getElementById('build-comp-empty')       as HTMLElement;
 
 // Helper: sync all parametric sliders from controller state
 function syncSlidersFromController(): void {
@@ -834,7 +836,8 @@ const paletteBadges = new Map<string, HTMLSpanElement>();
 
 function refreshPaletteCounts(): void {
     const counts = new Map<string, number>();
-    for (const { type } of buildCtrl.getComponentEntries()) {
+    const entries = buildCtrl.getComponentEntries();
+    for (const { type } of entries) {
         counts.set(type, (counts.get(type) ?? 0) + 1);
     }
     for (const [type, badge] of paletteBadges) {
@@ -842,6 +845,9 @@ function refreshPaletteCounts(): void {
         badge.textContent = n > 0 ? String(n) : '';
         badge.style.display = n > 0 ? 'inline' : 'none';
     }
+    const total = entries.length;
+    buildCompCountEl.textContent = total > 0 ? `${total} added` : '';
+    buildCompEmptyEl.hidden = total > 0 || !buildCtrl.isCatalogActive;
 }
 
 // Populate component palette

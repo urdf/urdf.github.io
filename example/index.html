@@ -1633,9 +1633,14 @@
 
         </div><!-- #build-parametric -->
 
-        <div class="section-label" style="padding: 10px 12px 4px;">Add Component</div>
+        <div style="display:flex;align-items:baseline;justify-content:space-between;padding:10px 12px 4px;">
+          <span class="section-label" style="padding:0;">Add Component</span>
+          <span id="build-comp-count" style="font-size:10px;color:var(--text-3);"></span>
+        </div>
         <div class="component-palette" id="build-palette"></div>
-        <div id="build-components-list"></div>
+        <div id="build-components-list">
+          <p id="build-comp-empty" style="font-size:11px;color:var(--text-3);padding:6px 12px;margin:0;" hidden>No components yet. Click a type above to add one.</p>
+        </div>
 
         <div style="padding: 4px 12px 4px; display: flex; gap: 6px;">
           <button id="build-undo" class="robot-btn" title="Undo (Ctrl+Z)" disabled>Undo</button>
