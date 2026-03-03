@@ -329,7 +329,11 @@ function applyInspector(): void {
 function selectPart(jointName: string | null): void {
     selectedJoint = jointName;
     const joint = jointName ? viewer.robot?.joints[jointName] : null;
-    if (!joint) { inspectorEl.style.display = 'none'; return; }
+    if (!joint) {
+        inspectorEl.style.display = 'none';
+        if (_buildSelPartName) { _buildSelPartName = null; _updateContextPill(null); }
+        return;
+    }
 
     inspectorEl.style.display = '';
     inspectorName.textContent = toLabel(jointName);
@@ -346,6 +350,23 @@ function selectPart(jointName: string | null): void {
 
     refreshSnippet();
     gestureCtrl?.setSelectedJoint(jointName);
+
+    // In Build tab: surface existing URDF parts as AI context (skip dynamic components).
+    if (document.body.classList.contains('build-open')) {
+        const baseId = jointName.endsWith('_joint') ? jointName.slice(0, -6) : jointName;
+        if (!buildCtrl.componentIds.has(baseId)) {
+            _buildSelCompId = null;
+            _buildSelPartName = jointName;
+            for (const el of buildComponentsListEl.querySelectorAll<HTMLElement>('.build-component'))
+                el.classList.remove('selected');
+            buildInspEl.hidden = true;
+            _updateContextPill({
+                label:     toLabel(jointName),
+                color:     'var(--text-3)',
+                onDismiss: () => selectPart(null),
+            });
+        }
+    }
 }
 
 /**
@@ -958,7 +979,8 @@ for (const [type, def] of Object.entries(COMPONENT_CATALOG)) {
 
 const componentInputs  = new Map<string, Record<string, HTMLInputElement>>();
 const componentSelects = new Map<string, HTMLSelectElement>();
-let _buildSelCompId: string | null = null;
+let _buildSelCompId:   string | null = null;
+let _buildSelPartName: string | null = null;
 
 function clearBuildUI(): void {
     buildComponentsListEl.innerHTML = '';
@@ -966,7 +988,8 @@ function clearBuildUI(): void {
 }
 
 function _deselectComp(): void {
-    _buildSelCompId = null;
+    _buildSelCompId   = null;
+    _buildSelPartName = null;
     for (const el of buildComponentsListEl.querySelectorAll<HTMLElement>('.build-component'))
         el.classList.remove('selected');
     buildInspEl.hidden = true;
@@ -976,23 +999,23 @@ function _deselectComp(): void {
     _updateContextPill(null);
 }
 
-function _updateContextPill(id: string | null): void {
+interface ContextPillCtx { label: string; color: string; onDismiss: () => void; }
+
+function _updateContextPill(ctx: ContextPillCtx | null): void {
     contextBarEl.innerHTML = '';
-    contextBarEl.hidden = !id;
-    if (!id) return;
-    const type = buildCtrl.getComponentEntries().find(e => e.id === id)?.type ?? '';
-    const def  = COMPONENT_CATALOG[type];
+    contextBarEl.hidden = !ctx;
+    if (!ctx) return;
     const pill = document.createElement('span');
     pill.className = 'context-pill';
     const dot = document.createElement('span');
     dot.className = 'context-pill-dot';
-    dot.style.background = def?.cssColor ?? '#888';
+    dot.style.background = ctx.color;
     const label = document.createElement('span');
-    label.textContent = `${def?.label ?? type} · ${id}`;
+    label.textContent = ctx.label;
     const dismiss = document.createElement('button');
     dismiss.type = 'button'; dismiss.className = 'context-pill-dismiss';
     dismiss.textContent = '×'; dismiss.title = 'Deselect';
-    dismiss.addEventListener('click', _deselectComp);
+    dismiss.addEventListener('click', ctx.onDismiss);
     pill.append(dot, label, dismiss);
     contextBarEl.appendChild(pill);
 }
@@ -1015,12 +1038,18 @@ function removeOptionFromParentSelects(id: string): void {
 }
 
 function _selectCompCard(id: string): void {
-    _buildSelCompId = id;
+    _buildSelCompId   = id;
+    _buildSelPartName = null;
     for (const el of buildComponentsListEl.querySelectorAll<HTMLElement>('.build-component'))
         el.classList.toggle('selected', el.dataset.id === id);
     const entry = buildCtrl.getComponentEntries().find(e => e.id === id);
     if (entry) renderInspector(id, entry.type);
-    _updateContextPill(id);
+    const def = COMPONENT_CATALOG[entry?.type ?? ''];
+    _updateContextPill({
+        label:     `${def?.label ?? entry?.type ?? id} · ${id}`,
+        color:     def?.cssColor ?? '#888',
+        onDismiss: _deselectComp,
+    });
 }
 
 function renderComponentItem(id: string, type: string, _saved?: BuildComponent | null): void {
@@ -1272,10 +1301,25 @@ function removeComponentItem(id: string): void {
         onBriefToggle:            (v) => { editorCtrl.brief = v; },
         refreshPaletteCounts,
         getFocusedComponent: () => {
-            if (!_buildSelCompId) return null;
-            const entry = buildCtrl.getComponentEntries().find(e => e.id === _buildSelCompId);
-            if (!entry) return null;
-            return { id: _buildSelCompId, type: entry.type, data: buildCtrl.getComponentData(_buildSelCompId) };
+            if (_buildSelCompId) {
+                const entry = buildCtrl.getComponentEntries().find(e => e.id === _buildSelCompId);
+                if (!entry) return null;
+                return { id: _buildSelCompId, type: entry.type, data: buildCtrl.getComponentData(_buildSelCompId) };
+            }
+            if (_buildSelPartName) {
+                const joint = viewer.robot?.joints[_buildSelPartName];
+                if (!joint) return null;
+                const p = joint.position;
+                const jt = (joint as { jointType?: string }).jointType ?? 'fixed';
+                return {
+                    id:   _buildSelPartName,
+                    type: jt,
+                    data: { type: jt, x: p.x, y: p.y, z: p.z, rx: 0, ry: 0, rz: 0,
+                            dims: [], jointType: jt as never, axis: [0,0,1] as [number,number,number],
+                            limitLower: 0, limitUpper: 0, parent: 'base_link' },
+                };
+            }
+            return null;
         },
     };
     chatCtrl = new URDFChatController(buildCtrl, chatCallbacks);
