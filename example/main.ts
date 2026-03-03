@@ -91,6 +91,7 @@ async function loadViaBrowserAssembly(robot: RobotConfig): Promise<void> {
     for (const { id, type } of restored) renderComponentItem(id, type, buildCtrl.getComponentData(id));
 
     if (restored.length > 0) syncSlidersFromController();
+    refreshPaletteCounts();
     refreshBuildHeader();
 }
 
@@ -705,9 +706,11 @@ buildCtrl.onHistoryChange = () => {
 buildCtrl.onDOMRebuild = () => {
     componentInputs.clear();
     componentSelects.clear();
+    _buildSelCompId = null;
     buildComponentsListEl.innerHTML = '';
     for (const { id, type } of buildCtrl.getComponentEntries()) renderComponentItem(id, type, buildCtrl.getComponentData(id));
     syncSlidersFromController();
+    refreshPaletteCounts();
     buildCtrl.onHistoryChange?.();
 };
 
@@ -732,6 +735,7 @@ document.addEventListener('keydown', (e: KeyboardEvent) => {
         }
         card?.remove();
         _buildSelCompId = null;
+        refreshPaletteCounts();
         return;
     }
     // Arrow key nudge: move selected component 1mm per keypress
@@ -805,6 +809,7 @@ buildResumeBtn.addEventListener('click', () => {
     const entries = buildCtrl.restoreCustom();
     for (const { id, type } of entries) renderComponentItem(id, type, buildCtrl.getComponentData(id));
     if (entries.length > 0) syncSlidersFromController();
+    refreshPaletteCounts();
     buildCtrl.open();
     document.getElementById('tab-build')?.click();
     refreshBuildHeader();
@@ -824,13 +829,33 @@ buildShortcutsToggle.addEventListener('click', (e) => {
 refreshResumeBtn();
 refreshBuildHeader();
 
+// Palette count badges: map from type → badge <span>
+const paletteBadges = new Map<string, HTMLSpanElement>();
+
+function refreshPaletteCounts(): void {
+    const counts = new Map<string, number>();
+    for (const { type } of buildCtrl.getComponentEntries()) {
+        counts.set(type, (counts.get(type) ?? 0) + 1);
+    }
+    for (const [type, badge] of paletteBadges) {
+        const n = counts.get(type) ?? 0;
+        badge.textContent = n > 0 ? String(n) : '';
+        badge.style.display = n > 0 ? 'inline' : 'none';
+    }
+}
+
 // Populate component palette
 for (const [type, def] of Object.entries(COMPONENT_CATALOG)) {
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'robot-btn';
+    btn.style.cssText = 'position: relative;';
     btn.textContent = def.label;
     btn.dataset.comp = type;
+    const badge = document.createElement('span');
+    badge.style.cssText = 'position:absolute;top:2px;right:3px;font-size:9px;line-height:1;color:var(--blue);display:none;font-weight:700;';
+    btn.appendChild(badge);
+    paletteBadges.set(type, badge);
     btn.addEventListener('click', () => {
         if (!buildCtrl.isCatalogActive) return;
         const id = buildCtrl.addComponent(type);
@@ -843,6 +868,7 @@ for (const [type, def] of Object.entries(COMPONENT_CATALOG)) {
             }
         }
         renderComponentItem(id, type);
+        refreshPaletteCounts();
         // Scroll newly added card into view
         buildComponentsListEl.querySelector<HTMLElement>(`[data-id="${id}"]`)
             ?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -894,6 +920,7 @@ function renderComponentItem(id: string, type: string, saved?: BuildComponent | 
             }
         }
         renderComponentItem(newId, type, buildCtrl.getComponentData(newId));
+        refreshPaletteCounts();
     });
     const removeBtn = document.createElement('button');
     removeBtn.type = 'button';
@@ -911,6 +938,7 @@ function renderComponentItem(id: string, type: string, saved?: BuildComponent | 
         }
         if (_buildSelCompId === id) _buildSelCompId = null;
         item.remove();
+        refreshPaletteCounts();
     });
     header.append(labelEl, dupBtn, removeBtn);
 
