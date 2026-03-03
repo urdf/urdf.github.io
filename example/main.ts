@@ -799,17 +799,16 @@ function refreshSavedList(): void {
     buildSavedListEl.innerHTML = '';
     for (const name of names) {
         const row = document.createElement('div');
-        row.style.cssText = 'display:flex;align-items:center;gap:4px;padding:2px 0;';
+        row.className = 'build-saved-row';
 
         const nameEl = document.createElement('span');
-        nameEl.style.cssText = 'flex:1;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text);';
+        nameEl.className = 'build-saved-name';
         nameEl.textContent = name;
 
         const loadBtn = document.createElement('button');
         loadBtn.type = 'button';
-        loadBtn.className = 'build-export-btn';
+        loadBtn.className = 'build-export-btn build-saved-load';
         loadBtn.textContent = 'Load';
-        loadBtn.style.cssText = 'padding:2px 8px;font-size:10px;flex-shrink:0;';
         loadBtn.addEventListener('click', () => {
             clearBuildUI();
             const entries = buildCtrl.restoreCustomByName(name);
@@ -843,7 +842,7 @@ function refreshBuildHeader(): void {
     buildActiveHeaderEl.hidden = !active;
     if (active) {
         buildActiveNameEl.textContent = buildCtrl.robotName;
-        buildClearCustomBtn.style.display = buildCtrl.isSupported ? 'none' : '';
+        buildClearCustomBtn.hidden = buildCtrl.isSupported;
     }
 }
 
@@ -962,6 +961,7 @@ function renderComponentItem(id: string, type: string, saved?: BuildComponent | 
     const header = document.createElement('div');
     header.className = 'build-component-header';
     header.style.cursor = 'pointer';
+    header.setAttribute('aria-expanded', 'false');
     const labelEl = document.createElement('span');
     labelEl.textContent = `${def.label} ${id.split('_').pop()}`;
     const dupBtn = document.createElement('button');
@@ -997,11 +997,11 @@ function renderComponentItem(id: string, type: string, saved?: BuildComponent | 
     // ── Input rows ────────────────────────────────────────────────────
     const body = document.createElement('div');
     body.className = 'build-component-body';
-    body.style.cssText = 'display: flex; flex-direction: column; gap: 2px;';
     // Start collapsed; header click toggles and selects
     body.hidden = true;
     header.addEventListener('click', () => {
         body.hidden = !body.hidden;
+        header.setAttribute('aria-expanded', String(!body.hidden));
         _selectCompCard(id);
     });
 
@@ -1140,7 +1140,7 @@ function renderComponentItem(id: string, type: string, saved?: BuildComponent | 
     inputs['limitMax']?.addEventListener('input', () => { previewSlider.max = inputs['limitMax'].value; });
     addGroupLabel('Preview', previewSection);
     const previewRow = document.createElement('div');
-    previewRow.style.cssText = 'padding: 0 0 4px;';
+    previewRow.className = 'build-preview-row';
     previewRow.appendChild(previewSlider);
     previewSection.appendChild(previewRow);
     previewSection.hidden = savedJt !== 'revolute' && savedJt !== 'prismatic';
