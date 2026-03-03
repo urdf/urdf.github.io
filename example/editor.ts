@@ -215,7 +215,6 @@ export class URDFEditorController {
         this._panelEl.classList.remove('open');
         document.body.classList.remove('editor-open');
         this._abort?.abort();
-        this._hideCmdAc();
     }
 
     setSourceUrl(url: string): void {
