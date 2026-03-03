@@ -68,7 +68,7 @@ export class URDFChatController {
     private readonly _cb: ChatCallbacks;
     private _history: Msg[] = [];
     private _abortCtrl: AbortController | null = null;
-    private _brief = false;
+    private _brief = true;
     private _cmdAcIdx = -1;
 
     // DOM refs set in init()
@@ -134,11 +134,11 @@ export class URDFChatController {
         this._sendBtn.addEventListener('click',  () => this._handleSend());
         this._abortBtn.addEventListener('click', () => this._abortCtrl?.abort());
 
-        // Brief toggle — shared between build and editor AI
+        // Detail toggle — inactive = brief/default, active = detail mode
         this._briefBtn.addEventListener('click', () => {
             this._brief = !this._brief;
-            this._briefBtn.classList.toggle('active', this._brief);
-            this._briefBtn.setAttribute('aria-pressed', String(this._brief));
+            this._briefBtn.classList.toggle('active', !this._brief);
+            this._briefBtn.setAttribute('aria-pressed', String(!this._brief));
             this._cb.onBriefToggle(this._brief);
         });
 

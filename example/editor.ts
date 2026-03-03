@@ -130,7 +130,7 @@ export class URDFEditorController {
     private _robotName        = '';
     private _urdfFetched      = false;
     private _componentSpecs:  string | null = null;
-    private _brief = false;
+    private _brief = true;
     private readonly _partSelEl:  HTMLSelectElement;
     private readonly _tabsEl:     HTMLElement;
     private readonly _resetBtn:   HTMLButtonElement;
@@ -178,8 +178,8 @@ export class URDFEditorController {
 
     set brief(v: boolean) {
         this._brief = v;
-        this._briefBtn.classList.toggle('active', v);
-        this._briefBtn.setAttribute('aria-pressed', String(v));
+        this._briefBtn.classList.toggle('active', !v);
+        this._briefBtn.setAttribute('aria-pressed', String(!v));
     }
 
     async jumpToJoint(name: string): Promise<void> {
