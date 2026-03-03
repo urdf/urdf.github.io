@@ -1,6 +1,7 @@
 import { URDFManipulator } from '../src/index.js';
 import { URDFEditorController } from './editor.js';
 import { URDFBuildController, CHASSIS_DEFAULTS, WHEEL_DEFAULTS, COMPONENT_CATALOG } from './build.js';
+import type { Component as BuildComponent } from './build.js';
 import type { GestureController } from './gesture.js';
 import { Raycaster, Vector2, Vector3, Plane } from 'three';
 
@@ -78,7 +79,7 @@ async function loadViaBrowserAssembly(robot: RobotConfig): Promise<void> {
     // Restore persisted build state (replaces viewer.urdf if anything was saved)
     buildComponentsListEl.innerHTML = '';
     const restored = buildCtrl.restore();
-    for (const { id, type } of restored) renderComponentItem(id, type);
+    for (const { id, type } of restored) renderComponentItem(id, type, buildCtrl.getComponentData(id));
 
     if (restored.length > 0) syncSlidersFromController();
 }
@@ -689,7 +690,7 @@ buildCtrl.onDOMRebuild = () => {
     componentInputs.clear();
     componentSelects.clear();
     buildComponentsListEl.innerHTML = '';
-    for (const { id, type } of buildCtrl.getComponentEntries()) renderComponentItem(id, type);
+    for (const { id, type } of buildCtrl.getComponentEntries()) renderComponentItem(id, type, buildCtrl.getComponentData(id));
     syncSlidersFromController();
     buildCtrl.onHistoryChange?.();
 };
@@ -728,7 +729,7 @@ buildResumeBtn.addEventListener('click', () => {
     componentInputs.clear();
     componentSelects.clear();
     const entries = buildCtrl.restoreCustom();
-    for (const { id, type } of entries) renderComponentItem(id, type);
+    for (const { id, type } of entries) renderComponentItem(id, type, buildCtrl.getComponentData(id));
     if (entries.length > 0) syncSlidersFromController();
     buildCtrl.open();
     document.getElementById('tab-build')?.click();
@@ -764,7 +765,7 @@ const componentInputs = new Map<string, Record<string, HTMLInputElement>>();
 // Map from component ID to its card's parent <select> (for live options refresh)
 const componentSelects = new Map<string, HTMLSelectElement>();
 
-function renderComponentItem(id: string, type: string): void {
+function renderComponentItem(id: string, type: string, saved?: BuildComponent | null): void {
     const def  = COMPONENT_CATALOG[type];
     const item = document.createElement('div');
     item.className = 'build-component';
@@ -866,49 +867,55 @@ function renderComponentItem(id: string, type: string): void {
         container.appendChild(row);
     };
 
+    const s = saved;
+
     // Position
     addGroupLabel('Position');
-    addRow('x',  'axis-x', 'X', 0.005, 0);
-    addRow('y',  'axis-y', 'Y', 0.005, 0);
-    addRow('z',  'axis-z', 'Z', 0.005, def.defaultZ);
+    addRow('x',  'axis-x', 'X', 0.005, s?.x  ?? 0);
+    addRow('y',  'axis-y', 'Y', 0.005, s?.y  ?? 0);
+    addRow('z',  'axis-z', 'Z', 0.005, s?.z  ?? def.defaultZ);
 
     // Rotation
     addGroupLabel('Rotation');
-    addRow('rx', 'axis-x', 'Rx', 0.01, 0);
-    addRow('ry', 'axis-y', 'Ry', 0.01, 0);
-    addRow('rz', 'axis-z', 'Rz', 0.01, 0);
+    addRow('rx', 'axis-x', 'Rx', 0.01, s?.rx ?? 0);
+    addRow('ry', 'axis-y', 'Ry', 0.01, s?.ry ?? 0);
+    addRow('rz', 'axis-z', 'Rz', 0.01, s?.rz ?? 0);
 
     // Dimensions
     addGroupLabel('Size');
     if (def.geomType === 'cylinder') {
-        addRow('r', 'axis-x', 'R',  0.005, def.defaultDims[0]);
-        addRow('l', 'axis-z', 'L',  0.005, def.defaultDims[1]);
+        addRow('r', 'axis-x', 'R',  0.005, s?.dims[0] ?? def.defaultDims[0]);
+        addRow('l', 'axis-z', 'L',  0.005, s?.dims[1] ?? def.defaultDims[1]);
     } else {
-        addRow('w', 'axis-x', 'W',  0.005, def.defaultDims[0]);
-        addRow('d', 'axis-y', 'D',  0.005, def.defaultDims[1]);
-        addRow('h', 'axis-z', 'H',  0.005, def.defaultDims[2]);
+        addRow('w', 'axis-x', 'W',  0.005, s?.dims[0] ?? def.defaultDims[0]);
+        addRow('d', 'axis-y', 'D',  0.005, s?.dims[1] ?? def.defaultDims[1]);
+        addRow('h', 'axis-z', 'H',  0.005, s?.dims[2] ?? def.defaultDims[2]);
     }
 
     // Joint
     addGroupLabel('Joint');
     addSelectRow('parent', 'Parent', buildCtrl.getAvailableLinks().filter(l => l !== id));
     addSelectRow('jt', 'Type', ['fixed', 'continuous', 'revolute', 'prismatic']);
+    // Restore saved select values
+    if (s?.parent && selects['parent']) selects['parent'].value = s.parent;
+    if (s?.jointType && selects['jt'])  selects['jt'].value    = s.jointType;
 
     // Axis section (shown for non-fixed joints)
     const axisSection = document.createElement('div');
     addGroupLabel('Axis', axisSection);
-    addRow('ax', 'axis-x', 'X', 0.1, 0, axisSection);
-    addRow('ay', 'axis-y', 'Y', 0.1, 0, axisSection);
-    addRow('az', 'axis-z', 'Z', 0.1, 1, axisSection);
-    axisSection.hidden = true;
+    addRow('ax', 'axis-x', 'X', 0.1, s?.axis[0] ?? 0, axisSection);
+    addRow('ay', 'axis-y', 'Y', 0.1, s?.axis[1] ?? 0, axisSection);
+    addRow('az', 'axis-z', 'Z', 0.1, s?.axis[2] ?? 1, axisSection);
+    const savedJt = s?.jointType ?? 'fixed';
+    axisSection.hidden = savedJt === 'fixed';
     body.appendChild(axisSection);
 
     // Limits section (shown for revolute/prismatic)
     const limitsSection = document.createElement('div');
     addGroupLabel('Limits', limitsSection);
-    addRow('limitMin', 'axis-x', 'Min', 0.01, -1.5708, limitsSection);
-    addRow('limitMax', 'axis-z', 'Max', 0.01,  1.5708, limitsSection);
-    limitsSection.hidden = true;
+    addRow('limitMin', 'axis-x', 'Min', 0.01, s?.limitLower ?? -1.5708, limitsSection);
+    addRow('limitMax', 'axis-z', 'Max', 0.01, s?.limitUpper ??  1.5708, limitsSection);
+    limitsSection.hidden = savedJt !== 'revolute' && savedJt !== 'prismatic';
     body.appendChild(limitsSection);
 
     // Preview slider (revolute/prismatic only — drives joint live without reload)
@@ -916,8 +923,8 @@ function renderComponentItem(id: string, type: string): void {
     const previewSlider  = document.createElement('input');
     previewSlider.type  = 'range';
     previewSlider.step  = '0.01';
-    previewSlider.min   = '-1.5708';
-    previewSlider.max   = '1.5708';
+    previewSlider.min   = String(s?.limitLower ?? -1.5708);
+    previewSlider.max   = String(s?.limitUpper ??  1.5708);
     previewSlider.value = '0';
     previewSlider.dataset.preview = 'true';
     previewSlider.style.cssText = 'width: 100%; margin-top: 2px;';
@@ -931,7 +938,7 @@ function renderComponentItem(id: string, type: string): void {
     previewRow.style.cssText = 'padding: 0 0 4px;';
     previewRow.appendChild(previewSlider);
     previewSection.appendChild(previewRow);
-    previewSection.hidden = true;
+    previewSection.hidden = savedJt !== 'revolute' && savedJt !== 'prismatic';
     body.appendChild(previewSection);
 
     selects['jt'].addEventListener('change', () => {

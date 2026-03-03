@@ -87,7 +87,7 @@ const SUPPORTED_ROBOTS = new Set(['robot-car']);
 
 type JointType = 'fixed' | 'continuous' | 'revolute' | 'prismatic';
 
-interface Component {
+export interface Component {
     type:       string;
     x: number; y: number; z: number;
     rx: number; ry: number; rz: number;
@@ -318,6 +318,11 @@ export class URDFBuildController {
 
     getComponentEntries(): Array<{ id: string; type: string }> {
         return [...this._components.keys()].map(id => ({ id, type: this._components.get(id)!.type }));
+    }
+
+    getComponentData(id: string): Component | null {
+        const c = this._components.get(id);
+        return c ? { ...c, axis: [...c.axis] as [number, number, number] } : null;
     }
 
     resetToDefaults(): void {
