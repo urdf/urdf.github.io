@@ -606,7 +606,27 @@ export class URDFBuildController {
                 components: [...this._components.entries()],
                 counters:   [...this._compCounters.entries()],
             } satisfies SavedState));
+            if (this._isCustom) {
+                localStorage.setItem('urdf-build-last-custom', this._robotName);
+            }
         } catch { /* storage quota — ignore */ }
+    }
+
+    /** Name of the last saved custom robot, or null if none exists. */
+    static lastCustomName(): string | null {
+        try {
+            const name = localStorage.getItem('urdf-build-last-custom');
+            if (!name) return null;
+            return localStorage.getItem(`urdf-build-${name}`) ? name : null;
+        } catch { return null; }
+    }
+
+    /** Restore the last saved custom robot. Returns component entries, empty if nothing to restore. */
+    restoreCustom(): Array<{ id: string; type: string }> {
+        const name = URDFBuildController.lastCustomName();
+        if (!name) return [];
+        this.initFromScratch(name);
+        return this.restore();
     }
 
     private _reload(): void {

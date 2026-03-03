@@ -641,6 +641,7 @@ const buildPaletteEl        = document.getElementById('build-palette')          
 const buildComponentsListEl = document.getElementById('build-components-list') as HTMLElement;
 const buildNewNameEl        = document.getElementById('build-new-name')         as HTMLInputElement;
 const buildNewCreateBtn     = document.getElementById('build-new-create')       as HTMLButtonElement;
+const buildResumeBtn        = document.getElementById('build-resume')            as HTMLButtonElement;
 
 // Helper: sync all parametric sliders from controller state
 function syncSlidersFromController(): void {
@@ -701,10 +702,36 @@ buildExportBtn.addEventListener('click', () => void buildCtrl.exportZip(buildExp
 
 buildNewCreateBtn.addEventListener('click', () => {
     buildComponentsListEl.innerHTML = '';
+    componentInputs.clear();
+    componentSelects.clear();
     buildCtrl.initFromScratch(buildNewNameEl.value);
     buildCtrl.open();
     document.getElementById('tab-build')?.click();
+    refreshResumeBtn();
 });
+
+function refreshResumeBtn(): void {
+    const name = URDFBuildController.lastCustomName();
+    if (name) {
+        buildResumeBtn.textContent = `Resume "${name}"`;
+        buildResumeBtn.hidden = false;
+    } else {
+        buildResumeBtn.hidden = true;
+    }
+}
+
+buildResumeBtn.addEventListener('click', () => {
+    buildComponentsListEl.innerHTML = '';
+    componentInputs.clear();
+    componentSelects.clear();
+    const entries = buildCtrl.restoreCustom();
+    for (const { id, type } of entries) renderComponentItem(id, type);
+    if (entries.length > 0) syncSlidersFromController();
+    buildCtrl.open();
+    document.getElementById('tab-build')?.click();
+});
+
+refreshResumeBtn();
 
 // Populate component palette
 for (const [type, def] of Object.entries(COMPONENT_CATALOG)) {
