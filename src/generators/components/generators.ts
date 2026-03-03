@@ -17,7 +17,9 @@ export function generateHcsr04(): ArrayBuffer {
         geos.push(cyl);
     }
 
-    return geometryToSTL(mergeGeometries(geos));
+    const merged = mergeGeometries(geos);
+    merged.computeVertexNormals();
+    return geometryToSTL(merged);
 }
 
 export function generateL298n(): ArrayBuffer {
@@ -47,7 +49,9 @@ export function generateL298n(): ArrayBuffer {
         geos.push(cap);
     }
 
-    return geometryToSTL(mergeGeometries(geos));
+    const merged = mergeGeometries(geos);
+    merged.computeVertexNormals();
+    return geometryToSTL(merged);
 }
 
 export function generateEsp32Cam(): ArrayBuffer {
@@ -66,7 +70,9 @@ export function generateEsp32Cam(): ArrayBuffer {
     antenna.translate(0, -0.0155, 0.001);
     geos.push(antenna);
 
-    return geometryToSTL(mergeGeometries(geos));
+    const merged = mergeGeometries(geos);
+    merged.computeVertexNormals();
+    return geometryToSTL(merged);
 }
 
 export function generateTtMotor(): ArrayBuffer {
@@ -88,7 +94,9 @@ export function generateTtMotor(): ArrayBuffer {
     shaft.translate(0, 0.012, 0.011);
     geos.push(shaft);
 
-    return geometryToSTL(mergeGeometries(geos));
+    const merged = mergeGeometries(geos);
+    merged.computeVertexNormals();
+    return geometryToSTL(merged);
 }
 
 export function generateSg90(): ArrayBuffer {
@@ -112,7 +120,9 @@ export function generateSg90(): ArrayBuffer {
     horn.translate(0, 0, 0.023 + 0.002);
     geos.push(horn);
 
-    return geometryToSTL(mergeGeometries(geos));
+    const merged = mergeGeometries(geos);
+    merged.computeVertexNormals();
+    return geometryToSTL(merged);
 }
 
 export function generateArduinoNano(): ArrayBuffer {
@@ -134,7 +144,9 @@ export function generateArduinoNano(): ArrayBuffer {
         geos.push(rail);
     }
 
-    return geometryToSTL(mergeGeometries(geos));
+    const merged = mergeGeometries(geos);
+    merged.computeVertexNormals();
+    return geometryToSTL(merged);
 }
 
 export function generateMpu6050(): ArrayBuffer {
@@ -148,5 +160,7 @@ export function generateMpu6050(): ArrayBuffer {
     chip.translate(0, 0, 0.0015 + 0.0005);
     geos.push(chip);
 
-    return geometryToSTL(mergeGeometries(geos));
+    const merged = mergeGeometries(geos);
+    merged.computeVertexNormals();
+    return geometryToSTL(merged);
 }

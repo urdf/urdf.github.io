@@ -738,7 +738,10 @@ buildCtrl.onHistoryChange = () => {
 
 buildCtrl.onDOMRebuild = () => {
     clearBuildUI();
-    for (const { id, type } of buildCtrl.getComponentEntries()) renderComponentItem(id, type, buildCtrl.getComponentData(id));
+    for (const { id, type } of buildCtrl.getComponentEntries()) {
+        renderComponentItem(id, type, buildCtrl.getComponentData(id));
+        if (COMPONENT_CATALOG[type]?.geomType === 'mesh') regenMeshBlob(id, type);
+    }
     syncSlidersFromController();
     refreshPaletteCounts();
     buildCtrl.onHistoryChange?.();
@@ -980,6 +983,7 @@ function renderComponentItem(id: string, type: string, saved?: BuildComponent | 
         if (!newId) return;
         addOptionToParentSelects(newId);
         renderComponentItem(newId, type, buildCtrl.getComponentData(newId));
+        if (COMPONENT_CATALOG[type]?.geomType === 'mesh') regenMeshBlob(newId, type);
         refreshPaletteCounts();
     });
     const removeBtn = document.createElement('button');
@@ -1326,6 +1330,16 @@ viewer.renderer.domElement.addEventListener('pointermove', (e: PointerEvent) => 
 viewer.renderer.domElement.addEventListener('pointerleave', () => {
     _hoverTip.style.display = 'none';
 });
+
+// ── Mesh blob helpers ─────────────────────────────────────────────────────────
+
+function regenMeshBlob(id: string, type: string): void {
+    const libEntry = LIBRARY.find(e => e.id === type);
+    if (!libEntry) return;
+    libEntry.factory()
+        .then(({ generate }) => buildCtrl.restoreMeshBlob(id, generate()))
+        .catch(err => console.warn('[regenMeshBlob] failed for', id, err));
+}
 
 // ── Library tab ───────────────────────────────────────────────────────────────
 

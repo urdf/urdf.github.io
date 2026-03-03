@@ -582,27 +582,29 @@ export class URDFBuildController {
 
     private _insertComponents(xml: string): string {
         if (this._components.size === 0) return xml;
-        const parts = [...this._components.entries()]
-            .map(([id, c]) => {
-                const def  = COMPONENT_CATALOG[c.type];
-                let geom: string;
-                if (def?.geomType === 'mesh') {
-                    geom = `<mesh filename="${this._meshBlobs.get(id)!}"/>`;
-                } else if (def?.geomType === 'cylinder') {
-                    geom = `<cylinder radius="${c.dims[0].toFixed(4)}" length="${c.dims[1].toFixed(4)}"/>`;
-                } else {
-                    geom = `<box size="${c.dims[0].toFixed(4)} ${c.dims[1].toFixed(4)} ${c.dims[2].toFixed(4)}"/>`;
-                }
-                const axisXml  = c.jointType !== 'fixed'
-                    ? `\n    <axis xyz="${c.axis[0]} ${c.axis[1]} ${c.axis[2]}"/>`
-                    : '';
-                const limitXml = (c.jointType === 'revolute' || c.jointType === 'prismatic')
-                    ? `\n    <limit lower="${c.limitLower.toFixed(4)}" upper="${c.limitUpper.toFixed(4)}" effort="1" velocity="1"/>`
-                    : '';
-                return `\n  <link name="${id}">\n    <visual>\n      <geometry>${geom}</geometry>\n      <material name="${id}_mat"><color rgba="${def?.color ?? '0.65 0.65 0.65 1.00'}"/></material>\n    </visual>\n  </link>\n  <joint name="${id}_joint" type="${c.jointType}">\n    <parent link="${c.parent}"/>\n    <child link="${id}"/>\n    <origin xyz="${c.x.toFixed(4)} ${c.y.toFixed(4)} ${c.z.toFixed(4)}" rpy="${c.rx.toFixed(4)} ${c.ry.toFixed(4)} ${c.rz.toFixed(4)}"/>${axisXml}${limitXml}\n  </joint>`;
-            })
-            .join('\n');
-        return xml.replace('</robot>', `${parts}\n</robot>`);
+        const parts: string[] = [];
+        for (const [id, c] of this._components) {
+            const def = COMPONENT_CATALOG[c.type];
+            let geom: string;
+            if (def?.geomType === 'mesh') {
+                const blobUrl = this._meshBlobs.get(id);
+                if (!blobUrl) continue;  // blob not yet ready (restore in progress or post-undo)
+                geom = `<mesh filename="${blobUrl}"/>`;
+            } else if (def?.geomType === 'cylinder') {
+                geom = `<cylinder radius="${c.dims[0].toFixed(4)}" length="${c.dims[1].toFixed(4)}"/>`;
+            } else {
+                geom = `<box size="${c.dims[0].toFixed(4)} ${c.dims[1].toFixed(4)} ${c.dims[2].toFixed(4)}"/>`;
+            }
+            const axisXml  = c.jointType !== 'fixed'
+                ? `\n    <axis xyz="${c.axis[0]} ${c.axis[1]} ${c.axis[2]}"/>`
+                : '';
+            const limitXml = (c.jointType === 'revolute' || c.jointType === 'prismatic')
+                ? `\n    <limit lower="${c.limitLower.toFixed(4)}" upper="${c.limitUpper.toFixed(4)}" effort="1" velocity="1"/>`
+                : '';
+            parts.push(`\n  <link name="${id}">\n    <visual>\n      <geometry>${geom}</geometry>\n      <material name="${id}_mat"><color rgba="${def?.color ?? '0.65 0.65 0.65 1.00'}"/></material>\n    </visual>\n  </link>\n  <joint name="${id}_joint" type="${c.jointType}">\n    <parent link="${c.parent}"/>\n    <child link="${id}"/>\n    <origin xyz="${c.x.toFixed(4)} ${c.y.toFixed(4)} ${c.z.toFixed(4)}" rpy="${c.rx.toFixed(4)} ${c.ry.toFixed(4)} ${c.rz.toFixed(4)}"/>${axisXml}${limitXml}\n  </joint>`);
+        }
+        if (parts.length === 0) return xml;
+        return xml.replace('</robot>', `${parts.join('\n')}\n</robot>`);
     }
 
     private _parseJointZ(joint: string): number | null {
@@ -651,7 +653,6 @@ export class URDFBuildController {
 
         for (const url of this._stlBlobs.values()) URL.revokeObjectURL(url.split('#')[0]);
         this._stlBlobs.clear();
-        // TODO: mesh blobs are lost on undo/redo — caller must re-run generators for mesh components
         for (const url of this._meshBlobs.values()) URL.revokeObjectURL(url.split('#')[0]);
         this._meshBlobs.clear();
         this._storeSTLBlob('chassis.stl', generateChassis(this._chassisParams));
