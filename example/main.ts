@@ -796,6 +796,7 @@ function renderComponentItem(id: string, type: string, saved?: BuildComponent | 
     // ── Header ────────────────────────────────────────────────────────
     const header = document.createElement('div');
     header.className = 'build-component-header';
+    header.style.cursor = 'pointer';
     const labelEl = document.createElement('span');
     labelEl.textContent = `${def.label} ${id.split('_').pop()}`;
     const removeBtn = document.createElement('button');
@@ -803,7 +804,8 @@ function renderComponentItem(id: string, type: string, saved?: BuildComponent | 
     removeBtn.className = 'build-remove-btn';
     removeBtn.title = 'Remove';
     removeBtn.textContent = '×';
-    removeBtn.addEventListener('click', () => {
+    removeBtn.addEventListener('click', (e) => {
+        e.stopPropagation(); // don't toggle collapse
         buildCtrl.removeComponent(id);
         componentInputs.delete(id);
         componentSelects.delete(id);
@@ -818,6 +820,9 @@ function renderComponentItem(id: string, type: string, saved?: BuildComponent | 
     // ── Input rows ────────────────────────────────────────────────────
     const body = document.createElement('div');
     body.style.cssText = 'display: flex; flex-direction: column; gap: 2px;';
+    // Start collapsed; header click toggles
+    body.hidden = true;
+    header.addEventListener('click', () => { body.hidden = !body.hidden; });
 
     const inputs:  Record<string, HTMLInputElement>  = {};
     const selects: Record<string, HTMLSelectElement> = {};
@@ -986,14 +991,17 @@ function renderComponentItem(id: string, type: string, saved?: BuildComponent | 
 
 const _compRaycaster  = new Raycaster();
 const _compMouse      = new Vector2();
-const _compDragPlane  = new Plane();
+const _compDragPlane  = new Plane();   // horizontal — for XY drag
+const _compVertPlane  = new Plane();   // vertical   — for Z drag (Shift)
 const _compInitialHit = new Vector3();
+const _compInitVertHit = new Vector3();
 const _compNewHit     = new Vector3();
 
 let _compDragId:      string | null      = null;
 let _compDragCard:    HTMLElement | null = null;
 let _compInitUrdfX    = 0;
 let _compInitUrdfY    = 0;
+let _compInitUrdfZ    = 0;
 let _compDragUrdfZ    = 0;
 let _compCurX         = 0;
 let _compCurY         = 0;
@@ -1034,9 +1042,17 @@ viewer.renderer.domElement.addEventListener('pointerdown', (e: PointerEvent) => 
     _compDragPlane.set(new Vector3(0, 1, 0), -xyz.z);
     _compRaycaster.ray.intersectPlane(_compDragPlane, _compInitialHit);
 
+    // Vertical drag plane facing the camera (for Shift+drag Z axis)
+    const _camFwd = new Vector3();
+    viewer.camera.getWorldDirection(_camFwd);
+    _camFwd.y = 0; _camFwd.normalize();
+    _compVertPlane.setFromNormalAndCoplanarPoint(_camFwd, new Vector3(xyz.x, xyz.z, -xyz.y));
+    _compRaycaster.ray.intersectPlane(_compVertPlane, _compInitVertHit);
+
     _compDragId    = id;
     _compInitUrdfX = xyz.x;
     _compInitUrdfY = xyz.y;
+    _compInitUrdfZ = xyz.z;
     _compDragUrdfZ = xyz.z;
     _compCurX      = xyz.x;
     _compCurY      = xyz.y;
@@ -1055,28 +1071,35 @@ viewer.renderer.domElement.addEventListener('pointermove', (e: PointerEvent) => 
     if (!_compDragId) return;
     _compUpdateNDC(e);
     _compRaycaster.setFromCamera(_compMouse, viewer.camera);
-    if (!_compRaycaster.ray.intersectPlane(_compDragPlane, _compNewHit)) return;
 
-    // Delta in Three.js world XZ → URDF XY (URDF X = Three X, URDF Y = -Three Z)
-    // Snap to 1mm grid
-    const _snap = 0.001;
-    _compCurX = Math.round((_compInitUrdfX + (_compNewHit.x - _compInitialHit.x)) / _snap) * _snap;
-    _compCurY = Math.round((_compInitUrdfY - (_compNewHit.z - _compInitialHit.z)) / _snap) * _snap;
-
-    // Direct Three.js update — no URDF reload during drag for smooth performance
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const joint = (viewer.robot as any)?.joints[`${_compDragId}_joint`];
-    if (joint) joint.position.set(_compCurX, _compCurY, _compDragUrdfZ);
+    const inp   = componentInputs.get(_compDragId);
+    const _snap = 0.001; // 1mm grid snap
 
-    // Sync position inputs in the component card
-    const inp = componentInputs.get(_compDragId);
-    if (inp) { inp['x'].value = _compCurX.toFixed(4); inp['y'].value = _compCurY.toFixed(4); }
+    viewer.renderer.domElement.style.cursor = e.shiftKey ? 'ns-resize' : 'grabbing';
+
+    if (e.shiftKey) {
+        // Shift: vertical drag → change URDF Z
+        if (!_compRaycaster.ray.intersectPlane(_compVertPlane, _compNewHit)) return;
+        _compDragUrdfZ = Math.round((_compInitUrdfZ + (_compNewHit.y - _compInitVertHit.y)) / _snap) * _snap;
+        if (joint) joint.position.set(_compCurX, _compCurY, _compDragUrdfZ);
+        if (inp) inp['z'].value = _compDragUrdfZ.toFixed(4);
+    } else {
+        // Default: horizontal drag → change URDF X, Y
+        if (!_compRaycaster.ray.intersectPlane(_compDragPlane, _compNewHit)) return;
+        _compCurX = Math.round((_compInitUrdfX + (_compNewHit.x - _compInitialHit.x)) / _snap) * _snap;
+        _compCurY = Math.round((_compInitUrdfY - (_compNewHit.z - _compInitialHit.z)) / _snap) * _snap;
+        if (joint) joint.position.set(_compCurX, _compCurY, _compDragUrdfZ);
+        if (inp) { inp['x'].value = _compCurX.toFixed(4); inp['y'].value = _compCurY.toFixed(4); }
+    }
 });
 
 viewer.renderer.domElement.addEventListener('pointerup', () => {
     if (!_compDragId) return;
     buildCtrl.finishComponentDrag(_compDragId, _compCurX, _compCurY, _compDragUrdfZ);
     viewer.controls.enabled = true;
+    viewer.renderer.domElement.style.cursor = '';
     _compDragCard?.classList.remove('dragging');
     _compDragCard = null;
     _compDragId   = null;
