@@ -705,6 +705,27 @@ document.addEventListener('keydown', (e: KeyboardEvent) => {
     if (!buildCtrl.isActive) return;
     if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) { e.preventDefault(); buildCtrl.undo(); }
     if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) { e.preventDefault(); buildCtrl.redo(); }
+    // Arrow key nudge: move selected component 1mm per keypress
+    if (_buildSelCompId && ['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.key) && !e.ctrlKey && !e.metaKey) {
+        e.preventDefault();
+        const c = buildCtrl.getComponentData(_buildSelCompId);
+        if (!c) return;
+        const d = 0.001;
+        let { x, y, z } = c;
+        if (e.shiftKey) {
+            if (e.key === 'ArrowUp')   z += d;
+            if (e.key === 'ArrowDown') z -= d;
+        } else {
+            if (e.key === 'ArrowLeft')  y += d;
+            if (e.key === 'ArrowRight') y -= d;
+            if (e.key === 'ArrowUp')    x -= d;
+            if (e.key === 'ArrowDown')  x += d;
+        }
+        buildCtrl.updateComponent(_buildSelCompId, { x, y, z });
+        // Sync card inputs
+        const inp = componentInputs.get(_buildSelCompId);
+        if (inp) { inp['x'].value = x.toFixed(4); inp['y'].value = y.toFixed(4); inp['z'].value = z.toFixed(4); }
+    }
 });
 
 buildExportBtn.addEventListener('click', () => void buildCtrl.exportZip(buildExportBtn));
@@ -788,6 +809,9 @@ for (const [type, def] of Object.entries(COMPONENT_CATALOG)) {
             }
         }
         renderComponentItem(id, type);
+        // Scroll newly added card into view
+        buildComponentsListEl.querySelector<HTMLElement>(`[data-id="${id}"]`)
+            ?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     });
     buildPaletteEl.appendChild(btn);
 }
@@ -796,6 +820,16 @@ for (const [type, def] of Object.entries(COMPONENT_CATALOG)) {
 const componentInputs = new Map<string, Record<string, HTMLInputElement>>();
 // Map from component ID to its card's parent <select> (for live options refresh)
 const componentSelects = new Map<string, HTMLSelectElement>();
+// Last selected component ID (for keyboard nudge)
+let _buildSelCompId: string | null = null;
+
+function _selectCompCard(id: string): void {
+    _buildSelCompId = id;
+    // Visual feedback: add 'selected' class, remove from others
+    for (const el of buildComponentsListEl.querySelectorAll<HTMLElement>('.build-component')) {
+        el.classList.toggle('selected', el.dataset.id === id);
+    }
+}
 
 function renderComponentItem(id: string, type: string, saved?: BuildComponent | null): void {
     const def  = COMPONENT_CATALOG[type];
@@ -849,9 +883,12 @@ function renderComponentItem(id: string, type: string, saved?: BuildComponent | 
     const body = document.createElement('div');
     body.className = 'build-component-body';
     body.style.cssText = 'display: flex; flex-direction: column; gap: 2px;';
-    // Start collapsed; header click toggles
+    // Start collapsed; header click toggles and selects
     body.hidden = true;
-    header.addEventListener('click', () => { body.hidden = !body.hidden; });
+    header.addEventListener('click', () => {
+        body.hidden = !body.hidden;
+        _selectCompCard(id);
+    });
 
     const inputs:  Record<string, HTMLInputElement>  = {};
     const selects: Record<string, HTMLSelectElement> = {};
@@ -1137,8 +1174,10 @@ viewer.renderer.domElement.addEventListener('pointerup', (e: PointerEvent) => {
     viewer.renderer.domElement.style.cursor = '';
     _compDragCard?.classList.remove('dragging');
 
-    // Click (no drag): expand the card and scroll it into view
+    // Click (no drag): select, expand the card and scroll it into view
     if (!wasDrag && _compDragCard) {
+        const cardId = _compDragCard.dataset.id;
+        if (cardId) _selectCompCard(cardId);
         const cardBody = _compDragCard.querySelector<HTMLElement>('.build-component-body');
         if (cardBody) cardBody.hidden = false;
         _compDragCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
