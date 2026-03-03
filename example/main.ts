@@ -960,7 +960,6 @@ function renderComponentItem(id: string, type: string, saved?: BuildComponent | 
     // ── Header ────────────────────────────────────────────────────────
     const header = document.createElement('div');
     header.className = 'build-component-header';
-    header.style.cursor = 'pointer';
     header.setAttribute('aria-expanded', 'false');
     const labelEl = document.createElement('span');
     labelEl.textContent = `${def.label} ${id.split('_').pop()}`;

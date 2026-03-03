@@ -200,6 +200,7 @@
       margin-bottom: 4px;
       font-size: 12px;
       color: var(--text-1);
+      cursor: pointer;
     }
 
     .build-remove-btn {
@@ -320,9 +321,9 @@
 
     .build-comp-empty { font-size: 11px; color: var(--text-3); padding: 6px 12px; margin: 0; }
 
-    .build-action-row { padding: 4px 12px 4px; display: flex; gap: 6px; }
+    .build-action-row { padding: 4px 12px; display: flex; gap: 6px; }
 
-    .build-action-row--bottom { padding: 4px 12px 8px; display: flex; gap: 6px; }
+    .build-action-row--bottom { padding-bottom: 8px; }
 
     #build-reset { margin-left: auto; }
 
@@ -1795,7 +1796,7 @@
           <button id="build-reset" class="robot-btn" title="Reset to defaults">Reset</button>
         </div>
 
-        <div class="build-action-row--bottom">
+        <div class="build-action-row build-action-row--bottom">
           <button id="build-export" class="build-export-btn">Download .zip</button>
           <button id="build-copy-urdf" class="build-export-btn" title="Copy URDF XML to clipboard">Copy URDF</button>
         </div>
