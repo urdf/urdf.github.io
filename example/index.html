@@ -1084,7 +1084,11 @@
       bottom: 10px;
       left: 10px;
       z-index: 210;
-      transition: background 0.2s, border-color 0.2s, color 0.2s;
+      transition: left 0.25s ease, background 0.2s, border-color 0.2s, color 0.2s;
+    }
+
+    #control-panel.open.pinned ~ main #gesture-toggle {
+      left: calc(var(--panel-w, 380px) + 10px);
     }
 
     #gesture-toggle.active {
