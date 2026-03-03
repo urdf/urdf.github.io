@@ -639,6 +639,7 @@ syncPair(buildPowerbankREl,   document.getElementById('build-powerbank-r-num')  
 syncPair(buildPowerbankLEl,   document.getElementById('build-powerbank-l-num')   as HTMLInputElement, onPowerbankChange);
 
 const buildExportBtn        = document.getElementById('build-export')          as HTMLButtonElement;
+const buildCopyUrdfBtn      = document.getElementById('build-copy-urdf')       as HTMLButtonElement;
 const buildUndoBtn          = document.getElementById('build-undo')            as HTMLButtonElement;
 const buildRedoBtn          = document.getElementById('build-redo')            as HTMLButtonElement;
 const buildResetBtn         = document.getElementById('build-reset')           as HTMLButtonElement;
@@ -707,6 +708,15 @@ document.addEventListener('keydown', (e: KeyboardEvent) => {
 });
 
 buildExportBtn.addEventListener('click', () => void buildCtrl.exportZip(buildExportBtn));
+
+buildCopyUrdfBtn.addEventListener('click', () => {
+    const xml = buildCtrl.getURDFXML();
+    navigator.clipboard.writeText(xml).then(() => {
+        const orig = buildCopyUrdfBtn.textContent;
+        buildCopyUrdfBtn.textContent = 'Copied!';
+        setTimeout(() => { buildCopyUrdfBtn.textContent = orig; }, 1500);
+    }).catch(() => { /* clipboard denied — silently ignore */ });
+});
 
 buildNewCreateBtn.addEventListener('click', () => {
     buildComponentsListEl.innerHTML = '';
@@ -799,6 +809,24 @@ function renderComponentItem(id: string, type: string, saved?: BuildComponent | 
     header.style.cursor = 'pointer';
     const labelEl = document.createElement('span');
     labelEl.textContent = `${def.label} ${id.split('_').pop()}`;
+    const dupBtn = document.createElement('button');
+    dupBtn.type = 'button';
+    dupBtn.className = 'build-remove-btn';
+    dupBtn.title = 'Duplicate';
+    dupBtn.textContent = '⧉';
+    dupBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const newId = buildCtrl.duplicateComponent(id);
+        if (!newId) return;
+        for (const [existingId, sel] of componentSelects) {
+            if (existingId !== newId && !Array.from(sel.options).some(o => o.value === newId)) {
+                const o = document.createElement('option');
+                o.value = o.textContent = newId;
+                sel.appendChild(o);
+            }
+        }
+        renderComponentItem(newId, type, buildCtrl.getComponentData(newId));
+    });
     const removeBtn = document.createElement('button');
     removeBtn.type = 'button';
     removeBtn.className = 'build-remove-btn';
@@ -815,7 +843,7 @@ function renderComponentItem(id: string, type: string, saved?: BuildComponent | 
         }
         item.remove();
     });
-    header.append(labelEl, removeBtn);
+    header.append(labelEl, dupBtn, removeBtn);
 
     // ── Input rows ────────────────────────────────────────────────────
     const body = document.createElement('div');

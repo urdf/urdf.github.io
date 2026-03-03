@@ -325,6 +325,24 @@ export class URDFBuildController {
         return c ? { ...c, axis: [...c.axis] as [number, number, number] } : null;
     }
 
+    duplicateComponent(id: string): string | null {
+        const src = this._components.get(id);
+        if (!src) return null;
+        this._pushUndo();
+        const n  = (this._compCounters.get(src.type) ?? 0) + 1;
+        this._compCounters.set(src.type, n);
+        const newId = `${src.type}_${n}`;
+        this._components.set(newId, {
+            ...src,
+            axis: [...src.axis] as [number, number, number],
+            x: src.x + 0.020, // 20mm offset so it's not hidden behind original
+        });
+        this._reload();
+        return newId;
+    }
+
+    getURDFXML(): string { return this._buildXML(); }
+
     resetToDefaults(): void {
         this._pushUndo();
         this._chassisParams = { ...CHASSIS_DEFAULTS };
