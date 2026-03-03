@@ -631,6 +631,12 @@ export class URDFBuildController {
             } satisfies SavedState));
             if (this._isCustom) {
                 localStorage.setItem('urdf-build-last-custom', this._robotName);
+                const raw  = localStorage.getItem('urdf-build-custom-list');
+                const list: string[] = raw ? JSON.parse(raw) as string[] : [];
+                if (!list.includes(this._robotName)) {
+                    list.push(this._robotName);
+                    localStorage.setItem('urdf-build-custom-list', JSON.stringify(list));
+                }
             }
         } catch { /* storage quota — ignore */ }
     }
@@ -641,8 +647,23 @@ export class URDFBuildController {
     clearCustom(): void {
         try {
             const name = localStorage.getItem('urdf-build-last-custom');
-            if (name) localStorage.removeItem(`urdf-build-${name}`);
-            localStorage.removeItem('urdf-build-last-custom');
+            if (name) this.deleteCustom(name);
+            else localStorage.removeItem('urdf-build-last-custom');
+        } catch { /**/ }
+    }
+
+    /** Remove a named custom robot from the saved list and storage. */
+    deleteCustom(name: string): void {
+        try {
+            const raw  = localStorage.getItem('urdf-build-custom-list');
+            const list: string[] = raw ? JSON.parse(raw) as string[] : [];
+            const next = list.filter(n => n !== name);
+            if (next.length > 0) localStorage.setItem('urdf-build-custom-list', JSON.stringify(next));
+            else localStorage.removeItem('urdf-build-custom-list');
+            localStorage.removeItem(`urdf-build-${name}`);
+            if (localStorage.getItem('urdf-build-last-custom') === name) {
+                localStorage.removeItem('urdf-build-last-custom');
+            }
         } catch { /**/ }
     }
 
@@ -655,10 +676,27 @@ export class URDFBuildController {
         } catch { return null; }
     }
 
+    /** All saved custom robot names (only those with actual data). */
+    static savedCustomNames(): string[] {
+        try {
+            const raw  = localStorage.getItem('urdf-build-custom-list');
+            const list: string[] = raw ? JSON.parse(raw) as string[] : [];
+            // Backward compat: include last-custom if not already listed
+            const lc = localStorage.getItem('urdf-build-last-custom');
+            if (lc && !list.includes(lc) && localStorage.getItem(`urdf-build-${lc}`)) list.unshift(lc);
+            return list.filter(n => !!localStorage.getItem(`urdf-build-${n}`));
+        } catch { return []; }
+    }
+
     /** Restore the last saved custom robot. Returns component entries, empty if nothing to restore. */
     restoreCustom(): Array<{ id: string; type: string }> {
         const name = URDFBuildController.lastCustomName();
         if (!name) return [];
+        return this.restoreCustomByName(name);
+    }
+
+    /** Restore a named custom robot. Returns component entries, empty if not found. */
+    restoreCustomByName(name: string): Array<{ id: string; type: string }> {
         this.initFromScratch(name);
         return this.restore();
     }

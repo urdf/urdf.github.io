@@ -366,15 +366,24 @@ viewer.addEventListener('click', () => {
     if (editorCtrl.isOpen) void editorCtrl.jumpToJoint(hoveredJointName);
 });
 
+const urdfErrorBannerEl = document.getElementById('urdf-error-banner') as HTMLElement;
+const urdfErrorTextEl   = document.getElementById('urdf-error-text')   as HTMLElement;
+const urdfErrorCloseBtn = document.getElementById('urdf-error-close')  as HTMLButtonElement;
+
 viewer.addEventListener('urdf-change', () => {
     loadingEl.classList.add('visible');
     jointsPanel.innerHTML = '';
     selectPart(null);
+    urdfErrorBannerEl.classList.remove('visible');
 });
 
-viewer.addEventListener('urdf-error', () => {
+viewer.addEventListener('urdf-error', (e: Event) => {
     loadingEl.classList.remove('visible');
+    urdfErrorTextEl.textContent = (e as CustomEvent<string>).detail || 'URDF load error';
+    urdfErrorBannerEl.classList.add('visible');
 });
+
+urdfErrorCloseBtn.addEventListener('click', () => { urdfErrorBannerEl.classList.remove('visible'); });
 
 viewer.addEventListener('urdf-processed', () => {
     loadingEl.classList.remove('visible');
@@ -657,7 +666,8 @@ const buildPaletteEl        = document.getElementById('build-palette')          
 const buildComponentsListEl = document.getElementById('build-components-list') as HTMLElement;
 const buildNewNameEl        = document.getElementById('build-new-name')         as HTMLInputElement;
 const buildNewCreateBtn     = document.getElementById('build-new-create')       as HTMLButtonElement;
-const buildResumeBtn        = document.getElementById('build-resume')            as HTMLButtonElement;
+const buildSavedToggleBtn   = document.getElementById('build-saved-toggle')      as HTMLButtonElement;
+const buildSavedListEl      = document.getElementById('build-saved-list')         as HTMLElement;
 const buildActiveHeaderEl   = document.getElementById('build-active-header')    as HTMLElement;
 const buildActiveNameEl     = document.getElementById('build-active-name')      as HTMLElement;
 const buildClearCustomBtn   = document.getElementById('build-clear-custom')     as HTMLButtonElement;
@@ -782,18 +792,58 @@ buildNewCreateBtn.addEventListener('click', () => {
     buildCtrl.initFromScratch(buildNewNameEl.value);
     buildCtrl.open();
     document.getElementById('tab-build')?.click();
-    refreshResumeBtn();
+    refreshSavedList();
     refreshBuildHeader();
     refreshPaletteCounts();
 });
 
-function refreshResumeBtn(): void {
-    const name = URDFBuildController.lastCustomName();
-    if (name) {
-        buildResumeBtn.textContent = `Resume "${name}"`;
-        buildResumeBtn.hidden = false;
-    } else {
-        buildResumeBtn.hidden = true;
+function refreshSavedList(): void {
+    const names = URDFBuildController.savedCustomNames();
+    buildSavedToggleBtn.hidden = names.length === 0;
+    if (names.length === 0) { buildSavedListEl.hidden = true; return; }
+
+    buildSavedListEl.innerHTML = '';
+    for (const name of names) {
+        const row = document.createElement('div');
+        row.style.cssText = 'display:flex;align-items:center;gap:4px;padding:2px 0;';
+
+        const nameEl = document.createElement('span');
+        nameEl.style.cssText = 'flex:1;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text);';
+        nameEl.textContent = name;
+
+        const loadBtn = document.createElement('button');
+        loadBtn.type = 'button';
+        loadBtn.className = 'build-export-btn';
+        loadBtn.textContent = 'Load';
+        loadBtn.style.cssText = 'padding:2px 8px;font-size:10px;flex-shrink:0;';
+        loadBtn.addEventListener('click', () => {
+            buildComponentsListEl.innerHTML = '';
+            componentInputs.clear();
+            componentSelects.clear();
+            _buildSelCompId = null;
+            const entries = buildCtrl.restoreCustomByName(name);
+            for (const { id, type } of entries) renderComponentItem(id, type, buildCtrl.getComponentData(id));
+            if (entries.length > 0) syncSlidersFromController();
+            refreshPaletteCounts();
+            buildCtrl.open();
+            document.getElementById('tab-build')?.click();
+            refreshBuildHeader();
+            buildSavedListEl.hidden = true;
+        });
+
+        const delBtn = document.createElement('button');
+        delBtn.type = 'button';
+        delBtn.className = 'build-remove-btn';
+        delBtn.textContent = '×';
+        delBtn.title = 'Delete saved robot';
+        delBtn.addEventListener('click', () => {
+            buildCtrl.deleteCustom(name);
+            if (buildCtrl.robotName === name) refreshBuildHeader();
+            refreshSavedList();
+        });
+
+        row.append(nameEl, loadBtn, delBtn);
+        buildSavedListEl.appendChild(row);
     }
 }
 
@@ -806,23 +856,15 @@ function refreshBuildHeader(): void {
     }
 }
 
-buildResumeBtn.addEventListener('click', () => {
-    buildComponentsListEl.innerHTML = '';
-    componentInputs.clear();
-    componentSelects.clear();
-    const entries = buildCtrl.restoreCustom();
-    for (const { id, type } of entries) renderComponentItem(id, type, buildCtrl.getComponentData(id));
-    if (entries.length > 0) syncSlidersFromController();
-    refreshPaletteCounts();
-    buildCtrl.open();
-    document.getElementById('tab-build')?.click();
-    refreshBuildHeader();
+buildSavedToggleBtn.addEventListener('click', () => {
+    buildSavedListEl.hidden = !buildSavedListEl.hidden;
 });
 
 buildClearCustomBtn.addEventListener('click', () => {
-    buildCtrl.clearCustom();
+    buildCtrl.deleteCustom(buildCtrl.robotName);
     buildActiveHeaderEl.hidden = true;
-    refreshResumeBtn();
+    buildSavedListEl.hidden = true;
+    refreshSavedList();
 });
 
 buildShortcutsToggle.addEventListener('click', (e) => {
@@ -830,7 +872,7 @@ buildShortcutsToggle.addEventListener('click', (e) => {
     buildShortcutsEl.hidden = !buildShortcutsEl.hidden;
 });
 
-refreshResumeBtn();
+refreshSavedList();
 refreshBuildHeader();
 
 // Palette count badges: map from type → badge <span>

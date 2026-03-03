@@ -654,6 +654,45 @@
 
     @keyframes spin { to { transform: rotate(360deg); } }
 
+    /* ── URDF error banner ───────────────────────────────────────────────── */
+
+    #urdf-error-banner {
+      position: absolute;
+      bottom: 12px;
+      left: 50%;
+      transform: translateX(-50%);
+      max-width: 480px;
+      width: calc(100% - 24px);
+      background: rgba(200, 30, 30, 0.92);
+      color: #fff;
+      padding: 8px 10px 8px 12px;
+      border-radius: 6px;
+      font-size: 11px;
+      line-height: 1.5;
+      display: none;
+      align-items: flex-start;
+      gap: 8px;
+      z-index: 300;
+      backdrop-filter: blur(4px);
+      box-shadow: 0 2px 12px rgba(0,0,0,0.4);
+    }
+
+    #urdf-error-banner.visible { display: flex; }
+
+    #urdf-error-banner button {
+      background: none;
+      border: none;
+      color: inherit;
+      cursor: pointer;
+      padding: 0;
+      line-height: 1;
+      font-size: 14px;
+      opacity: 0.8;
+      flex-shrink: 0;
+    }
+
+    #urdf-error-banner button:hover { opacity: 1; }
+
 
     /* ── Author credits ──────────────────────────────────────────────────── */
 
@@ -1520,8 +1559,9 @@
           </div>
           <div style="display: flex; gap: 6px;">
             <button type="button" id="build-new-create" class="build-export-btn">Create Robot</button>
-            <button type="button" id="build-resume" class="build-export-btn" hidden style="flex: 1;">Resume</button>
+            <button type="button" id="build-saved-toggle" class="build-export-btn" hidden title="Saved robots">☰ Saved</button>
           </div>
+          <div id="build-saved-list" hidden style="margin-top:6px;border-top:1px solid var(--border);padding-top:6px;"></div>
         </div>
 
         <div id="build-parametric">
@@ -1725,6 +1765,11 @@
         <circle cx="18" cy="18" r="15" stroke="url(#spinGrad)" stroke-width="3"
                 stroke-linecap="round" pathLength="100" stroke-dasharray="75 25" />
       </svg>
+    </div>
+
+    <div id="urdf-error-banner">
+      <span id="urdf-error-text" style="flex:1;word-break:break-word;"></span>
+      <button id="urdf-error-close" title="Dismiss">×</button>
     </div>
 
     <canvas id="gesture-overlay"></canvas>
