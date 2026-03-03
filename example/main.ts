@@ -366,6 +366,9 @@ viewer.addEventListener('urdf-error', () => {
 
 viewer.addEventListener('urdf-processed', () => {
     loadingEl.classList.remove('visible');
+    // Reset all build component preview sliders after each URDF reload
+    document.querySelectorAll<HTMLInputElement>('input[data-preview="true"]')
+        .forEach(s => { s.value = '0'; });
 });
 
 const DEG = Math.PI / 180;
@@ -908,10 +911,38 @@ function renderComponentItem(id: string, type: string): void {
     limitsSection.hidden = true;
     body.appendChild(limitsSection);
 
+    // Preview slider (revolute/prismatic only — drives joint live without reload)
+    const previewSection = document.createElement('div');
+    const previewSlider  = document.createElement('input');
+    previewSlider.type  = 'range';
+    previewSlider.step  = '0.01';
+    previewSlider.min   = '-1.5708';
+    previewSlider.max   = '1.5708';
+    previewSlider.value = '0';
+    previewSlider.dataset.preview = 'true';
+    previewSlider.style.cssText = 'width: 100%; margin-top: 2px;';
+    previewSlider.addEventListener('input', () => {
+        viewer.robot?.setJointValue(`${id}_joint`, parseFloat(previewSlider.value));
+    });
+    inputs['limitMin']?.addEventListener('input', () => { previewSlider.min = inputs['limitMin'].value; });
+    inputs['limitMax']?.addEventListener('input', () => { previewSlider.max = inputs['limitMax'].value; });
+    addGroupLabel('Preview', previewSection);
+    const previewRow = document.createElement('div');
+    previewRow.style.cssText = 'padding: 0 0 4px;';
+    previewRow.appendChild(previewSlider);
+    previewSection.appendChild(previewRow);
+    previewSection.hidden = true;
+    body.appendChild(previewSection);
+
     selects['jt'].addEventListener('change', () => {
         const jt = selects['jt'].value;
-        axisSection.hidden   = jt === 'fixed';
-        limitsSection.hidden = jt !== 'revolute' && jt !== 'prismatic';
+        axisSection.hidden    = jt === 'fixed';
+        limitsSection.hidden  = jt !== 'revolute' && jt !== 'prismatic';
+        previewSection.hidden = jt !== 'revolute' && jt !== 'prismatic';
+        if (previewSection.hidden) {
+            previewSlider.value = '0';
+            viewer.robot?.setJointValue(`${id}_joint`, 0);
+        }
     });
 
     componentInputs.set(id, inputs);
