@@ -1526,7 +1526,7 @@
     /* ── Chat section header ─────────────────────────────────────────────── */
 
     .chat-header {
-      padding: 0 8px 0 12px;
+      padding: 0 4px 0 12px;
       height: 32px;
       display: flex;
       align-items: center;
@@ -1539,7 +1539,31 @@
       flex-shrink: 0;
     }
 
-    .chat-header-actions { display: flex; align-items: center; gap: 6px; }
+    .chat-header-close {
+      background: none;
+      border: none;
+      color: var(--text-3);
+      cursor: pointer;
+      width: 28px;
+      height: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      flex-shrink: 0;
+    }
+    .chat-header-close:hover { color: var(--text-1); background: var(--surface-hover); }
+    .chat-header-close:focus-visible { outline: 2px solid var(--blue); outline-offset: 1px; }
+
+    .chat-compose-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 4px 8px;
+      border-top: 1px solid var(--border);
+      flex-shrink: 0;
+    }
 
     .chat-tool-count-btn {
       background: none;
@@ -1965,15 +1989,16 @@
   <aside id="chat-panel" aria-label="AI Chat">
     <div class="chat-header">
       <span>AI Assistant</span>
-      <div class="chat-header-actions">
-        <button type="button" id="chat-tool-count" class="chat-tool-count-btn"
-                aria-label="Active tools" title="Active build tools">0 tools</button>
-        <button type="button" id="chat-brief-toggle" aria-pressed="false" title="Toggle detailed responses">Detail</button>
-      </div>
+      <button type="button" class="chat-header-close" id="chat-panel-close" aria-label="Close chat">✕</button>
     </div>
     <div id="chat-context-bar" hidden></div>
     <div class="chat-pane">
       <div class="chat-messages" id="chat-messages" aria-live="polite" aria-label="AI conversation"></div>
+      <div class="chat-compose-toolbar">
+        <button type="button" id="chat-brief-toggle" aria-pressed="false" title="Toggle detailed responses">Detail</button>
+        <button type="button" id="chat-tool-count" class="chat-tool-count-btn"
+                aria-label="Active tools" title="Active build tools">0 tools</button>
+      </div>
       <div class="chat-input-area">
         <div id="cmd-ac" class="cmd-ac" hidden role="listbox" aria-label="Commands"></div>
         <div class="chat-input-wrap">
@@ -2082,10 +2107,13 @@
       _mobilePanel = null;
     }
 
+    const chatClose  = document.getElementById('chat-panel-close');
+
     ctrlToggle.addEventListener('click', () =>
       ctrlPanel.classList.contains('open') ? closePanel(ctrlPanel) : openPanel(ctrlPanel));
     chatToggle.addEventListener('click', () =>
       chatPanel.classList.contains('open') ? closePanel(chatPanel) : openPanel(chatPanel));
+    chatClose.addEventListener('click', () => closePanel(chatPanel));
     backdrop.addEventListener('click', () => { if (_mobilePanel) closePanel(_mobilePanel); });
 
     // Open control panel by default on desktop
