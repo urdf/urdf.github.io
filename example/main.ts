@@ -847,6 +847,7 @@ function renderComponentItem(id: string, type: string, saved?: BuildComponent | 
 
     // ── Input rows ────────────────────────────────────────────────────
     const body = document.createElement('div');
+    body.className = 'build-component-body';
     body.style.cssText = 'display: flex; flex-direction: column; gap: 2px;';
     // Start collapsed; header click toggles
     body.hidden = true;
@@ -1033,6 +1034,8 @@ let _compInitUrdfZ    = 0;
 let _compDragUrdfZ    = 0;
 let _compCurX         = 0;
 let _compCurY         = 0;
+let _compDownClientX  = 0;
+let _compDownClientY  = 0;
 
 function _compUpdateNDC(e: PointerEvent): void {
     const rect = viewer.renderer.domElement.getBoundingClientRect();
@@ -1088,6 +1091,9 @@ viewer.renderer.domElement.addEventListener('pointerdown', (e: PointerEvent) => 
     buildCtrl.startComponentDrag(id);
     viewer.controls.enabled = false;
 
+    _compDownClientX = e.clientX;
+    _compDownClientY = e.clientY;
+
     _compDragCard = buildComponentsListEl.querySelector<HTMLElement>(`[data-id="${id}"]`);
     _compDragCard?.classList.add('dragging');
 
@@ -1123,12 +1129,21 @@ viewer.renderer.domElement.addEventListener('pointermove', (e: PointerEvent) => 
     }
 });
 
-viewer.renderer.domElement.addEventListener('pointerup', () => {
+viewer.renderer.domElement.addEventListener('pointerup', (e: PointerEvent) => {
     if (!_compDragId) return;
+    const wasDrag = Math.hypot(e.clientX - _compDownClientX, e.clientY - _compDownClientY) > 8;
     buildCtrl.finishComponentDrag(_compDragId, _compCurX, _compCurY, _compDragUrdfZ);
     viewer.controls.enabled = true;
     viewer.renderer.domElement.style.cursor = '';
     _compDragCard?.classList.remove('dragging');
+
+    // Click (no drag): expand the card and scroll it into view
+    if (!wasDrag && _compDragCard) {
+        const cardBody = _compDragCard.querySelector<HTMLElement>('.build-component-body');
+        if (cardBody) cardBody.hidden = false;
+        _compDragCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
     _compDragCard = null;
     _compDragId   = null;
 });
