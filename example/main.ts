@@ -2,6 +2,8 @@ import { URDFManipulator } from '../src/index.js';
 import { URDFEditorController } from './editor.js';
 import { URDFBuildController, CHASSIS_DEFAULTS, WHEEL_DEFAULTS, COMPONENT_CATALOG } from './build.js';
 import type { Component as BuildComponent } from './build.js';
+import { URDFChatController } from './chat.js';
+import type { ChatCallbacks } from './chat.js';
 import type { GestureController } from './gesture.js';
 import { LIBRARY } from '../src/generators/components/index.js';
 import type { LibraryEntry } from '../src/generators/components/index.js';
@@ -31,6 +33,11 @@ const buildNoticeEl    = $('build-notice');
 
 const editorCtrl = new URDFEditorController(viewer, editorPanelEl);
 const buildCtrl  = new URDFBuildController(viewer, buildNoticeEl);
+
+// ── Chat controller (constructed after editorCtrl + buildCtrl) ────────────────
+// Full wiring happens after renderComponentItem / syncSlidersFromController are
+// defined, so we declare and call init() below.
+let chatCtrl: URDFChatController;
 
 // Ground grid: 0.5m × 0.5m, 20mm divisions — visible only in Build mode
 const _buildGrid = new GridHelper(0.5, 25, 0x555555, 0x333333);
@@ -745,6 +752,7 @@ buildCtrl.onDOMRebuild = () => {
     syncSlidersFromController();
     refreshPaletteCounts();
     buildCtrl.onHistoryChange?.();
+    chatCtrl?.syncToolCount();
 };
 
 document.addEventListener('keydown', (e: KeyboardEvent) => {
@@ -1165,6 +1173,36 @@ function renderComponentItem(id: string, type: string, saved?: BuildComponent | 
     if (selects['parent']) componentSelects.set(id, selects['parent']);
     item.append(header, body);
     buildComponentsListEl.appendChild(item);
+}
+
+function removeComponentItem(id: string): void {
+    const card = buildComponentsListEl.querySelector<HTMLElement>(`[data-id="${id}"]`);
+    componentInputs.delete(id);
+    componentSelects.delete(id);
+    removeOptionFromParentSelects(id);
+    if (_buildSelCompId === id) _buildSelCompId = null;
+    card?.remove();
+}
+
+// ── Chat controller wiring ─────────────────────────────────────────────────
+// Init here so all helpers (renderComponentItem, syncSlidersFromController,
+// refreshPaletteCounts) are in scope.
+{
+    const chatCallbacks: ChatCallbacks = {
+        isEditorTabActive:        () => document.body.classList.contains('editor-open'),
+        handleEditorInput:        (t) => editorCtrl.handleExternalInput(t),
+        onComponentAdded:         (id, type) => {
+            addOptionToParentSelects(id);
+            renderComponentItem(id, type, buildCtrl.getComponentData(id));
+        },
+        onComponentRemoved:       (id) => removeComponentItem(id),
+        syncSlidersFromController,
+        switchToBuildTab:         () => $<HTMLButtonElement>('tab-build').click(),
+        onBriefToggle:            (v) => { editorCtrl.brief = v; },
+        refreshPaletteCounts,
+    };
+    chatCtrl = new URDFChatController(buildCtrl, chatCallbacks);
+    chatCtrl.init();
 }
 
 // ── Component 3D drag ─────────────────────────────────────────────────────

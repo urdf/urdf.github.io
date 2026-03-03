@@ -113,10 +113,9 @@ export class URDFEditorController {
     private readonly _textareaEl:   HTMLTextAreaElement;
     private readonly _lineNumsEl:   HTMLElement;
     private readonly _chatMsgsEl:   HTMLElement;
-    private readonly _chatInputEl:  HTMLTextAreaElement;
     private readonly _sendBtn:      HTMLButtonElement;
     private readonly _abortBtn:     HTMLButtonElement;
-    private readonly _cmdAcEl:      HTMLElement;
+    private readonly _briefBtn:     HTMLButtonElement;
     private readonly _actions:      Record<string, Action>;
 
     private _sourceUrl:   string | null = null;
@@ -125,7 +124,6 @@ export class URDFEditorController {
     private _history:     Msg[] = [];
     private _abort:       AbortController | null = null;
     private _highlights   = new Set<number>();
-    private _cmdAcIdx     = -1;
     private _partsList:       string[] = [];
     private _partCache        = new Map<string, string>();
     private _originalCache    = new Map<string, string>();
@@ -143,10 +141,9 @@ export class URDFEditorController {
         this._textareaEl   = panelEl.querySelector<HTMLTextAreaElement>('#editor-textarea')!;
         this._lineNumsEl   = panelEl.querySelector<HTMLElement>('#editor-line-nums')!;
         this._chatMsgsEl   = document.getElementById('chat-messages') as HTMLElement;
-        this._chatInputEl  = document.getElementById('chat-input') as HTMLTextAreaElement;
         this._sendBtn      = document.getElementById('chat-send') as HTMLButtonElement;
         this._abortBtn     = document.getElementById('chat-abort') as HTMLButtonElement;
-        this._cmdAcEl      = document.getElementById('cmd-ac') as HTMLElement;
+        this._briefBtn     = document.getElementById('chat-brief-toggle') as HTMLButtonElement;
         this._partSelEl    = panelEl.querySelector<HTMLSelectElement>('#part-select')!;
         this._tabsEl       = document.getElementById('editor-tabs') as HTMLElement;
         this._resetBtn     = panelEl.querySelector<HTMLButtonElement>('#part-reset')!;
@@ -164,76 +161,26 @@ export class URDFEditorController {
             this._lineNumsEl.scrollTop = this._textareaEl.scrollTop;
         });
 
-        this._chatInputEl.addEventListener('input', () => {
-            this._chatInputEl.style.height = 'auto';
-            this._chatInputEl.style.height = `${Math.min(this._chatInputEl.scrollHeight, 120)}px`;
-            const val = this._chatInputEl.value;
-            if (/^\/[a-z]*$/.test(val)) {
-                this._showCmdAc(val.slice(1));
-            } else {
-                this._hideCmdAc();
-            }
-        });
-
-        this._chatInputEl.addEventListener('keydown', (e) => {
-            if (!this._cmdAcEl.hidden) {
-                const items = this._cmdAcEl.querySelectorAll<HTMLElement>('.cmd-ac-item');
-                if (e.key === 'ArrowDown') {
-                    e.preventDefault();
-                    this._cmdAcIdx = (this._cmdAcIdx + 1) % items.length;
-                    this._updateCmdAcSelection(items);
-                    return;
-                }
-                if (e.key === 'ArrowUp') {
-                    e.preventDefault();
-                    this._cmdAcIdx = (this._cmdAcIdx - 1 + items.length) % items.length;
-                    this._updateCmdAcSelection(items);
-                    return;
-                }
-                if (e.key === 'Tab' || (e.key === 'Enter' && this._cmdAcIdx >= 0)) {
-                    const sel = items[this._cmdAcIdx];
-                    if (sel) { e.preventDefault(); this._applyCmd(sel.dataset.cmd!); return; }
-                }
-                if (e.key === 'Escape') { this._hideCmdAc(); return; }
-            }
-            if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); this._handleSend(); }
-        });
-
-        this._sendBtn.addEventListener('click', () => this._handleSend());
-        this._abortBtn.addEventListener('click', () => this._abort?.abort());
-
-        const briefToggle = document.getElementById('chat-brief-toggle') as HTMLButtonElement;
-        briefToggle.addEventListener('click', () => {
-            this._brief = !this._brief;
-            briefToggle.classList.toggle('active', this._brief);
-            briefToggle.setAttribute('aria-pressed', String(this._brief));
-        });
-
-        let _lastEsc = 0;
-        document.addEventListener('keydown', (e) => {
-            if (!this._panelEl.closest('aside')?.classList.contains('open')) return;
-            if (document.body.classList.contains('editor-open')) return;
-            const active = document.activeElement as HTMLElement | null;
-
-            if (e.key === 'Escape') {
-                const now = Date.now();
-                if (now - _lastEsc < 400) {
-                    if (confirm('Clear chat history?')) this._clearChat();
-                    _lastEsc = 0;
-                    return;
-                }
-                _lastEsc = now;
-                return;
-            }
-
-            if (active && /^(INPUT|TEXTAREA|SELECT)$/.test(active.tagName)) return;
-            if (active?.isContentEditable) return;
-            if (e.key.length !== 1 || e.metaKey || e.ctrlKey || e.altKey) return;
-            this._chatInputEl.focus();
-        });
     }
 
     get isOpen(): boolean { return this._panelEl.classList.contains('open'); }
+
+    /** Called by URDFChatController when editor tab is active. */
+    handleExternalInput(text: string): void {
+        if (text.startsWith('/')) {
+            const [rawCmd, ...rest] = text.slice(1).trim().split(/\s+/);
+            const action = this._actions[rawCmd.toLowerCase()];
+            if (action?.fn) { action.fn(rest); return; }
+        }
+        if (this._abort) return;
+        void this._runConversation(text);
+    }
+
+    set brief(v: boolean) {
+        this._brief = v;
+        this._briefBtn.classList.toggle('active', v);
+        this._briefBtn.setAttribute('aria-pressed', String(v));
+    }
 
     async jumpToJoint(name: string): Promise<void> {
         if (!this._partsList.length || !this._sourceUrl) return;
@@ -290,56 +237,6 @@ export class URDFEditorController {
             void this._fetchAndPopulate(url);
             void this._loadPartsManifest();
         }
-    }
-
-    private _showCmdAc(filter: string): void {
-        const matches = Object.entries(this._actions).filter(([k]) => k.startsWith(filter));
-        if (!matches.length) { this._hideCmdAc(); return; }
-        this._cmdAcIdx = 0;
-        this._cmdAcEl.innerHTML = matches.map(([k, v], i) => `
-            <div class="cmd-ac-item${i === 0 ? ' selected' : ''}" role="option" data-cmd="${k}" aria-selected="${i === 0}">
-                <span class="cmd-ac-name">/${k}</span>
-                ${v.arg ? `<span class="cmd-ac-arg">&lt;${v.arg}&gt;</span>` : ''}
-                <span class="cmd-ac-desc">${v.desc}</span>
-            </div>`).join('');
-        for (const item of this._cmdAcEl.querySelectorAll<HTMLElement>('.cmd-ac-item')) {
-            item.addEventListener('mousedown', (e) => {
-                e.preventDefault();
-                this._applyCmd(item.dataset.cmd!);
-            });
-        }
-        this._cmdAcEl.hidden = false;
-    }
-
-    private _hideCmdAc(): void {
-        this._cmdAcEl.hidden = true;
-        this._cmdAcIdx = -1;
-    }
-
-    private _updateCmdAcSelection(items: NodeListOf<HTMLElement>): void {
-        items.forEach((it, i) => {
-            const selected = i === this._cmdAcIdx;
-            it.setAttribute('aria-selected', String(selected));
-            it.classList.toggle('selected', selected);
-        });
-    }
-
-    private _applyCmd(cmd: string): void {
-        const action = this._actions[cmd];
-        if (!action) return;
-        this._hideCmdAc();
-        if (action.fn) {
-            this._clearInput();
-            action.fn([]);
-        } else if (action.prompt) {
-            this._chatInputEl.value = `/${cmd} `;
-            this._chatInputEl.focus();
-        }
-    }
-
-    private _clearInput(): void {
-        this._chatInputEl.value = '';
-        this._chatInputEl.style.height = '';
     }
 
     private async _fetchAndPopulate(url: string): Promise<void> {
@@ -605,31 +502,6 @@ export class URDFEditorController {
     private _updateActiveTab(): void {
         for (const btn of this._tabsEl.querySelectorAll<HTMLElement>('.editor-tab'))
             btn.classList.toggle('active', (btn.dataset.part ?? '') === this._partSelEl.value);
-    }
-
-    private _handleSend(): void {
-        this._hideCmdAc();
-        const raw = this._chatInputEl.value.trim();
-        if (!raw) return;
-
-        if (raw.startsWith('/')) {
-            const [rawCmd, ...rest] = raw.slice(1).trim().split(/\s+/);
-            const cmd    = rawCmd.toLowerCase();
-            const action = this._actions[cmd];
-            if (action?.fn) {
-                this._clearInput();
-                action.fn(rest);
-                return;
-            }
-            if (action?.prompt) {
-                this._chatInputEl.value = action.prompt(rest.join(' '));
-                return;
-            }
-        }
-
-        if (this._abort) return;
-        this._clearInput();
-        void this._runConversation(raw);
     }
 
     // ── History persistence ───────────────────────────────────────────────────

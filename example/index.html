@@ -1364,6 +1364,16 @@
       to   { opacity: 1; transform: translateY(0); }
     }
 
+    .chat-msg-system {
+      align-self: center;
+      font-size: 0.75rem;
+      color: var(--text-3);
+      padding: 4px 10px;
+      background: var(--surface-hi);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+    }
+
     .chat-msg-user, .chat-msg-assistant, .chat-tool-card, .chat-spinner {
       animation: fadeInUp 0.18s cubic-bezier(0.2, 0.8, 0.2, 1) both;
     }
@@ -1505,6 +1515,21 @@
       color: var(--text-3);
       flex-shrink: 0;
     }
+
+    .chat-header-actions { display: flex; align-items: center; gap: 6px; }
+
+    .chat-tool-count-btn {
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: var(--text-3);
+      cursor: default;
+      font-size: 9px;
+      font-weight: 600;
+      padding: 2px 7px;
+      transition: color 0.1s, border-color 0.1s;
+    }
+    .chat-tool-count-btn:hover { color: var(--text-2); border-color: var(--text-3); }
 
     #chat-brief-toggle {
       background: none;
@@ -1882,7 +1907,11 @@
     ></div>
     <div class="chat-header">
       <span>AI Assistant</span>
-      <button type="button" id="chat-brief-toggle" aria-pressed="false" title="Toggle brief responses">Brief</button>
+      <div class="chat-header-actions">
+        <button type="button" id="chat-tool-count" class="chat-tool-count-btn"
+                aria-label="Active tools" title="Active build tools">0 tools</button>
+        <button type="button" id="chat-brief-toggle" aria-pressed="false" title="Toggle brief responses">Brief</button>
+      </div>
     </div>
     <div class="chat-pane">
       <div class="chat-messages" id="chat-messages" aria-live="polite" aria-label="AI conversation"></div>

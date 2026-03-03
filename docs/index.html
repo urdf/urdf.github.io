@@ -157,6 +157,7 @@
     }
 
     .tab-btn:hover { color: var(--text-1); }
+    .tab-btn:focus-visible { outline: 2px solid var(--blue); outline-offset: -2px; }
 
     .tab-btn[data-tab="robot"] { color: var(--blue-text); border-bottom-color: var(--blue); }
     body.editor-open .tab-btn[data-tab="robot"] { color: var(--text-2); border-bottom-color: transparent; }
@@ -165,6 +166,10 @@
     body.build-open  .tab-btn[data-tab="build"]  { color: var(--blue-text); border-bottom-color: var(--blue); }
     body.build-open  .tab-body[data-tab="robot"] { display: none; }
     body.build-open  .tab-body[data-tab="build"] { display: flex; }
+    body.library-open .tab-btn[data-tab="robot"]   { color: var(--text-2);   border-bottom-color: transparent; }
+    body.library-open .tab-btn[data-tab="library"] { color: var(--blue-text); border-bottom-color: var(--blue); }
+    body.library-open .tab-body[data-tab="robot"]  { display: none; }
+    body.library-open .tab-body[data-tab="library"] { display: flex; }
 
     /* ── Build panel ─────────────────────────────────────────────────────────── */
     .build-notice {
@@ -199,6 +204,7 @@
       margin-bottom: 4px;
       font-size: 12px;
       color: var(--text-1);
+      cursor: pointer;
     }
 
     .build-remove-btn {
@@ -213,6 +219,10 @@
     }
 
     .build-remove-btn:hover { color: var(--text-1); background: var(--surface-hover); }
+    .build-remove-btn:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+
+    .build-component.dragging  { border-color: var(--blue); background: var(--blue-bg); }
+    .build-component.selected  { border-color: var(--blue); }
 
     .build-group-label {
       font-size: 10px;
@@ -238,6 +248,109 @@
 
     .build-export-btn:hover  { background: var(--blue-hover); }
     .build-export-btn:active { transform: scale(0.98); }
+    .build-export-btn:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+
+    /* ── Build panel: extracted inline styles ───────────────────────────── */
+
+    .build-active-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 6px 12px 2px;
+      gap: 6px;
+    }
+
+    .build-active-name {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-1);
+      opacity: 0.7;
+      text-overflow: ellipsis;
+      overflow: hidden;
+      white-space: nowrap;
+      flex: 1;
+    }
+
+    #build-shortcuts-toggle { width: 18px; height: 18px; font-size: 10px; line-height: 1; }
+
+    .build-shortcuts {
+      padding: 4px 12px 6px;
+      font-size: 10px;
+      color: var(--text-2);
+      line-height: 1.7;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .key {
+      font-family: ui-monospace, monospace;
+      font-size: 9px;
+      background: var(--surface-hi);
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      padding: 0 3px;
+      color: var(--text-1);
+    }
+
+    #build-new-robot { padding: 8px 12px; }
+    #build-new-robot .section-label { padding: 0 0 6px; }
+
+    #build-saved-list {
+      margin-top: 6px;
+      border-top: 1px solid var(--border);
+      padding-top: 6px;
+    }
+
+    .build-saved-row { display: flex; align-items: center; gap: 4px; padding: 2px 0; }
+
+    .build-saved-name {
+      flex: 1;
+      font-size: 11px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      color: var(--text-1);
+    }
+
+    .build-saved-load { padding: 2px 8px; font-size: 10px; flex-shrink: 0; }
+
+    .build-palette-header {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      padding: 10px 12px 4px;
+    }
+    .build-palette-header .section-label { padding: 0; }
+
+    .build-comp-count { font-size: 10px; color: var(--text-3); }
+
+    .build-comp-empty { font-size: 11px; color: var(--text-3); padding: 6px 12px; margin: 0; }
+
+    .build-action-row { padding: 4px 12px; display: flex; gap: 6px; }
+
+    .build-action-row--bottom { padding-bottom: 8px; }
+
+    #build-reset { margin-left: auto; }
+
+    #build-export { flex: 2; }
+
+    #build-copy-urdf { flex: 1; }
+
+    .build-component-body { display: flex; flex-direction: column; gap: 2px; }
+
+    .build-preview-row { padding: 0 0 4px; }
+
+    #build-hover-tip {
+      position: fixed;
+      padding: 3px 8px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      font-size: 11px;
+      color: var(--text-1);
+      pointer-events: none;
+      display: none;
+      z-index: 200;
+    }
 
     /* ── Mobile / touch ──────────────────────────────────────────────────── */
 
@@ -332,6 +445,65 @@
     body.editor-open .tab-body[data-tab="robot"] { display: none; }
     body.editor-open .tab-body[data-tab="editor"] { display: flex; }
 
+    /* ── Library tab ────────────────────────────────────────────────────── */
+
+    .library-toolbar { padding: 8px 12px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+    .lib-search-input {
+      width: 100%; background: var(--surface-hi); border: 1px solid var(--border);
+      border-radius: 6px; color: var(--text-1); font-size: 12px; padding: 5px 10px; outline: none;
+      box-sizing: border-box;
+    }
+    .lib-search-input::placeholder { color: var(--text-3); }
+    .lib-search-input:focus { border-color: var(--blue); }
+
+    .lib-pills {
+      display: flex; gap: 4px; padding: 6px 12px; flex-wrap: wrap;
+      border-bottom: 1px solid var(--border); flex-shrink: 0;
+    }
+    .lib-pill {
+      background: var(--surface-hi); border: 1px solid var(--border); border-radius: 12px;
+      color: var(--text-2); font-size: 10px; font-weight: 500; padding: 3px 8px;
+      transition: background 0.1s, color 0.1s, border-color 0.1s; white-space: nowrap; cursor: pointer;
+    }
+    .lib-pill:hover { color: var(--text-1); border-color: var(--text-2); }
+    .lib-pill--active { background: var(--blue-bg); border-color: var(--blue); color: var(--blue-text); }
+    .lib-pill:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+
+    .lib-scroll { padding: 8px 12px; }
+    .lib-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+
+    .lib-card {
+      background: var(--surface-hi); border: 1px solid var(--border); border-radius: 8px;
+      overflow: hidden; display: flex; flex-direction: column;
+    }
+    .lib-card:hover { border-color: var(--text-3); }
+
+    .lib-thumb {
+      height: 52px; display: flex; align-items: center; justify-content: center;
+      font-size: 20px; flex-shrink: 0;
+    }
+
+    .lib-card-info { padding: 6px 8px 8px; flex: 1; display: flex; flex-direction: column; gap: 3px; }
+    .lib-card-name { font-size: 11px; font-weight: 600; color: var(--text-1); }
+    .lib-card-meta { display: flex; align-items: center; justify-content: space-between; gap: 4px; }
+    .lib-card-cat  { font-size: 9px; font-weight: 500; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.05em; }
+    .lib-card-dims { font-size: 9px; color: var(--text-3); font-family: ui-monospace, monospace; }
+
+    .lib-card-add {
+      margin-top: 4px; width: 100%; background: var(--blue); border: none; border-radius: 4px;
+      color: #fff; font-size: 10px; font-weight: 600; padding: 5px 0;
+      transition: background 0.1s; cursor: pointer;
+    }
+    .lib-card-add:hover   { background: var(--blue-hover); }
+    .lib-card-add:active  { transform: scale(0.98); }
+    .lib-card-add:disabled { opacity: 0.5; cursor: wait; }
+    .lib-card-add:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+
+    .lib-no-build, .lib-empty {
+      font-size: 11px; color: var(--text-2); padding: 16px 4px; text-align: center;
+      line-height: 1.5; margin: 0;
+    }
+
     /* ── Section blocks ──────────────────────────────────────────────────── */
 
     .section {
@@ -348,6 +520,7 @@
       color: var(--text-3);
       text-transform: uppercase;
       letter-spacing: 0.06em;
+      padding: 10px 12px 4px;
     }
 
     /* ── Robot picker (mode-selector style) ─────────────────────────────── */
@@ -418,6 +591,7 @@
     .robot-btn:hover { color: var(--text-1); }
     .robot-btn:active { transform: scale(0.94); }
     .robot-btn.active { color: #fff; }
+    .robot-btn:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
 
     /* ── Checkboxes ──────────────────────────────────────────────────────── */
 
@@ -651,6 +825,45 @@
 
     @keyframes spin { to { transform: rotate(360deg); } }
 
+    /* ── URDF error banner ───────────────────────────────────────────────── */
+
+    #urdf-error-banner {
+      position: absolute;
+      bottom: 12px;
+      left: 50%;
+      transform: translateX(-50%);
+      max-width: 480px;
+      width: calc(100% - 24px);
+      background: rgba(200, 30, 30, 0.92);
+      color: #fff;
+      padding: 8px 10px 8px 12px;
+      border-radius: 6px;
+      font-size: 11px;
+      line-height: 1.5;
+      display: none;
+      align-items: flex-start;
+      gap: 8px;
+      z-index: 300;
+      backdrop-filter: blur(4px);
+      box-shadow: 0 2px 12px rgba(0,0,0,0.4);
+    }
+
+    #urdf-error-banner.visible { display: flex; }
+
+    #urdf-error-banner button {
+      background: none;
+      border: none;
+      color: inherit;
+      cursor: pointer;
+      padding: 0;
+      line-height: 1;
+      font-size: 14px;
+      opacity: 0.8;
+      flex-shrink: 0;
+    }
+
+    #urdf-error-banner button:hover { opacity: 1; }
+
 
     /* ── Author credits ──────────────────────────────────────────────────── */
 
@@ -754,6 +967,23 @@
 
     .inspector-row input[type=number]:focus-visible { outline: none; border-color: var(--blue); }
     .inspector-row input[type=range] { accent-color: var(--blue); height: 4px; }
+
+    .inspector-row select.build-select,
+    .inspector-row input.build-text-input {
+      flex: 1;
+      min-width: 0;
+      background: var(--surface-hi);
+      border: 1px solid var(--border);
+      color: var(--text-1);
+      font-size: 0.6875rem;
+      padding: 1px 4px;
+      border-radius: 3px;
+    }
+    .inspector-row select.build-select { appearance: none; -webkit-appearance: none; }
+    .inspector-row select.build-select:focus-visible,
+    .inspector-row input.build-text-input:focus-visible { outline: none; border-color: var(--blue); }
+
+    body.build-custom #build-parametric { display: none; }
 
     .inspector-snippet-wrap { margin-top: 8px; position: relative; }
 
@@ -920,7 +1150,7 @@
       border: 1px solid var(--border); border-radius: 4px;
       background: transparent; color: var(--text-2); cursor: pointer; white-space: nowrap;
     }
-    #part-reset:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+    #part-reset:hover:not(:disabled) { border-color: var(--blue); color: var(--blue); }
     #part-reset:disabled { opacity: 0.35; cursor: default; }
 
     .editor-pane {
@@ -1134,6 +1364,16 @@
       to   { opacity: 1; transform: translateY(0); }
     }
 
+    .chat-msg-system {
+      align-self: center;
+      font-size: 0.75rem;
+      color: var(--text-3);
+      padding: 4px 10px;
+      background: var(--surface-hi);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+    }
+
     .chat-msg-user, .chat-msg-assistant, .chat-tool-card, .chat-spinner {
       animation: fadeInUp 0.18s cubic-bezier(0.2, 0.8, 0.2, 1) both;
     }
@@ -1276,6 +1516,21 @@
       flex-shrink: 0;
     }
 
+    .chat-header-actions { display: flex; align-items: center; gap: 6px; }
+
+    .chat-tool-count-btn {
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: var(--text-3);
+      cursor: default;
+      font-size: 9px;
+      font-weight: 600;
+      padding: 2px 7px;
+      transition: color 0.1s, border-color 0.1s;
+    }
+    .chat-tool-count-btn:hover { color: var(--text-2); border-color: var(--text-3); }
+
     #chat-brief-toggle {
       background: none;
       border: 1px solid var(--border);
@@ -1322,7 +1577,7 @@
     .chat-resize-handle.dragging::after { height: 2px; background: rgba(0, 122, 255, 0.6); }
     .chat-resize-handle.dragging::after { background: var(--blue); }
   </style>
-  <script type="module" crossorigin src="/assets/index-Ds9HEIT3.js"></script>
+  <script type="module" crossorigin src="/assets/index-DzlN7u0B.js"></script>
 </head>
 <body>
   <button type="button" id="gesture-toggle" aria-label="Toggle gesture mode" title="Gesture mode">
@@ -1360,6 +1615,11 @@
         <button type="button" class="tab-btn" data-tab="build" id="tab-build" aria-label="Build" title="Build">
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
+          </svg>
+        </button>
+        <button type="button" class="tab-btn" data-tab="library" id="tab-library" aria-label="Library" title="Library">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <rect width="7" height="18" x="3" y="3" rx="1"/><rect width="7" height="18" x="14" y="3" rx="1"/>
           </svg>
         </button>
       </div>
@@ -1413,7 +1673,7 @@
       </div>
 
       <div class="sidebar-scroll">
-        <div class="section-label" style="padding: 10px 12px 4px;">Joints</div>
+        <div class="section-label">Joints</div>
         <div class="joints" id="joints"></div>
 
         <div id="inspector" style="display:none">
@@ -1479,9 +1739,35 @@
 
     <div class="tab-body" data-tab="build" id="build-panel">
       <div class="sidebar-scroll">
-        <p class="build-notice" id="build-notice" hidden>Load Robot Car to use the parametric builder.</p>
+        <div id="build-active-header" class="build-active-header" hidden>
+          <span id="build-active-name" class="build-active-name"></span>
+          <button type="button" id="build-shortcuts-toggle" class="build-remove-btn" title="Keyboard shortcuts">?</button>
+          <button type="button" id="build-clear-custom" class="build-remove-btn" title="Delete saved custom robot" hidden>×</button>
+        </div>
+        <div id="build-shortcuts" class="build-shortcuts" hidden>
+          <span class="key">Drag</span> component → move X/Y &nbsp;|&nbsp; <span class="key">Shift+drag</span> → move Z<br>
+          <span class="key">Click</span> component → select + expand card<br>
+          <span class="key">Arrow keys</span> → nudge X/Y 1mm &nbsp;|&nbsp; <span class="key">Shift+↑↓</span> → nudge Z<br>
+          <span class="key">Delete</span> → remove selected component<br>
+          <span class="key">Ctrl+Z / Ctrl+Y</span> → undo / redo
+        </div>
+        <p class="build-notice" id="build-notice" hidden>Load Robot Car to use the full builder, or create a new robot below.</p>
 
-        <div class="section-label" style="padding: 10px 12px 4px;">Chassis</div>
+        <div id="build-new-robot">
+          <div class="section-label">New Robot</div>
+          <div class="inspector-row" style="margin-bottom: 6px;">
+            <label>Name</label>
+            <input type="text" id="build-new-name" class="build-text-input" placeholder="my-robot">
+          </div>
+          <div style="display: flex; gap: 6px;">
+            <button type="button" id="build-new-create" class="build-export-btn">Create Robot</button>
+            <button type="button" id="build-saved-toggle" class="build-export-btn" hidden title="Saved robots">☰ Saved</button>
+          </div>
+          <div id="build-saved-list" hidden></div>
+        </div>
+
+        <div id="build-parametric">
+        <div class="section-label">Chassis</div>
 
         <div class="build-param joint">
           <div class="joint-name">Thickness <span class="unit">mm</span></div>
@@ -1507,7 +1793,7 @@
           </div>
         </div>
 
-        <div class="section-label" style="padding: 10px 12px 4px;">Wheels</div>
+        <div class="section-label">Wheels</div>
 
         <div class="build-param joint">
           <div class="joint-name">Radius <span class="unit">mm</span></div>
@@ -1525,7 +1811,7 @@
           </div>
         </div>
 
-        <div class="section-label" style="padding: 10px 12px 4px;">Caster</div>
+        <div class="section-label">Caster</div>
 
         <div class="build-param joint">
           <div class="joint-name">Radius <span class="unit">mm</span></div>
@@ -1543,7 +1829,7 @@
           </div>
         </div>
 
-        <div class="section-label" style="padding: 10px 12px 4px;">Battery Box</div>
+        <div class="section-label">Battery Box</div>
 
         <div class="build-param joint">
           <div class="joint-name">Length <span class="unit">mm</span></div>
@@ -1569,12 +1855,44 @@
           </div>
         </div>
 
-        <div class="section-label" style="padding: 10px 12px 4px;">Add Component</div>
-        <div class="component-palette" id="build-palette"></div>
-        <div id="build-components-list"></div>
+        <div class="section-label">Power Bank</div>
 
-        <div style="padding: 12px 12px 8px;">
+        <div class="build-param joint">
+          <div class="joint-name">Radius <span class="unit">mm</span></div>
+          <div class="joint-row">
+            <input type="range"  id="build-powerbank-r" min="8" max="25" step="0.5" value="11.5">
+            <input type="number" id="build-powerbank-r-num" min="8" max="25" step="0.5" value="11.5">
+          </div>
+        </div>
+
+        <div class="build-param joint">
+          <div class="joint-name">Length <span class="unit">mm</span></div>
+          <div class="joint-row">
+            <input type="range"  id="build-powerbank-l" min="50" max="200" step="1" value="119.9">
+            <input type="number" id="build-powerbank-l-num" min="50" max="200" step="1" value="119.9">
+          </div>
+        </div>
+
+        </div><!-- #build-parametric -->
+
+        <div class="build-palette-header">
+          <span class="section-label">Add Component</span>
+          <span id="build-comp-count" class="build-comp-count"></span>
+        </div>
+        <div class="component-palette" id="build-palette"></div>
+        <div id="build-components-list">
+          <p id="build-comp-empty" class="build-comp-empty" hidden>No components yet. Click a type above to add one.</p>
+        </div>
+
+        <div class="build-action-row">
+          <button id="build-undo" class="robot-btn" title="Undo (Ctrl+Z)" disabled>Undo</button>
+          <button id="build-redo" class="robot-btn" title="Redo (Ctrl+Y)" disabled>Redo</button>
+          <button id="build-reset" class="robot-btn" title="Reset to defaults">Reset</button>
+        </div>
+
+        <div class="build-action-row build-action-row--bottom">
           <button id="build-export" class="build-export-btn">Download .zip</button>
+          <button id="build-copy-urdf" class="build-export-btn" title="Copy URDF XML to clipboard">Copy URDF</button>
         </div>
       </div>
     </div>
@@ -1590,7 +1908,11 @@
     ></div>
     <div class="chat-header">
       <span>AI Assistant</span>
-      <button type="button" id="chat-brief-toggle" aria-pressed="false" title="Toggle brief responses">Brief</button>
+      <div class="chat-header-actions">
+        <button type="button" id="chat-tool-count" class="chat-tool-count-btn"
+                aria-label="Active tools" title="Active build tools">0 tools</button>
+        <button type="button" id="chat-brief-toggle" aria-pressed="false" title="Toggle brief responses">Brief</button>
+      </div>
     </div>
     <div class="chat-pane">
       <div class="chat-messages" id="chat-messages" aria-live="polite" aria-label="AI conversation"></div>
@@ -1617,6 +1939,28 @@
       </div>
     </div>
 
+    <div class="tab-body" data-tab="library" id="library-panel">
+      <div class="library-toolbar">
+        <input type="search" id="lib-search" class="lib-search-input"
+               placeholder="Search components…" autocomplete="off" aria-label="Search components">
+      </div>
+      <div class="lib-pills" id="lib-pills" role="group" aria-label="Category filter">
+        <button type="button" class="lib-pill lib-pill--active" data-cat="">All</button>
+        <button type="button" class="lib-pill" data-cat="Sensor">Sensor</button>
+        <button type="button" class="lib-pill" data-cat="Actuator">Actuator</button>
+        <button type="button" class="lib-pill" data-cat="MCU">MCU</button>
+        <button type="button" class="lib-pill" data-cat="Power">Power</button>
+        <button type="button" class="lib-pill" data-cat="Structural">Structural</button>
+      </div>
+      <div class="sidebar-scroll lib-scroll">
+        <p id="lib-no-build" class="lib-no-build" hidden>
+          Create or load a robot in the Build tab first.
+        </p>
+        <div class="lib-grid" id="lib-grid"></div>
+        <p class="lib-empty" id="lib-empty" hidden>No components match.</p>
+      </div>
+    </div>
+
   </aside>
 
   <main>
@@ -1636,6 +1980,7 @@
       </div>
     </div>
     <urdf-viewer id="viewer" up="-Z" display-shadow></urdf-viewer>
+    <div id="build-hover-tip"></div>
     <div class="loading" id="loading">
       <svg class="spinner" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
         <defs>
@@ -1648,6 +1993,11 @@
         <circle cx="18" cy="18" r="15" stroke="url(#spinGrad)" stroke-width="3"
                 stroke-linecap="round" pathLength="100" stroke-dasharray="75 25" />
       </svg>
+    </div>
+
+    <div id="urdf-error-banner" role="status">
+      <span id="urdf-error-text" style="flex:1;word-break:break-word;"></span>
+      <button id="urdf-error-close" title="Dismiss">×</button>
     </div>
 
     <canvas id="gesture-overlay"></canvas>
