@@ -82,6 +82,7 @@ async function loadViaBrowserAssembly(robot: RobotConfig): Promise<void> {
     for (const { id, type } of restored) renderComponentItem(id, type, buildCtrl.getComponentData(id));
 
     if (restored.length > 0) syncSlidersFromController();
+    refreshBuildHeader();
 }
 
 const ROBOTS: RobotConfig[] = [
@@ -646,6 +647,9 @@ const buildComponentsListEl = document.getElementById('build-components-list') a
 const buildNewNameEl        = document.getElementById('build-new-name')         as HTMLInputElement;
 const buildNewCreateBtn     = document.getElementById('build-new-create')       as HTMLButtonElement;
 const buildResumeBtn        = document.getElementById('build-resume')            as HTMLButtonElement;
+const buildActiveHeaderEl   = document.getElementById('build-active-header')    as HTMLElement;
+const buildActiveNameEl     = document.getElementById('build-active-name')      as HTMLElement;
+const buildClearCustomBtn   = document.getElementById('build-clear-custom')     as HTMLButtonElement;
 
 // Helper: sync all parametric sliders from controller state
 function syncSlidersFromController(): void {
@@ -712,6 +716,7 @@ buildNewCreateBtn.addEventListener('click', () => {
     buildCtrl.open();
     document.getElementById('tab-build')?.click();
     refreshResumeBtn();
+    refreshBuildHeader();
 });
 
 function refreshResumeBtn(): void {
@@ -724,6 +729,15 @@ function refreshResumeBtn(): void {
     }
 }
 
+function refreshBuildHeader(): void {
+    const active = buildCtrl.isCatalogActive;
+    buildActiveHeaderEl.hidden = !active;
+    if (active) {
+        buildActiveNameEl.textContent = buildCtrl.robotName;
+        buildClearCustomBtn.style.display = buildCtrl.isSupported ? 'none' : '';
+    }
+}
+
 buildResumeBtn.addEventListener('click', () => {
     buildComponentsListEl.innerHTML = '';
     componentInputs.clear();
@@ -733,9 +747,17 @@ buildResumeBtn.addEventListener('click', () => {
     if (entries.length > 0) syncSlidersFromController();
     buildCtrl.open();
     document.getElementById('tab-build')?.click();
+    refreshBuildHeader();
+});
+
+buildClearCustomBtn.addEventListener('click', () => {
+    buildCtrl.clearCustom();
+    buildActiveHeaderEl.hidden = true;
+    refreshResumeBtn();
 });
 
 refreshResumeBtn();
+refreshBuildHeader();
 
 // Populate component palette
 for (const [type, def] of Object.entries(COMPONENT_CATALOG)) {
@@ -1036,8 +1058,10 @@ viewer.renderer.domElement.addEventListener('pointermove', (e: PointerEvent) => 
     if (!_compRaycaster.ray.intersectPlane(_compDragPlane, _compNewHit)) return;
 
     // Delta in Three.js world XZ → URDF XY (URDF X = Three X, URDF Y = -Three Z)
-    _compCurX = _compInitUrdfX + (_compNewHit.x - _compInitialHit.x);
-    _compCurY = _compInitUrdfY - (_compNewHit.z - _compInitialHit.z);
+    // Snap to 1mm grid
+    const _snap = 0.001;
+    _compCurX = Math.round((_compInitUrdfX + (_compNewHit.x - _compInitialHit.x)) / _snap) * _snap;
+    _compCurY = Math.round((_compInitUrdfY - (_compNewHit.z - _compInitialHit.z)) / _snap) * _snap;
 
     // Direct Three.js update — no URDF reload during drag for smooth performance
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

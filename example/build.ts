@@ -617,6 +617,17 @@ export class URDFBuildController {
         } catch { /* storage quota — ignore */ }
     }
 
+    get robotName(): string { return this._robotName; }
+
+    /** Remove the saved custom robot from localStorage. */
+    clearCustom(): void {
+        try {
+            const name = localStorage.getItem('urdf-build-last-custom');
+            if (name) localStorage.removeItem(`urdf-build-${name}`);
+            localStorage.removeItem('urdf-build-last-custom');
+        } catch { /**/ }
+    }
+
     /** Name of the last saved custom robot, or null if none exists. */
     static lastCustomName(): string | null {
         try {

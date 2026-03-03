@@ -1497,6 +1497,10 @@
 
     <div class="tab-body" data-tab="build" id="build-panel">
       <div class="sidebar-scroll">
+        <div id="build-active-header" hidden style="display:flex;align-items:center;justify-content:space-between;padding:6px 12px 2px;gap:6px;">
+          <span id="build-active-name" style="font-size:11px;font-weight:600;color:var(--text);opacity:0.7;text-overflow:ellipsis;overflow:hidden;white-space:nowrap;"></span>
+          <button type="button" id="build-clear-custom" class="build-remove-btn" title="Delete saved custom robot" style="display:none;">×</button>
+        </div>
         <p class="build-notice" id="build-notice" hidden>Load Robot Car to use the full builder, or create a new robot below.</p>
 
         <div id="build-new-robot" style="padding: 8px 12px;">
