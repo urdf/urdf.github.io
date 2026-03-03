@@ -705,6 +705,24 @@ document.addEventListener('keydown', (e: KeyboardEvent) => {
     if (!buildCtrl.isActive) return;
     if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) { e.preventDefault(); buildCtrl.undo(); }
     if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) { e.preventDefault(); buildCtrl.redo(); }
+    // Delete/Backspace: remove the selected component
+    if (_buildSelCompId && (e.key === 'Delete' || e.key === 'Backspace') && !e.ctrlKey && !e.metaKey) {
+        const el = document.activeElement as HTMLElement;
+        if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable) return;
+        e.preventDefault();
+        const card = buildComponentsListEl.querySelector<HTMLElement>(`[data-id="${_buildSelCompId}"]`);
+        buildCtrl.removeComponent(_buildSelCompId);
+        componentInputs.delete(_buildSelCompId);
+        const removedId = _buildSelCompId;
+        componentSelects.delete(removedId);
+        for (const sel of componentSelects.values()) {
+            const opt = Array.from(sel.options).find(o => o.value === removedId);
+            if (opt) sel.removeChild(opt);
+        }
+        card?.remove();
+        _buildSelCompId = null;
+        return;
+    }
     // Arrow key nudge: move selected component 1mm per keypress
     if (_buildSelCompId && ['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.key) && !e.ctrlKey && !e.metaKey) {
         e.preventDefault();
@@ -1185,4 +1203,33 @@ viewer.renderer.domElement.addEventListener('pointerup', (e: PointerEvent) => {
 
     _compDragCard = null;
     _compDragId   = null;
+});
+
+// ── Component hover tooltip ────────────────────────────────────────────────
+const _hoverTip = document.getElementById('build-hover-tip') as HTMLElement;
+let _hoverTipRaf = 0;
+
+viewer.renderer.domElement.addEventListener('pointermove', (e: PointerEvent) => {
+    if (!buildCtrl.isCatalogActive || _compDragId) { _hoverTip.style.display = 'none'; return; }
+    cancelAnimationFrame(_hoverTipRaf);
+    _hoverTipRaf = requestAnimationFrame(() => {
+        _compUpdateNDC(e);
+        _compRaycaster.setFromCamera(_compMouse, viewer.camera);
+        const hits = _compRaycaster.intersectObject(viewer.scene, true);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const id = hits.length ? _compFindId(hits[0].object as any) : null;
+        if (id) {
+            const def = COMPONENT_CATALOG[buildCtrl.getComponentData(id)?.type ?? ''];
+            _hoverTip.textContent = def ? `${def.label} #${id.split('_').pop()}` : id;
+            _hoverTip.style.display = 'block';
+            _hoverTip.style.left = (e.clientX + 12) + 'px';
+            _hoverTip.style.top  = (e.clientY - 28) + 'px';
+        } else {
+            _hoverTip.style.display = 'none';
+        }
+    });
+});
+
+viewer.renderer.domElement.addEventListener('pointerleave', () => {
+    _hoverTip.style.display = 'none';
 });
