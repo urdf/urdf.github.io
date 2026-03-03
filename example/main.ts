@@ -3,7 +3,7 @@ import { URDFEditorController } from './editor.js';
 import { URDFBuildController, CHASSIS_DEFAULTS, WHEEL_DEFAULTS, COMPONENT_CATALOG } from './build.js';
 import type { Component as BuildComponent } from './build.js';
 import type { GestureController } from './gesture.js';
-import { Raycaster, Vector2, Vector3, Plane } from 'three';
+import { Raycaster, Vector2, Vector3, Plane, GridHelper } from 'three';
 
 customElements.define('urdf-viewer', URDFManipulator);
 
@@ -26,17 +26,26 @@ const buildNoticeEl = document.getElementById('build-notice') as HTMLElement;
 const editorCtrl = new URDFEditorController(viewer, editorPanelEl);
 const buildCtrl  = new URDFBuildController(viewer, buildNoticeEl);
 
+// Ground grid: 0.5m × 0.5m, 20mm divisions — visible only in Build mode
+const _buildGrid = new GridHelper(0.5, 25, 0x555555, 0x333333);
+_buildGrid.visible = false;
+// Grid must be added after viewer element creates its scene (defer one frame)
+requestAnimationFrame(() => viewer.scene.add(_buildGrid));
+
 document.getElementById('tab-robot')!.addEventListener('click', () => {
     editorCtrl.close();
     buildCtrl.close();
+    _buildGrid.visible = false;
 });
 document.getElementById('tab-editor')!.addEventListener('click', () => {
     buildCtrl.close();
     editorCtrl.open();
+    _buildGrid.visible = false;
 });
 document.getElementById('tab-build')!.addEventListener('click', () => {
     editorCtrl.close();
     buildCtrl.open();
+    _buildGrid.visible = true;
 });
 
 const ignoreLimitsEl = document.getElementById('ignore-limits') as HTMLInputElement;
