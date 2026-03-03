@@ -46,6 +46,7 @@ document.getElementById('tab-build')!.addEventListener('click', () => {
     editorCtrl.close();
     buildCtrl.open();
     _buildGrid.visible = true;
+    _buildGrid.position.y = viewer.shadowPlane.position.y;
 });
 
 const ignoreLimitsEl = document.getElementById('ignore-limits') as HTMLInputElement;
@@ -390,6 +391,8 @@ viewer.addEventListener('urdf-processed', () => {
     // Reset all build component preview sliders after each URDF reload
     document.querySelectorAll<HTMLInputElement>('input[data-preview="true"]')
         .forEach(s => { s.value = '0'; });
+    // Sync build grid to ground level (shadowPlane updates on next render frame)
+    requestAnimationFrame(() => { _buildGrid.position.y = viewer.shadowPlane.position.y; });
 });
 
 const DEG = Math.PI / 180;
