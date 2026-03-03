@@ -1499,8 +1499,16 @@
     <div class="tab-body" data-tab="build" id="build-panel">
       <div class="sidebar-scroll">
         <div id="build-active-header" hidden style="display:flex;align-items:center;justify-content:space-between;padding:6px 12px 2px;gap:6px;">
-          <span id="build-active-name" style="font-size:11px;font-weight:600;color:var(--text);opacity:0.7;text-overflow:ellipsis;overflow:hidden;white-space:nowrap;"></span>
+          <span id="build-active-name" style="font-size:11px;font-weight:600;color:var(--text);opacity:0.7;text-overflow:ellipsis;overflow:hidden;white-space:nowrap;flex:1;"></span>
+          <button type="button" id="build-shortcuts-toggle" class="build-remove-btn" title="Keyboard shortcuts" style="font-size:10px;width:18px;height:18px;line-height:1;">?</button>
           <button type="button" id="build-clear-custom" class="build-remove-btn" title="Delete saved custom robot" style="display:none;">×</button>
+        </div>
+        <div id="build-shortcuts" hidden style="padding:4px 12px 6px;font-size:10px;color:var(--text-2);line-height:1.7;border-bottom:1px solid var(--border);">
+          <b style="color:var(--text);">Drag</b> component → move X/Y &nbsp;|&nbsp; <b style="color:var(--text);">Shift+drag</b> → move Z<br>
+          <b style="color:var(--text);">Click</b> component → select + expand card<br>
+          <b style="color:var(--text);">Arrow keys</b> → nudge X/Y 1mm &nbsp;|&nbsp; <b style="color:var(--text);">Shift+↑↓</b> → nudge Z<br>
+          <b style="color:var(--text);">Delete</b> → remove selected component<br>
+          <b style="color:var(--text);">Ctrl+Z / Ctrl+Y</b> → undo / redo
         </div>
         <p class="build-notice" id="build-notice" hidden>Load Robot Car to use the full builder, or create a new robot below.</p>
 

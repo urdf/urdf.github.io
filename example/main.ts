@@ -660,6 +660,8 @@ const buildResumeBtn        = document.getElementById('build-resume')           
 const buildActiveHeaderEl   = document.getElementById('build-active-header')    as HTMLElement;
 const buildActiveNameEl     = document.getElementById('build-active-name')      as HTMLElement;
 const buildClearCustomBtn   = document.getElementById('build-clear-custom')     as HTMLButtonElement;
+const buildShortcutsToggle  = document.getElementById('build-shortcuts-toggle') as HTMLButtonElement;
+const buildShortcutsEl      = document.getElementById('build-shortcuts')        as HTMLElement;
 
 // Helper: sync all parametric sliders from controller state
 function syncSlidersFromController(): void {
@@ -814,6 +816,11 @@ buildClearCustomBtn.addEventListener('click', () => {
     refreshResumeBtn();
 });
 
+buildShortcutsToggle.addEventListener('click', (e) => {
+    e.stopPropagation();
+    buildShortcutsEl.hidden = !buildShortcutsEl.hidden;
+});
+
 refreshResumeBtn();
 refreshBuildHeader();
 
@@ -902,6 +909,7 @@ function renderComponentItem(id: string, type: string, saved?: BuildComponent | 
             const opt = Array.from(sel.options).find(o => o.value === id);
             if (opt) sel.removeChild(opt);
         }
+        if (_buildSelCompId === id) _buildSelCompId = null;
         item.remove();
     });
     header.append(labelEl, dupBtn, removeBtn);
