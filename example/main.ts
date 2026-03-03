@@ -1304,6 +1304,8 @@ function removeComponentItem(id: string): void {
         getPartsList:             () => editorCtrl.partsList,
         readPart:                 (filename) => editorCtrl.readPart(filename),
         updatePart:               (filename, xml) => editorCtrl.writePart(filename, xml),
+        highlightPart:            (jointName) => selectPart(jointName),
+        getJointNames:            () => Object.keys(viewer.robot?.joints ?? {}),
         getFocusedComponent: () => {
             if (_buildSelCompId) {
                 const entry = buildCtrl.getComponentEntries().find(e => e.id === _buildSelCompId);

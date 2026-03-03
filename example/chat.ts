@@ -41,6 +41,8 @@ export interface ChatCallbacks {
     getPartsList:             () => string[];
     readPart:                 (filename: string) => Promise<string | null>;
     updatePart:               (filename: string, xml: string) => Promise<boolean>;
+    highlightPart:            (jointName: string | null) => void;
+    getJointNames:            () => string[];
 }
 
 // ── Slash-command action maps ─────────────────────────────────────────────────
@@ -72,16 +74,21 @@ export class URDFChatController {
     private _history: Msg[] = [];
     private _abortCtrl: AbortController | null = null;
     private _brief = true;
+    private _guide = false;
     private _cmdAcIdx = -1;
+    private _pauseResolve: ((aborted: boolean) => void) | null = null;
 
     // DOM refs set in init()
-    private _messagesEl!: HTMLElement;
-    private _inputEl!:    HTMLTextAreaElement;
-    private _sendBtn!:    HTMLButtonElement;
-    private _abortBtn!:   HTMLButtonElement;
-    private _briefBtn!:   HTMLButtonElement;
+    private _messagesEl!:   HTMLElement;
+    private _emptyStateEl!: HTMLElement;
+    private _inputEl!:      HTMLTextAreaElement;
+    private _sendBtn!:     HTMLButtonElement;
+    private _abortBtn!:    HTMLButtonElement;
+    private _briefBtn!:    HTMLButtonElement;
+    private _guideBtn!:    HTMLButtonElement;
+    private _continueBtn!: HTMLButtonElement;
     private _toolCountBtn!: HTMLButtonElement;
-    private _cmdAcEl!:    HTMLElement;
+    private _cmdAcEl!:     HTMLElement;
 
     constructor(buildCtrl: URDFBuildController, cb: ChatCallbacks) {
         this._buildCtrl = buildCtrl;
@@ -89,11 +96,14 @@ export class URDFChatController {
     }
 
     init(): void {
-        this._messagesEl  = document.getElementById('chat-messages')!;
-        this._inputEl     = document.getElementById('chat-input') as HTMLTextAreaElement;
+        this._messagesEl   = document.getElementById('chat-messages')!;
+        this._emptyStateEl = document.getElementById('chat-empty-state')!;
+        this._inputEl      = document.getElementById('chat-input') as HTMLTextAreaElement;
         this._sendBtn     = document.getElementById('chat-send') as HTMLButtonElement;
         this._abortBtn    = document.getElementById('chat-abort') as HTMLButtonElement;
         this._briefBtn    = document.getElementById('chat-brief-toggle') as HTMLButtonElement;
+        this._guideBtn    = document.getElementById('chat-guide-toggle') as HTMLButtonElement;
+        this._continueBtn = document.getElementById('chat-continue') as HTMLButtonElement;
         this._toolCountBtn = document.getElementById('chat-tool-count') as HTMLButtonElement;
         this._cmdAcEl     = document.getElementById('cmd-ac') as HTMLElement;
 
@@ -135,7 +145,10 @@ export class URDFChatController {
         });
 
         this._sendBtn.addEventListener('click',  () => this._handleSend());
-        this._abortBtn.addEventListener('click', () => this._abortCtrl?.abort());
+        this._abortBtn.addEventListener('click', () => {
+            this._abortCtrl?.abort();
+            this._pauseResolve?.(true);
+        });
 
         // Detail toggle — inactive = brief/default, active = detail mode
         this._briefBtn.addEventListener('click', () => {
@@ -143,6 +156,25 @@ export class URDFChatController {
             this._briefBtn.classList.toggle('active', !this._brief);
             this._briefBtn.setAttribute('aria-pressed', String(!this._brief));
             this._cb.onBriefToggle(this._brief);
+        });
+
+        this._guideBtn.addEventListener('click', () => {
+            this._guide = !this._guide;
+            this._guideBtn.classList.toggle('active', this._guide);
+            this._guideBtn.setAttribute('aria-pressed', String(this._guide));
+        });
+
+        this._continueBtn.addEventListener('click', () => this._pauseResolve?.(false));
+
+        document.getElementById('chat-guide-start')!.addEventListener('click', () => {
+            this._guide = true;
+            this._brief = false;
+            this._guideBtn.classList.add('active');
+            this._guideBtn.setAttribute('aria-pressed', 'true');
+            this._briefBtn.classList.add('active');
+            this._briefBtn.setAttribute('aria-pressed', 'true');
+            this._cb.onBriefToggle(false);
+            this._runConversation('Please guide me through building this robot step by step.');
         });
 
         // Global keydown — double-Escape to clear, single key to focus chat
@@ -171,6 +203,7 @@ export class URDFChatController {
         });
 
         this.syncToolCount();
+        this._updateEmptyState();
     }
 
     syncToolCount(): void {
@@ -180,6 +213,27 @@ export class URDFChatController {
             this._toolCountBtn.hidden = n === 0;
         }
     }
+
+    private _showContinueButton(): void {
+        this._inputEl.disabled   = true;
+        this._sendBtn.hidden     = true;
+        this._continueBtn.hidden = false;
+    }
+
+    private _hideContinueButton(): void {
+        this._continueBtn.hidden = true;
+        this._sendBtn.hidden     = false;
+        this._inputEl.disabled   = false;
+        this._pauseResolve       = null;
+    }
+
+    private _updateEmptyState(): void {
+        const empty = this._history.length === 0;
+        this._emptyStateEl.style.display = empty ? 'flex' : 'none';
+        this._emptyStateEl.setAttribute('aria-hidden', String(!empty));
+        this._messagesEl.closest('.chat-pane')?.classList.toggle('chat-empty', empty);
+    }
+
 
     // ── Autocomplete ──────────────────────────────────────────────────────────
 
@@ -532,6 +586,31 @@ export class URDFChatController {
             );
         }
 
+        tools.push({
+            name: 'highlight_part',
+            description: 'Select and highlight a robot part in the 3D viewer. Call whenever you refer to a specific part.',
+            input_schema: {
+                type: 'object',
+                properties: {
+                    joint: { type: 'string', description: 'Joint name (e.g. "wheel_left_joint"), or empty string to clear.' },
+                },
+                required: ['joint'],
+            },
+        });
+
+        if (this._guide) {
+            tools.push({
+                name: 'pause',
+                description: 'Pause and wait for the user to click Continue before the next step. Required between every assembly step in guide mode.',
+                input_schema: {
+                    type: 'object',
+                    properties: {
+                        message: { type: 'string', description: 'Optional context for the user.' },
+                    },
+                },
+            });
+        }
+
         void allTypes; // suppress unused warning — types used in descriptions above
         return tools;
     }
@@ -652,6 +731,22 @@ export class URDFChatController {
                 if (!ok) return { error: 'invalid filename or no source URL' };
                 return { ok: true };
             }
+            case 'highlight_part': {
+                const joint = (args.joint as string) || null;
+                this._cb.highlightPart(joint);
+                return { ok: true };
+            }
+            case 'pause': {
+                await new Promise<void>((resolve, reject) => {
+                    this._pauseResolve = (aborted: boolean) => {
+                        if (aborted) reject(Object.assign(new Error('AbortError'), { name: 'AbortError' }));
+                        else resolve();
+                    };
+                    this._showContinueButton();
+                });
+                this._hideContinueButton();
+                return { ok: true };
+            }
             default:
                 return { error: `Unknown tool: ${name}` };
         }
@@ -685,7 +780,18 @@ export class URDFChatController {
             ? '\nBRIEF MODE: Answer in fewer than 4 lines. No preamble. Direct answers only. Emoji allowed as semantic shorthand when it replaces a word more efficiently than text.'
             : '';
 
-        return `You are a robot builder assistant embedded in a live 3D URDF viewer.
+        const guideBlock = this._guide ? `GUIDE MODE: You are an interactive assembly guide. Rules:
+• One assembly step per message. Always call pause between steps.
+• Before placing each part: explain what it is and why it goes there.
+• After placing: call highlight_part with the joint name.
+• Use read_part before update_part to check current state.
+• Be educational — assume the user is learning.
+
+Available joints to highlight: ${this._cb.getJointNames().join(', ')}
+
+` : '';
+
+        return `${guideBlock}You are a robot builder assistant embedded in a live 3D URDF viewer.
 The robot-car uses: −X = front, +X = rear, −Y = left, +Y = right, +Z = up.
 
 Current chassis: thickness=${(cp.thickness * 1000).toFixed(1)}mm  bodyHW=${(cp.bodyHalfWidth * 1000).toFixed(1)}mm  rearHW=${(cp.rearHalfWidth * 1000).toFixed(1)}mm
@@ -750,6 +856,7 @@ Use tools to modify the robot. Prefer direct tool calls over lengthy explanation
             this._abortCtrl        = null;
             this._sendBtn.disabled = false;
             this._abortBtn.hidden  = true;
+            this._hideContinueButton();
         }
     }
 
@@ -757,6 +864,7 @@ Use tools to modify the robot. Prefer direct tool calls over lengthy explanation
         this._sanitizeHistory();
         this._appendUserBubble(userText);
         this._history.push({ role: 'user', content: userText });
+        this._updateEmptyState();
         await this._withSession(() => this._runLoop());
     }
 
@@ -934,6 +1042,7 @@ Use tools to modify the robot. Prefer direct tool calls over lengthy explanation
     private _clearChat(): void {
         this._history = [];
         this._messagesEl.innerHTML = '';
+        this._updateEmptyState();
     }
 
     private _appendChat(el: HTMLElement): void {

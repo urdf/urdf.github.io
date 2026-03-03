@@ -81,28 +81,36 @@
     input, textarea, select,
     .chat-msg-user, .chat-msg-assistant { user-select: text; -webkit-user-select: text; }
 
-    /* ── Right panel ─────────────────────────────────────────────────────── */
+    /* ── Left control panel ──────────────────────────────────────────────── */
 
-    aside {
-      background: var(--surface);
-      border-left: 1px solid var(--border);
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-      position: fixed;
-      right: 0;
-      top: 0;
-      height: 100dvh;
-      width: var(--panel-w, 380px);
-      z-index: 200;
+    #control-panel {
+      position: fixed; left: 0; top: 0; height: 100dvh;
+      width: var(--panel-w, 380px); z-index: 200;
+      background: var(--surface); border-right: 1px solid var(--border);
+      display: flex; flex-direction: column; overflow: hidden;
+      transform: translateX(-100%);
+      transition: transform 0.25s ease;
+      box-shadow: 4px 0 24px var(--shadow);
+    }
+    #control-panel.open { transform: translateX(0); }
+
+    /* ── Right chat panel ────────────────────────────────────────────────── */
+
+    #chat-panel {
+      position: fixed; right: 0; top: 0; height: 100dvh;
+      width: var(--chat-w, 360px); z-index: 200;
+      background: var(--surface); border-left: 1px solid var(--border);
+      display: flex; flex-direction: column; overflow: hidden;
       transform: translateX(100%);
       transition: transform 0.25s ease;
       box-shadow: -4px 0 24px var(--shadow);
     }
+    #chat-panel.open { transform: translateX(0); }
 
     .panel-resize-handle {
       position: absolute;
-      left: 0;
+      right: 0;
+      left: auto;
       top: 0;
       bottom: 0;
       width: 8px;        /* hit target */
@@ -129,9 +137,7 @@
 
     @media (max-width: 768px) { .panel-resize-handle { display: none; } }
 
-    aside.open { transform: translateX(0); }
-
-    /* ── Panel header (tabs + actions) ───────────────────────────────────── */
+    /* ── Panel header (tabs) ────────────────────────────────────────────── */
 
     .panel-header {
       display: flex;
@@ -420,7 +426,7 @@
     /* ── Mobile / touch ──────────────────────────────────────────────────── */
 
     @media (max-width: 480px) {
-      aside { width: 100vw; }
+      #control-panel, #chat-panel { width: 100vw; }
     }
 
     @media (max-width: 768px) {
@@ -471,31 +477,6 @@
       color: var(--text-3);
       font-weight: 400;
     }
-
-    .panel-header-actions {
-      display: flex;
-      align-items: center;
-      padding: 0 4px;
-      gap: 2px;
-      flex-shrink: 0;
-    }
-
-    .panel-close {
-      background: none;
-      border: none;
-      color: var(--text-3);
-      cursor: pointer;
-      width: 30px;
-      height: 30px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      border-radius: 4px;
-      font-size: 0.75rem;
-    }
-
-    .panel-close:focus-visible { outline: 2px solid var(--blue); outline-offset: 1px; }
-    .panel-close:hover { color: var(--text-1); }
 
     /* ── Tab bodies ──────────────────────────────────────────────────────── */
 
@@ -809,30 +790,22 @@
       outline-offset: 1px;
     }
 
-    /* ── Panel toggle (floating button to open/close panel) ──────────────── */
+    /* ── FABs (floating action buttons) ─────────────────────────────────── */
 
-    .panel-toggle {
-      display: flex;
-      position: absolute;
-      top: 10px;
-      right: 10px;
-      z-index: 100;
-      background: var(--toggle-bg);
-      border: 1px solid var(--border);
-      border-radius: 50%;
-      color: var(--text-2);
-      font-size: 0.875rem;
-      width: 42px;
-      height: 42px;
-      cursor: pointer;
-      align-items: center;
-      justify-content: center;
-      backdrop-filter: blur(4px);
-      transition: color 0.12s;
+    .fab {
+      position: fixed; z-index: 100;
+      display: flex; align-items: center; justify-content: center;
+      width: 42px; height: 42px; border-radius: 50%;
+      background: var(--toggle-bg); border: 1px solid var(--border);
+      color: var(--text-2); cursor: pointer;
+      backdrop-filter: blur(4px); transition: color 0.12s;
     }
 
-    .panel-toggle:hover { background: var(--surface-hi); color: var(--text-1); }
-    .panel-toggle:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+    .fab:hover { background: var(--surface-hi); color: var(--text-1); }
+    .fab:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+
+    #control-panel-toggle { top: 10px; left: 10px; }
+    #chat-panel-toggle    { top: 10px; right: 10px; }
 
     .sidebar-backdrop {
       display: none;
@@ -850,10 +823,13 @@
       position: fixed;
       inset: 0;
       overflow: hidden;
-      transition: right 0.25s ease;
+      transition: left 0.25s ease, right 0.25s ease;
     }
 
-    aside.open.pinned ~ main { right: var(--panel-w, 380px); }
+    #control-panel.open.pinned ~ main { left: var(--panel-w, 380px); }
+    #chat-panel.open.pinned ~ main    { right: var(--chat-w, 360px); }
+
+    #chat-panel .panel-resize-handle { left: 0; right: auto; }
 
     urdf-viewer {
       width: 100%;
@@ -930,21 +906,6 @@
     #urdf-error-banner button:hover { opacity: 1; }
 
 
-    /* ── Author credits ──────────────────────────────────────────────────── */
-
-    .viewport-credit {
-      position: absolute;
-      bottom: 12px;
-      left: 14px;
-      font-size: 0.6875rem;
-      color: var(--text-3);
-      text-decoration: none;
-      pointer-events: auto;
-      transition: color 0.12s;
-      z-index: 10;
-    }
-
-    .viewport-credit:hover { color: var(--text-2); }
 
     /* ── Part Inspector ──────────────────────────────────────────────────── */
 
@@ -1119,29 +1080,18 @@
       width: 160px; height: 90px; opacity: 0; pointer-events: none;
     }
 
-    /* ── Gesture toggle button (fixed top-left) ──────────────────────────── */
+    /* ── Gesture toggle button (fixed bottom-left) ───────────────────────── */
 
     #gesture-toggle {
-      position: fixed;
-      top: 10px;
+      bottom: 10px;
       left: 10px;
       z-index: 210;
-      display: flex;
-      width: 42px;
-      height: 42px;
-      border-radius: 50%;
-      border: 1px solid var(--border);
-      background: var(--toggle-bg);
-      color: var(--text-2);
-      cursor: pointer;
-      align-items: center;
-      justify-content: center;
-      transition: background 0.2s, border-color 0.2s, color 0.2s;
-      backdrop-filter: blur(4px);
+      transition: left 0.25s ease, background 0.2s, border-color 0.2s, color 0.2s;
     }
 
-    #gesture-toggle:hover { background: var(--surface-hi); color: var(--text-1); }
-    #gesture-toggle:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+    #control-panel.open.pinned ~ main #gesture-toggle {
+      left: calc(var(--panel-w, 380px) + 10px);
+    }
 
     #gesture-toggle.active {
       background: var(--blue-bg);
@@ -1156,6 +1106,16 @@
       0%, 100% { box-shadow: 0 0 0 0 rgba(0, 122, 255, 0.35); }
       50%       { box-shadow: 0 0 0 8px rgba(0, 122, 255, 0); }
     }
+
+    /* ── Credit link ─────────────────────────────────────────────────────── */
+
+    #credit {
+      position: fixed; bottom: 14px; right: 14px; z-index: 90;
+      font-size: 0.6875rem; color: var(--text-3);
+      text-decoration: none; opacity: 0.7;
+      transition: opacity 0.15s;
+    }
+    #credit:hover { opacity: 1; color: var(--text-2); }
 
     /* ── Gesture cheat sheet ─────────────────────────────────────────────── */
 
@@ -1267,11 +1227,59 @@
     }
 
     .chat-pane {
-      height: var(--chat-h, 160px);
-      flex-shrink: 0;
+      flex: 1;
       display: flex;
       flex-direction: column;
       overflow: hidden;
+    }
+
+    .chat-pane.chat-empty .chat-messages {
+      flex: 0;
+      min-height: 0;
+      overflow: hidden;
+      padding: 0;
+    }
+
+    .chat-empty-state {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+      padding: 24px 20px;
+    }
+
+    .chat-empty-robot { color: var(--text-3); opacity: 0.45; }
+
+    .chat-guide-card {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 5px;
+      padding: 13px 20px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: none;
+      cursor: pointer;
+      transition: border-color 0.15s, background 0.15s;
+      width: 100%;
+      max-width: 210px;
+      text-align: center;
+    }
+    .chat-guide-card:hover {
+      border-color: rgba(52, 199, 89, 0.45);
+      background: rgba(52, 199, 89, 0.06);
+    }
+    .chat-guide-card-title {
+      font-size: 0.8125rem;
+      font-weight: 600;
+      color: var(--text-1);
+    }
+    .chat-guide-card-desc {
+      font-size: 0.6875rem;
+      color: var(--text-3);
+      line-height: 1.4;
     }
 
     .chat-messages {
@@ -1568,7 +1576,7 @@
     /* ── Chat section header ─────────────────────────────────────────────── */
 
     .chat-header {
-      padding: 0 8px 0 12px;
+      padding: 0 4px 0 12px;
       height: 32px;
       display: flex;
       align-items: center;
@@ -1581,7 +1589,31 @@
       flex-shrink: 0;
     }
 
-    .chat-header-actions { display: flex; align-items: center; gap: 6px; }
+    .chat-header-close {
+      background: none;
+      border: none;
+      color: var(--text-3);
+      cursor: pointer;
+      width: 28px;
+      height: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      flex-shrink: 0;
+    }
+    .chat-header-close:hover { color: var(--text-1); background: var(--surface-hover); }
+    .chat-header-close:focus-visible { outline: 2px solid var(--blue); outline-offset: 1px; }
+
+    .chat-compose-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 4px 8px;
+      border-top: 1px solid var(--border);
+      flex-shrink: 0;
+    }
 
     .chat-tool-count-btn {
       background: none;
@@ -1616,34 +1648,35 @@
       color: var(--blue-text);
     }
 
-    /* Chat pane only shown on Editor and Build tabs */
-    body:not(.editor-open):not(.build-open) .chat-resize-handle,
-    body:not(.editor-open):not(.build-open) .chat-header,
-    body:not(.editor-open):not(.build-open) .chat-pane { display: none; }
-
-    .chat-resize-handle {
-      height: 8px;
-      flex-shrink: 0;
-      cursor: row-resize;
-      position: relative;
-      touch-action: none;
+    #chat-guide-toggle {
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      color: var(--text-3);
+      cursor: pointer;
+      font-size: 0.625rem;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      padding: 2px 8px;
+      text-transform: uppercase;
+      transition: border-color 0.12s, color 0.12s, background 0.12s;
     }
 
-    .chat-resize-handle::after {
-      content: '';
-      position: absolute;
-      left: 0;
-      right: 0;
-      top: 50%;
-      height: 1px;
-      transform: translateY(-50%);
-      background: var(--border);
-      transition: height 0.12s, background 0.12s;
+    #chat-guide-toggle:hover { border-color: var(--text-2); color: var(--text-2); }
+
+    #chat-guide-toggle.active {
+      background: rgba(52, 199, 89, 0.15);
+      border-color: rgba(52, 199, 89, 0.4);
+      color: #34c759;
     }
 
-    .chat-resize-handle:hover::after,
-    .chat-resize-handle.dragging::after { height: 2px; background: rgba(0, 122, 255, 0.6); }
-    .chat-resize-handle.dragging::after { background: var(--blue); }
+    .chat-continue-btn {
+      width: 100%; padding: 10px; border-radius: 8px;
+      background: var(--blue); color: #fff; border: none;
+      font-size: 0.875rem; font-weight: 500; cursor: pointer;
+      transition: background 0.15s; margin-top: 4px;
+    }
+    .chat-continue-btn:hover { background: var(--blue-hover); }
 
     /* ── Chat context bar + pills ────────────────────────────────────────── */
 
@@ -1668,8 +1701,8 @@
     }
     .context-pill-dismiss:hover { opacity: 1; }
 
-    /* Also hide context bar on non-editor/build tabs */
-    body:not(.editor-open):not(.build-open) #chat-context-bar { display: none; }
+    /* Context pills only relevant in Build tab */
+    body:not(.build-open) #chat-context-bar { display: none; }
 
     /* ── Build inspector zone ────────────────────────────────────────────── */
 
@@ -1684,18 +1717,10 @@
     }
     .build-inspector-title { flex: 1; }
   </style>
-  <script type="module" crossorigin src="/assets/index--UrcMmq-.js"></script>
+  <script type="module" crossorigin src="/assets/index-C9T948Ef.js"></script>
 </head>
 <body>
-  <button type="button" id="gesture-toggle" aria-label="Toggle gesture mode" title="Gesture mode">
-    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-      <path d="M18 11V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2"/>
-      <path d="M14 10V4a2 2 0 0 0-2-2a2 2 0 0 0-2 2v2"/>
-      <path d="M10 10.5V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2v8"/>
-      <path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"/>
-    </svg>
-  </button>
-  <aside aria-label="Controls">
+  <aside id="control-panel" aria-label="Controls">
     <div class="panel-resize-handle"
       role="separator"
       aria-label="Resize panel"
@@ -1730,9 +1755,7 @@
           </svg>
         </button>
       </div>
-      <div class="panel-header-actions">
-        <button type="button" class="panel-close" id="panel-close" aria-label="Close panel">✕</button>
-      </div>
+      <button type="button" class="chat-header-close" id="control-panel-close" aria-label="Close panel">✕</button>
     </div>
 
     <div class="tab-body" data-tab="robot">
@@ -2043,26 +2066,44 @@
       </div>
     </div>
 
-    <div class="chat-resize-handle"
-      role="separator"
-      aria-label="Resize chat"
-      aria-orientation="horizontal"
-      aria-valuenow="160"
-      aria-valuemin="100"
-      aria-valuemax="600"
-      tabindex="0"
-    ></div>
+  </aside>
+
+  <aside id="chat-panel" aria-label="AI Chat">
+    <div class="panel-resize-handle" role="separator" aria-label="Resize chat panel"
+         aria-orientation="vertical" aria-valuenow="360" aria-valuemin="260"
+         aria-valuemax="600" tabindex="0"></div>
     <div class="chat-header">
       <span>AI Assistant</span>
-      <div class="chat-header-actions">
-        <button type="button" id="chat-tool-count" class="chat-tool-count-btn"
-                aria-label="Active tools" title="Active build tools">0 tools</button>
-        <button type="button" id="chat-brief-toggle" aria-pressed="false" title="Toggle brief responses">Brief</button>
-      </div>
+      <button type="button" class="chat-header-close" id="chat-panel-close" aria-label="Close chat">✕</button>
     </div>
     <div id="chat-context-bar" hidden></div>
     <div class="chat-pane">
       <div class="chat-messages" id="chat-messages" aria-live="polite" aria-label="AI conversation"></div>
+      <div id="chat-empty-state" class="chat-empty-state" style="display:none" aria-hidden="true">
+        <svg class="chat-empty-robot" xmlns="http://www.w3.org/2000/svg" width="56" height="56"
+             viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M12 8V4H8"/>
+          <rect width="16" height="12" x="4" y="8" rx="2"/>
+          <path d="M2 14h2"/>
+          <path d="M20 14h2"/>
+          <path d="M15 13v2"/>
+          <path d="M9 13v2"/>
+        </svg>
+        <button type="button" class="chat-guide-card" id="chat-guide-start">
+          <span class="chat-guide-card-title">Guided Assembly</span>
+          <span class="chat-guide-card-desc">Step-by-step build with 3D highlights</span>
+        </button>
+      </div>
+      <div class="chat-compose-toolbar">
+        <div style="display:flex;gap:4px;align-items:center;">
+          <button type="button" id="chat-brief-toggle" aria-pressed="false" title="Toggle detailed responses">Detail</button>
+          <button type="button" id="chat-guide-toggle" aria-pressed="false"
+                  title="Step-by-step guided assembly">Guide</button>
+        </div>
+        <button type="button" id="chat-tool-count" class="chat-tool-count-btn"
+                aria-label="Active tools" title="Active build tools">0 tools</button>
+      </div>
       <div class="chat-input-area">
         <div id="cmd-ac" class="cmd-ac" hidden role="listbox" aria-label="Commands"></div>
         <div class="chat-input-wrap">
@@ -2083,22 +2124,35 @@
             </svg>
           </button>
         </div>
+        <button type="button" id="chat-continue" hidden class="chat-continue-btn"
+                aria-label="Continue to next step">Continue →</button>
       </div>
     </div>
-
   </aside>
 
   <main>
-    <button type="button" class="panel-toggle" id="panel-toggle" aria-label="Open controls">
+    <button type="button" class="fab" id="control-panel-toggle" aria-label="Toggle controls">
       <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <path d="M12 8V4H8"/>
-        <rect width="16" height="12" x="4" y="8" rx="2"/>
-        <path d="M2 14h2"/>
-        <path d="M20 14h2"/>
-        <path d="M15 13v2"/>
-        <path d="M9 13v2"/>
+        <rect width="18" height="18" x="3" y="3" rx="2"/>
+        <path d="M9 3v18"/>
       </svg>
     </button>
+    <button type="button" class="fab" id="chat-panel-toggle" aria-label="Toggle AI chat">
+      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/>
+        <path d="M2 14h2"/><path d="M20 14h2"/>
+        <path d="M15 13v2"/><path d="M9 13v2"/>
+      </svg>
+    </button>
+    <button type="button" class="fab" id="gesture-toggle" aria-label="Toggle gesture mode" title="Gesture mode">
+      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M18 11V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2"/>
+        <path d="M14 10V4a2 2 0 0 0-2-2a2 2 0 0 0-2 2v2"/>
+        <path d="M10 10.5V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2v8"/>
+        <path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"/>
+      </svg>
+    </button>
+    <a id="credit" href="https://github.com/jonasneves" target="_blank" rel="noopener">By Jonas Neves</a>
     <div class="robot-shell">
       <div class="robot-track" id="robots" data-gesture-track>
         <div class="robot-track-slider" id="robot-track-slider"></div>
@@ -2127,7 +2181,6 @@
 
     <canvas id="gesture-overlay"></canvas>
     <video id="gesture-video" playsinline muted></video>
-    <a class="viewport-credit" href="https://github.com/jonasneves" target="_blank" rel="noopener">by Jonas Neves</a>
   </main>
 
   <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
@@ -2136,101 +2189,45 @@
   <script src="https://cdn.jsdelivr.net/npm/marked@15/marked.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js"></script>
   <script>
-    const panel     = document.querySelector('aside');
-    const backdrop  = document.getElementById('sidebar-backdrop');
-    const toggleBtn = document.getElementById('panel-toggle');
-    const closeBtn  = document.getElementById('panel-close');
+    const ctrlPanel  = document.getElementById('control-panel');
+    const chatPanel  = document.getElementById('chat-panel');
+    const backdrop   = document.getElementById('sidebar-backdrop');
+    const ctrlToggle = document.getElementById('control-panel-toggle');
+    const chatToggle = document.getElementById('chat-panel-toggle');
 
     function isDesktop() { return window.innerWidth > 768; }
+    let _mobilePanel = null;
 
-    function openPanel() {
+    function openPanel(panel) {
       panel.classList.add('open');
-      if (isDesktop()) {
-        panel.classList.add('pinned');
-      } else {
-        backdrop.classList.add('visible');
-      }
+      if (isDesktop()) { panel.classList.add('pinned'); }
+      else { backdrop.classList.add('visible'); _mobilePanel = panel; }
     }
-
-    function closePanel() {
+    function closePanel(panel) {
       panel.classList.remove('open', 'pinned');
       backdrop.classList.remove('visible');
+      _mobilePanel = null;
     }
 
-    toggleBtn.addEventListener('click', openPanel);
-    closeBtn.addEventListener('click', closePanel);
-    backdrop.addEventListener('click', closePanel);
+    const ctrlClose  = document.getElementById('control-panel-close');
+    const chatClose  = document.getElementById('chat-panel-close');
 
-    // ── Chat resize (horizontal splitter) ────────────────────────────────────
+    ctrlToggle.addEventListener('click', () =>
+      ctrlPanel.classList.contains('open') ? closePanel(ctrlPanel) : openPanel(ctrlPanel));
+    chatToggle.addEventListener('click', () =>
+      chatPanel.classList.contains('open') ? closePanel(chatPanel) : openPanel(chatPanel));
+    ctrlClose.addEventListener('click', () => closePanel(ctrlPanel));
+    chatClose.addEventListener('click', () => closePanel(chatPanel));
+    backdrop.addEventListener('click', () => { if (_mobilePanel) closePanel(_mobilePanel); });
 
-    const CHAT_H_KEY     = 'urdf-chat-h';
-    const CHAT_H_DEFAULT = 160;
-    const MIN_CH         = 100;
-
-    const chatHandle = document.querySelector('.chat-resize-handle');
-    const chatPane   = document.querySelector('.chat-pane');
-
-    function maxCH() { return Math.floor(panel.offsetHeight * 0.75); }
-
-    function applyChatH(h) {
-      const clamped = Math.max(MIN_CH, Math.min(maxCH(), h));
-      document.documentElement.style.setProperty('--chat-h', clamped + 'px');
-      chatHandle.setAttribute('aria-valuenow', Math.round(clamped));
-      return clamped;
-    }
-
-    function saveChatH() {
-      try { localStorage.setItem(CHAT_H_KEY, chatPane.offsetHeight); } catch {}
-    }
-
-    {
-      const saved = parseInt(localStorage.getItem(CHAT_H_KEY), 10);
-      if (saved >= MIN_CH) applyChatH(saved);
-    }
-
-    chatHandle.addEventListener('pointerdown', e => {
-      e.preventDefault();
-      const startY = e.clientY;
-      const startH = chatPane.offsetHeight;
-      chatHandle.setPointerCapture(e.pointerId);
-      chatHandle.classList.add('dragging');
-
-      function onMove(ev) { applyChatH(startH + startY - ev.clientY); }
-      function onUp() {
-        chatHandle.classList.remove('dragging');
-        chatHandle.removeEventListener('pointermove', onMove);
-        chatHandle.removeEventListener('pointerup', onUp);
-        saveChatH();
-      }
-      chatHandle.addEventListener('pointermove', onMove);
-      chatHandle.addEventListener('pointerup', onUp);
-    });
-
-    chatHandle.addEventListener('dblclick', () => { applyChatH(CHAT_H_DEFAULT); saveChatH(); });
-
-    chatHandle.addEventListener('keydown', e => {
-      const cur = chatPane.offsetHeight;
-      let next;
-      switch (e.key) {
-        case 'ArrowUp':   next = cur + 16; break;
-        case 'ArrowDown': next = cur - 16; break;
-        case 'Home':      next = MIN_CH;   break;
-        case 'End':       next = maxCH();  break;
-        default: return;
-      }
-      e.preventDefault();
-      applyChatH(next);
-      saveChatH();
-    });
-
-    // ── Panel resize (left edge drag, desktop only) ──────────────────────────
+    // ── Left panel resize (right-edge drag, desktop only) ────────────────────
 
     const PANEL_W_KEY     = 'urdf-panel-w';
     const PANEL_W_DEFAULT = 380;
     const MIN_W           = 260;
     const SNAP_RADIUS     = 10;
 
-    const resizeHandle = panel.querySelector('.panel-resize-handle');
+    const resizeHandle = ctrlPanel.querySelector('.panel-resize-handle');
     const mainEl       = document.querySelector('main');
     const widthTooltip = document.getElementById('part-label');
 
@@ -2244,7 +2241,7 @@
     }
 
     function saveWidth() {
-      try { localStorage.setItem(PANEL_W_KEY, panel.offsetWidth); } catch {}
+      try { localStorage.setItem(PANEL_W_KEY, ctrlPanel.offsetWidth); } catch {}
     }
 
     if (isDesktop()) {
@@ -2255,13 +2252,14 @@
     resizeHandle.addEventListener('pointerdown', e => {
       e.preventDefault();
       const startX = e.clientX;
-      const startW = panel.offsetWidth;
+      const startW = ctrlPanel.offsetWidth;
       resizeHandle.setPointerCapture(e.pointerId);
       resizeHandle.classList.add('dragging');
-      mainEl.style.transition = 'none'; // prevent right-offset lag during drag
+      mainEl.style.transition = 'none';
 
       function onMove(ev) {
-        let w = startW + startX - ev.clientX;
+        // Left panel: drag right = wider
+        let w = startW + ev.clientX - startX;
         if (Math.abs(w - PANEL_W_DEFAULT) <= SNAP_RADIUS) w = PANEL_W_DEFAULT;
         const applied = applyWidth(w);
         widthTooltip.textContent = Math.round(applied) + 'px';
@@ -2281,24 +2279,19 @@
       resizeHandle.addEventListener('pointerup', onUp);
     });
 
-    resizeHandle.addEventListener('dblclick', () => {
-      applyWidth(PANEL_W_DEFAULT);
-      saveWidth();
-    });
+    resizeHandle.addEventListener('dblclick', () => { applyWidth(PANEL_W_DEFAULT); saveWidth(); });
 
     resizeHandle.addEventListener('keydown', e => {
-      const cur = panel.offsetWidth;
+      const cur = ctrlPanel.offsetWidth;
       let next;
       switch (e.key) {
-        case 'ArrowLeft':  next = cur + 16; break;
-        case 'ArrowRight': next = cur - 16; break;
+        case 'ArrowRight': next = cur + 16; break;
+        case 'ArrowLeft':  next = cur - 16; break;
         case 'Home':       next = MIN_W;    break;
         case 'End':        next = maxW();   break;
         default: return;
       }
-      e.preventDefault();
-      applyWidth(next);
-      saveWidth();
+      e.preventDefault(); applyWidth(next); saveWidth();
     });
 
     // Do not overwrite stored value; only re-clamp if overflowing.
@@ -2309,6 +2302,77 @@
         const cur = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--panel-w'), 10);
         if (cur > maxW()) applyWidth(cur);
       }, 50);
+    });
+
+    // ── Chat panel resize (left-edge drag, desktop only) ─────────────────────
+
+    const CHAT_W_KEY     = 'urdf-chat-w';
+    const CHAT_W_DEFAULT = 360;
+    const MIN_CHAT_W     = 260;
+
+    const chatResizeHandle = chatPanel.querySelector('.panel-resize-handle');
+
+    function maxChatW() { return Math.min(600, window.innerWidth * 0.6); }
+
+    function applyChatWidth(w) {
+      const clamped = Math.max(MIN_CHAT_W, Math.min(maxChatW(), w));
+      document.documentElement.style.setProperty('--chat-w', clamped + 'px');
+      chatResizeHandle.setAttribute('aria-valuenow', Math.round(clamped));
+      return clamped;
+    }
+
+    function saveChatWidth() {
+      try { localStorage.setItem(CHAT_W_KEY, chatPanel.offsetWidth); } catch {}
+    }
+
+    if (isDesktop()) {
+      const saved = parseInt(localStorage.getItem(CHAT_W_KEY), 10);
+      if (saved >= MIN_CHAT_W) applyChatWidth(saved);
+    }
+
+    chatResizeHandle.addEventListener('pointerdown', e => {
+      e.preventDefault();
+      const startX = e.clientX;
+      const startW = chatPanel.offsetWidth;
+      chatResizeHandle.setPointerCapture(e.pointerId);
+      chatResizeHandle.classList.add('dragging');
+      mainEl.style.transition = 'none';
+
+      function onMove(ev) {
+        // Right panel: drag left = wider (negative delta)
+        let w = startW - (ev.clientX - startX);
+        if (Math.abs(w - CHAT_W_DEFAULT) <= SNAP_RADIUS) w = CHAT_W_DEFAULT;
+        const applied = applyChatWidth(w);
+        widthTooltip.textContent = Math.round(applied) + 'px';
+        widthTooltip.style.left    = (ev.clientX + 12) + 'px';
+        widthTooltip.style.top     = (ev.clientY - 20) + 'px';
+        widthTooltip.style.display = 'block';
+      }
+      function onUp() {
+        chatResizeHandle.classList.remove('dragging');
+        mainEl.style.transition = '';
+        widthTooltip.style.display = 'none';
+        chatResizeHandle.removeEventListener('pointermove', onMove);
+        chatResizeHandle.removeEventListener('pointerup', onUp);
+        saveChatWidth();
+      }
+      chatResizeHandle.addEventListener('pointermove', onMove);
+      chatResizeHandle.addEventListener('pointerup', onUp);
+    });
+
+    chatResizeHandle.addEventListener('dblclick', () => { applyChatWidth(CHAT_W_DEFAULT); saveChatWidth(); });
+
+    chatResizeHandle.addEventListener('keydown', e => {
+      const cur = chatPanel.offsetWidth;
+      let next;
+      switch (e.key) {
+        case 'ArrowLeft':  next = cur + 16; break;
+        case 'ArrowRight': next = cur - 16; break;
+        case 'Home':       next = MIN_CHAT_W;  break;
+        case 'End':        next = maxChatW();  break;
+        default: return;
+      }
+      e.preventDefault(); applyChatWidth(next); saveChatWidth();
     });
 
     // Convert vertical wheel scroll to horizontal on the editor tab bar
