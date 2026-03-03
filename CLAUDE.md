@@ -102,9 +102,24 @@ Min 260 px, max min(700 px, 60 vw), default 380 px. `localStorage` key `urdf-pan
 
 Desktop developer-tool genre (VS Code, Chrome DevTools). Compact, information-dense, small fonts.
 Controls must be tappable on touch without looking like a mobile app. Apple HIG 44pt targets
-are too large for a secondary tool panel.
+are too large for a secondary tool panel. Typography: 3 sizes — `0.6875rem` body labels, `10px`
+badges, `0.625rem` uppercase pill buttons.
 
 CSS variables live in `:root`. Scrollable region is `.sidebar-scroll` (flex: 1, overflow-y: auto).
+
+**Build tab structure:**
+- Parametric groups (Chassis, Wheels, Caster, Battery Box, Power Bank) use
+  `<details class="build-section">` zero-JS accordions; chevron rotates 90° on open.
+- Action buttons (Undo/Redo/Reset, Download/Copy URDF) live in `.build-footer` — a sticky
+  `flex-shrink: 0` bar outside `.sidebar-scroll`, always visible at the bottom.
+- `#build-new-robot` is hidden via CSS sibling selector when `#build-active-header` is visible:
+  `#build-active-header:not([hidden]) ~ #build-new-robot { display: none; }`
+- Component cards: Position + Size are always visible; Rotation, Joint, Axis, Limits, and Preview
+  are inside `<details class="build-comp-advanced">` (collapsed by default for fixed joints;
+  auto-opens when joint type changes to non-fixed).
+
+**Chat pane:** Default height 160 px (CSS variable `--chat-h`, persisted in `localStorage` key
+`urdf-chat-h`). The pane appears in both Editor and Build tabs, driven by `URDFChatController`.
 
 ## Gesture mode (`example/gesture.ts`)
 
