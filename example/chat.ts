@@ -926,7 +926,7 @@ Use tools to modify the robot. Prefer direct tool calls over lengthy explanation
         nameEl.textContent = name;
         const statusEl = document.createElement('span');
         statusEl.className = 'chat-tool-card-status';
-        card.append(nameEl, statusEl);
+        card.append(statusEl, nameEl);
         this._appendChat(card);
         return {
             setResult(ok: boolean) {
