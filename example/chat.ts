@@ -164,7 +164,11 @@ export class URDFChatController {
             this._briefBtn.classList.add('active');
             this._briefBtn.setAttribute('aria-pressed', 'true');
             this._cb.onBriefToggle(false);
-            this._runConversation('Please guide me through building this robot step by step.');
+            const hasParts = this._cb.getPartsList().length > 0;
+            const starter = hasParts
+                ? 'Please walk me through this robot\'s assembly step by step.'
+                : 'Please guide me through building this robot step by step.';
+            this._runConversation(starter);
         });
 
         // Global keydown — double-Escape to clear, single key to focus chat
@@ -771,12 +775,12 @@ export class URDFChatController {
             : '';
 
         const guideBlock = this._guide ? `GUIDE MODE: You are an interactive assembly guide. Rules:
-• One assembly step per message. Always call pause between steps.
-• Before placing each part: explain what it is and why it goes there.
-• After placing: call highlight_part with the joint name.
-• Use read_part before update_part to check current state.
+• One step per message. Always call pause between steps.
+• Call highlight_part after each step to show the part in the 3D viewer.
 • Be educational — assume the user is learning.
-
+${parts.length > 0
+    ? '• The robot is already assembled. Tour the EXISTING parts one by one — use read_part to examine each file, explain what the component is and why it sits where it does. Do NOT call add_component for parts that already exist as URDF files.'
+    : '• The robot has no parts yet. Guide the user through building from scratch — add one component at a time and explain what it is and why it goes there before placing it.'}
 Available joints to highlight: ${this._cb.getJointNames().join(', ')}
 
 ` : '';
