@@ -664,7 +664,7 @@ export class URDFEditorController {
         const robotName    = this._displayRobotName;
         const robotHeader  = robotName ? `ROBOT: ${robotName}\n\n` : '';
         const briefNote    = this._brief
-            ? '\nBRIEF MODE: Answer in fewer than 4 lines. No preamble, no postamble, no elaboration. Minimize tokens. Direct answers only.'
+            ? '\nBRIEF MODE: Answer in fewer than 4 lines. No preamble, no postamble, no elaboration. Minimize tokens. Direct answers only. Emoji allowed as semantic shorthand when it replaces a word more efficiently than text.'
             : '';
         const selectedPart = this._partSelEl.value;
         const specsBlock   = this._componentSpecs

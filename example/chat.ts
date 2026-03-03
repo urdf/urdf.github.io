@@ -629,7 +629,7 @@ export class URDFChatController {
             : '';
 
         const briefNote = this._brief
-            ? '\nBRIEF MODE: Answer in fewer than 4 lines. No preamble. Direct answers only.'
+            ? '\nBRIEF MODE: Answer in fewer than 4 lines. No preamble. Direct answers only. Emoji allowed as semantic shorthand when it replaces a word more efficiently than text.'
             : '';
 
         return `You are a robot builder assistant embedded in a live 3D URDF viewer.
