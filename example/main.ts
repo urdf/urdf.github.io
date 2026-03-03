@@ -46,6 +46,7 @@ _buildGrid.raycast = () => {};   // GridHelper extends LineSegments whose raycas
 // Grid must be added after viewer element creates its scene (defer one frame)
 requestAnimationFrame(() => viewer.scene.add(_buildGrid));
 
+const chatInput = $<HTMLTextAreaElement>('chat-input');
 $('tab-robot').addEventListener('click', () => {
     editorCtrl.close();
     buildCtrl.close();
@@ -57,6 +58,7 @@ $('tab-editor').addEventListener('click', () => {
     document.body.classList.remove('library-open');
     editorCtrl.open();
     _buildGrid.visible = false;
+    chatInput.placeholder = 'Ask AI to edit this URDF…';
 });
 $('tab-build').addEventListener('click', () => {
     editorCtrl.close();
@@ -64,6 +66,7 @@ $('tab-build').addEventListener('click', () => {
     buildCtrl.open();
     _buildGrid.visible = true;
     _buildGrid.position.y = viewer.shadowPlane.position.y;
+    chatInput.placeholder = 'Ask AI to add or modify components…';
 });
 $('tab-library').addEventListener('click', () => {
     editorCtrl.close();

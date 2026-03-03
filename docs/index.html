@@ -1616,6 +1616,11 @@
       color: var(--blue-text);
     }
 
+    /* Chat pane only shown on Editor and Build tabs */
+    body:not(.editor-open):not(.build-open) .chat-resize-handle,
+    body:not(.editor-open):not(.build-open) .chat-header,
+    body:not(.editor-open):not(.build-open) .chat-pane { display: none; }
+
     .chat-resize-handle {
       height: 8px;
       flex-shrink: 0;
@@ -1640,7 +1645,7 @@
     .chat-resize-handle.dragging::after { height: 2px; background: rgba(0, 122, 255, 0.6); }
     .chat-resize-handle.dragging::after { background: var(--blue); }
   </style>
-  <script type="module" crossorigin src="/assets/index-es4-v4vq.js"></script>
+  <script type="module" crossorigin src="/assets/index-BrVoXTQO.js"></script>
 </head>
 <body>
   <button type="button" id="gesture-toggle" aria-label="Toggle gesture mode" title="Gesture mode">
@@ -1970,6 +1975,28 @@
       </div>
     </div>
 
+    <div class="tab-body" data-tab="library" id="library-panel">
+      <div class="library-toolbar">
+        <input type="search" id="lib-search" class="lib-search-input"
+               placeholder="Search components…" autocomplete="off" aria-label="Search components">
+      </div>
+      <div class="lib-pills" id="lib-pills" role="group" aria-label="Category filter">
+        <button type="button" class="lib-pill lib-pill--active" data-cat="">All</button>
+        <button type="button" class="lib-pill" data-cat="Sensor">Sensor</button>
+        <button type="button" class="lib-pill" data-cat="Actuator">Actuator</button>
+        <button type="button" class="lib-pill" data-cat="MCU">MCU</button>
+        <button type="button" class="lib-pill" data-cat="Power">Power</button>
+        <button type="button" class="lib-pill" data-cat="Structural">Structural</button>
+      </div>
+      <div class="sidebar-scroll lib-scroll">
+        <p id="lib-no-build" class="lib-no-build" hidden>
+          Create or load a robot in the Build tab first.
+        </p>
+        <div class="lib-grid" id="lib-grid"></div>
+        <p class="lib-empty" id="lib-empty" hidden>No components match.</p>
+      </div>
+    </div>
+
     <div class="chat-resize-handle"
       role="separator"
       aria-label="Resize chat"
@@ -1994,7 +2021,7 @@
         <div class="chat-input-wrap">
           <textarea
             id="chat-input"
-            placeholder="Ask AI about this URDF…"
+            placeholder="Ask AI to edit this URDF…"
             aria-label="Chat with AI"
             rows="1"
           ></textarea>
@@ -2009,28 +2036,6 @@
             </svg>
           </button>
         </div>
-      </div>
-    </div>
-
-    <div class="tab-body" data-tab="library" id="library-panel">
-      <div class="library-toolbar">
-        <input type="search" id="lib-search" class="lib-search-input"
-               placeholder="Search components…" autocomplete="off" aria-label="Search components">
-      </div>
-      <div class="lib-pills" id="lib-pills" role="group" aria-label="Category filter">
-        <button type="button" class="lib-pill lib-pill--active" data-cat="">All</button>
-        <button type="button" class="lib-pill" data-cat="Sensor">Sensor</button>
-        <button type="button" class="lib-pill" data-cat="Actuator">Actuator</button>
-        <button type="button" class="lib-pill" data-cat="MCU">MCU</button>
-        <button type="button" class="lib-pill" data-cat="Power">Power</button>
-        <button type="button" class="lib-pill" data-cat="Structural">Structural</button>
-      </div>
-      <div class="sidebar-scroll lib-scroll">
-        <p id="lib-no-build" class="lib-no-build" hidden>
-          Create or load a robot in the Build tab first.
-        </p>
-        <div class="lib-grid" id="lib-grid"></div>
-        <p class="lib-empty" id="lib-empty" hidden>No components match.</p>
       </div>
     </div>
 
