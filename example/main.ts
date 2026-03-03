@@ -1335,7 +1335,7 @@ const CATEGORY_ICON: Record<string, string> = {
 let _libActiveCat = '';
 
 function buildLibraryGrid(): void {
-    const hasBuild = buildCtrl.isActive;
+    const hasBuild = buildCtrl.isCatalogActive;
     const query    = libSearchEl.value.trim().toLowerCase();
 
     libNoBuildEl.hidden = hasBuild;
@@ -1389,7 +1389,7 @@ function createLibCard(entry: LibraryEntry, hasBuild: boolean): HTMLElement {
 }
 
 async function handleLibraryAdd(entry: LibraryEntry, btn: HTMLButtonElement): Promise<void> {
-    if (!buildCtrl.isActive) return;
+    if (!buildCtrl.isCatalogActive) return;
     const origText = btn.textContent ?? 'Add to Build';
     btn.disabled = true;
     btn.textContent = 'Generating…';
@@ -1407,7 +1407,7 @@ async function handleLibraryAdd(entry: LibraryEntry, btn: HTMLButtonElement): Pr
     } catch (err) {
         console.error('[Library] generate failed:', err);
         btn.textContent = 'Error';
-        setTimeout(() => { btn.textContent = origText; btn.disabled = !buildCtrl.isActive; }, 2000);
+        setTimeout(() => { btn.textContent = origText; btn.disabled = !buildCtrl.isCatalogActive; }, 2000);
         return;
     }
     btn.textContent = origText;
