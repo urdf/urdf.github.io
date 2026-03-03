@@ -899,7 +899,7 @@ function refreshPaletteCounts(): void {
 }
 
 for (const [type, def] of Object.entries(COMPONENT_CATALOG)) {
-    if (def.geomType === 'mesh') continue;  // mesh types added via Library tab only
+    if (def.geomType === 'mesh' || def.hidden) continue;  // mesh types and superseded primitives excluded
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'robot-btn';
@@ -1374,7 +1374,8 @@ function createLibCard(entry: LibraryEntry, hasBuild: boolean): HTMLElement {
     const meta = document.createElement('div');
     meta.className = 'lib-card-meta';
     const cat  = Object.assign(document.createElement('span'), { className: 'lib-card-cat',  textContent: entry.category });
-    const dims = Object.assign(document.createElement('span'), { className: 'lib-card-dims', textContent: entry.dims });
+    const dimsText = entry.defaultDims.map(d => Math.round(d * 1000)).join('×') + ' mm';
+    const dims = Object.assign(document.createElement('span'), { className: 'lib-card-dims', textContent: dimsText });
     meta.append(cat, dims);
 
     const addBtn = document.createElement('button');

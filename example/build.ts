@@ -3,6 +3,7 @@ import { generateChassis, CHASSIS_DEFAULTS } from '../src/generators/chassis.js'
 import { generateWheel, WHEEL_DEFAULTS } from '../src/generators/wheel.js';
 import type { ChassisParams } from '../src/generators/chassis.js';
 import type { WheelParams } from '../src/generators/wheel.js';
+import { LIBRARY } from '../src/generators/components/index.js';
 
 interface SavedState {
     version:   1;
@@ -38,84 +39,36 @@ export interface ComponentDef {
     defaultDims: number[];            // [w,d,h] for box · [r,l] for cylinder · bounding box for mesh
     category?:   string;
     cssColor?:   string;
+    hidden?:     boolean;            // true = exclude from Build palette (superseded by Library)
 }
 
+// Mesh entries are derived from LIBRARY — single source of truth for label, color, dims, etc.
+const meshEntries = Object.fromEntries(
+    LIBRARY.map(e => [e.id, {
+        label:       e.label,
+        color:       e.urdfRgba,
+        defaultZ:    e.defaultZ,
+        geomType:    'mesh' as const,
+        defaultDims: [...e.defaultDims],
+        category:    e.category,
+        cssColor:    e.cssColor,
+    } satisfies ComponentDef])
+);
+
 export const COMPONENT_CATALOG: Record<string, ComponentDef> = {
-    ultrasonic: {
-        label: 'Ultrasonic',  color: '0.20 0.45 0.90 1.00',
-        defaultZ: 0.015, geomType: 'box', defaultDims: [0.045, 0.020, 0.015],
-    },
-    camera: {
-        label: 'Camera',      color: '0.90 0.20 0.25 1.00',
-        defaultZ: 0.010, geomType: 'box', defaultDims: [0.025, 0.024, 0.009],
-    },
-    lidar: {
-        label: 'LIDAR',       color: '0.20 0.80 0.45 1.00',
-        defaultZ: 0.035, geomType: 'cylinder', defaultDims: [0.035, 0.040],
-    },
-    imu: {
-        label: 'IMU',         color: '0.55 0.35 0.80 1.00',
-        defaultZ: 0.008, geomType: 'box', defaultDims: [0.020, 0.020, 0.008],
-    },
-    servo: {
-        label: 'Servo',       color: '0.90 0.50 0.15 1.00',
-        defaultZ: 0.020, geomType: 'box', defaultDims: [0.022, 0.012, 0.030],
-    },
-    arduino: {
-        label: 'Arduino',     color: '0.00 0.45 0.20 1.00',
-        defaultZ: 0.008, geomType: 'box', defaultDims: [0.044, 0.018, 0.008],
-    },
-    raspberry_pi: {
-        label: 'Raspberry Pi', color: '0.70 0.10 0.20 1.00',
-        defaultZ: 0.017, geomType: 'box', defaultDims: [0.086, 0.056, 0.017],
-    },
-    gps: {
-        label: 'GPS',         color: '0.20 0.70 0.35 1.00',
-        defaultZ: 0.010, geomType: 'box', defaultDims: [0.025, 0.025, 0.010],
-    },
-    buck_converter: {
-        label: 'Buck Conv.',  color: '0.85 0.60 0.00 1.00',
-        defaultZ: 0.011, geomType: 'box', defaultDims: [0.023, 0.017, 0.011],
-    },
-    box: {
-        label: 'Box',         color: '0.65 0.65 0.65 1.00',
-        defaultZ: 0.020, geomType: 'box', defaultDims: [0.040, 0.040, 0.020],
-    },
-    hcsr04: {
-        label: 'HC-SR04',     color: '0.20 0.45 0.90 1.00',
-        defaultZ: 0.015, geomType: 'mesh', defaultDims: [0.045, 0.020, 0.015],
-        category: 'Sensor', cssColor: '#3373e5',
-    },
-    l298n: {
-        label: 'L298N',       color: '0.75 0.12 0.12 1.00',
-        defaultZ: 0.005, geomType: 'mesh', defaultDims: [0.043, 0.043, 0.020],
-        category: 'Actuator', cssColor: '#c01f1f',
-    },
-    esp32cam_lib: {
-        label: 'ESP32-CAM',   color: '0.00 0.45 0.20 1.00',
-        defaultZ: 0.005, geomType: 'mesh', defaultDims: [0.041, 0.027, 0.013],
-        category: 'MCU', cssColor: '#1a7a3c',
-    },
-    tt_motor: {
-        label: 'TT Motor',    color: '0.83 0.63 0.09 1.00',
-        defaultZ: 0.011, geomType: 'mesh', defaultDims: [0.036, 0.018, 0.022],
-        category: 'Actuator', cssColor: '#c89a14',
-    },
-    sg90: {
-        label: 'SG90',        color: '0.90 0.50 0.15 1.00',
-        defaultZ: 0.012, geomType: 'mesh', defaultDims: [0.022, 0.012, 0.023],
-        category: 'Actuator', cssColor: '#e07810',
-    },
-    arduino_nano: {
-        label: 'Arduino Nano', color: '0.00 0.50 0.30 1.00',
-        defaultZ: 0.005, geomType: 'mesh', defaultDims: [0.043, 0.018, 0.002],
-        category: 'MCU', cssColor: '#006e33',
-    },
-    mpu6050: {
-        label: 'MPU-6050',   color: '0.55 0.35 0.80 1.00',
-        defaultZ: 0.005, geomType: 'mesh', defaultDims: [0.020, 0.020, 0.002],
-        category: 'Sensor', cssColor: '#7a52cc',
-    },
+    // Primitives — kept for saved-robot backward compatibility; hidden ones are superseded by Library
+    ultrasonic:    { label: 'Ultrasonic',   color: '0.20 0.45 0.90 1.00', defaultZ: 0.015, geomType: 'box',      defaultDims: [0.045, 0.020, 0.015], hidden: true },
+    camera:        { label: 'Camera',       color: '0.90 0.20 0.25 1.00', defaultZ: 0.010, geomType: 'box',      defaultDims: [0.025, 0.024, 0.009] },
+    lidar:         { label: 'LIDAR',        color: '0.20 0.80 0.45 1.00', defaultZ: 0.035, geomType: 'cylinder', defaultDims: [0.035, 0.040] },
+    imu:           { label: 'IMU',          color: '0.55 0.35 0.80 1.00', defaultZ: 0.008, geomType: 'box',      defaultDims: [0.020, 0.020, 0.008], hidden: true },
+    servo:         { label: 'Servo',        color: '0.90 0.50 0.15 1.00', defaultZ: 0.020, geomType: 'box',      defaultDims: [0.022, 0.012, 0.030], hidden: true },
+    arduino:       { label: 'Arduino',      color: '0.00 0.45 0.20 1.00', defaultZ: 0.008, geomType: 'box',      defaultDims: [0.044, 0.018, 0.008], hidden: true },
+    raspberry_pi:  { label: 'Raspberry Pi', color: '0.70 0.10 0.20 1.00', defaultZ: 0.017, geomType: 'box',      defaultDims: [0.086, 0.056, 0.017] },
+    gps:           { label: 'GPS',          color: '0.20 0.70 0.35 1.00', defaultZ: 0.010, geomType: 'box',      defaultDims: [0.025, 0.025, 0.010] },
+    buck_converter: { label: 'Buck Conv.',  color: '0.85 0.60 0.00 1.00', defaultZ: 0.011, geomType: 'box',      defaultDims: [0.023, 0.017, 0.011] },
+    box:           { label: 'Box',          color: '0.65 0.65 0.65 1.00', defaultZ: 0.020, geomType: 'box',      defaultDims: [0.040, 0.040, 0.020] },
+    // Mesh components — derived from LIBRARY, do not edit here
+    ...meshEntries,
 };
 
 // ── Internals ──────────────────────────────────────────────────────────────
@@ -634,8 +587,7 @@ export class URDFBuildController {
                 const def  = COMPONENT_CATALOG[c.type];
                 let geom: string;
                 if (def?.geomType === 'mesh') {
-                    const blobUrl = this._meshBlobs.get(id) ?? `${id}.stl`;
-                    geom = `<mesh filename="${blobUrl}"/>`;
+                    geom = `<mesh filename="${this._meshBlobs.get(id)!}"/>`;
                 } else if (def?.geomType === 'cylinder') {
                     geom = `<cylinder radius="${c.dims[0].toFixed(4)}" length="${c.dims[1].toFixed(4)}"/>`;
                 } else {
