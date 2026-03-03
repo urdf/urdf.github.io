@@ -203,6 +203,7 @@ function loadRobot(robot: RobotConfig, index: number): void {
         moveSliderTo(btn);
     }
     editorCtrl.setSourceUrl(sourceUrl);
+    editorCtrl.loadPartsInBackground();
 }
 
 let _hoverTimer: ReturnType<typeof setTimeout> | null = null;
@@ -1300,6 +1301,9 @@ function removeComponentItem(id: string): void {
         switchToBuildTab:         () => $<HTMLButtonElement>('tab-build').click(),
         onBriefToggle:            (v) => { editorCtrl.brief = v; },
         refreshPaletteCounts,
+        getPartsList:             () => editorCtrl.partsList,
+        readPart:                 (filename) => editorCtrl.readPart(filename),
+        updatePart:               (filename, xml) => editorCtrl.writePart(filename, xml),
         getFocusedComponent: () => {
             if (_buildSelCompId) {
                 const entry = buildCtrl.getComponentEntries().find(e => e.id === _buildSelCompId);

@@ -165,6 +165,38 @@ export class URDFEditorController {
 
     get isOpen(): boolean { return this._panelEl.classList.contains('open'); }
 
+    get partsList(): string[] { return this._partsList; }
+
+    async readPart(filename: string): Promise<string | null> {
+        if (!/^[\w-]+\.xml$/.test(filename) || !this._sourceUrl) return null;
+        const cached = this._partCache.get(this._partUrl(filename));
+        if (cached !== undefined) return cached;
+        try { return await fetch(this._partUrl(filename)).then(r => r.text()); }
+        catch { return null; }
+    }
+
+    async writePart(filename: string, xml: string): Promise<boolean> {
+        if (!/^[\w-]+\.xml$/.test(filename) || !this._sourceUrl) return false;
+        this._partCache.set(this._partUrl(filename), xml);
+        this._saveOverrides();
+        if (!this._partsList.includes(filename)) {
+            this._partsList = [...this._partsList, filename].sort();
+            this._rebuildPartOptions();
+            this._renderTabs();
+        }
+        this._setEditorContent(xml);
+        this._partSelEl.value = filename;
+        this._updateActiveTab();
+        this._applyPartsRender();
+        return true;
+    }
+
+    /** Eagerly load the parts manifest when the editor panel is closed. */
+    loadPartsInBackground(): void {
+        if (!this._sourceUrl || this._partsList.length > 0 || this.isOpen) return;
+        void this._loadPartsManifest();
+    }
+
     /** Called by URDFChatController when editor tab is active. */
     handleExternalInput(text: string): void {
         if (text.startsWith('/')) {

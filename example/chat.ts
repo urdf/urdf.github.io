@@ -38,6 +38,9 @@ export interface ChatCallbacks {
     onBriefToggle:            (v: boolean) => void;
     refreshPaletteCounts:     () => void;
     getFocusedComponent:      () => { id: string; type: string; data: ReturnType<URDFBuildController['getComponentData']> } | null;
+    getPartsList:             () => string[];
+    readPart:                 (filename: string) => Promise<string | null>;
+    updatePart:               (filename: string, xml: string) => Promise<boolean>;
 }
 
 // ── Slash-command action maps ─────────────────────────────────────────────────
@@ -374,7 +377,7 @@ export class URDFChatController {
         const libTypes = LIBRARY.map(e => e.id);
         const allTypes = [...new Set([...compTypes, ...libTypes])];
 
-        return [
+        const tools: object[] = [
             {
                 name: 'get_robot_state',
                 description: 'Returns current chassis dimensions, wheel params, and all added components.',
@@ -497,7 +500,40 @@ export class URDFChatController {
                 },
             },
         ];
+
+        const parts = this._cb.getPartsList();
+        if (parts.length > 0) {
+            tools.push(
+                {
+                    name: 'read_part',
+                    description: 'Read the XML of a URDF part file. Use before editing to see current content.',
+                    input_schema: {
+                        type: 'object',
+                        properties: {
+                            filename: { type: 'string', description: `Part filename. Available: ${parts.join(', ')}` },
+                        },
+                        required: ['filename'],
+                    },
+                },
+                {
+                    name: 'update_part',
+                    description:
+                        'Write a URDF part file (link + joint elements only, no <robot> wrapper). ' +
+                        'Use to change colors (<material><color rgba="r g b a"/>), geometry, or add new links.',
+                    input_schema: {
+                        type: 'object',
+                        properties: {
+                            filename: { type: 'string', description: 'Part filename to write' },
+                            xml:      { type: 'string', description: 'Complete content of this part file' },
+                        },
+                        required: ['filename', 'xml'],
+                    },
+                },
+            );
+        }
+
         void allTypes; // suppress unused warning — types used in descriptions above
+        return tools;
     }
 
     // ── Tool execution ────────────────────────────────────────────────────────
@@ -604,6 +640,18 @@ export class URDFChatController {
                 this._cb.syncSlidersFromController();
                 return { ok: true };
             }
+            case 'read_part': {
+                const filename = args.filename as string;
+                const xml = await this._cb.readPart(filename);
+                if (xml === null) return { error: `could not read ${filename}` };
+                return { ok: true, xml };
+            }
+            case 'update_part': {
+                const { filename, xml } = args as { filename: string; xml: string };
+                const ok = await this._cb.updatePart(filename, xml);
+                if (!ok) return { error: 'invalid filename or no source URL' };
+                return { ok: true };
+            }
             default:
                 return { error: `Unknown tool: ${name}` };
         }
@@ -628,6 +676,11 @@ export class URDFChatController {
             ? `\nFOCUSED: ${focused.id} (${focused.type}) @ x=${focused.data.x} y=${focused.data.y} z=${focused.data.z} — joint: ${focused.data.jointType}\nWhen the user says "this", "it", or "the selected one", refer to this component.`
             : '';
 
+        const parts = this._cb.getPartsList();
+        const partsBlock = parts.length > 0
+            ? `\nPart files (use read_part + update_part to change colors, materials, or geometry): ${parts.join(', ')}`
+            : '';
+
         const briefNote = this._brief
             ? '\nBRIEF MODE: Answer in fewer than 4 lines. No preamble. Direct answers only. Emoji allowed as semantic shorthand when it replaces a word more efficiently than text.'
             : '';
@@ -640,7 +693,7 @@ Current wheels: radius=${(wp.radius * 1000).toFixed(1)}mm  width=${(wp.width * 1
 Current components:
 ${compList}
 
-Available library components: ${LIBRARY.map(e => e.id).join(', ')}${focusedBlock}
+Available library components: ${LIBRARY.map(e => e.id).join(', ')}${focusedBlock}${partsBlock}
 
 Use tools to modify the robot. Prefer direct tool calls over lengthy explanations.${briefNote}`;
     }
