@@ -5,23 +5,27 @@ import type { Component as BuildComponent } from './build.js';
 import type { GestureController } from './gesture.js';
 import { Raycaster, Vector2, Vector3, Plane, GridHelper } from 'three';
 
+/** Typed shorthand for getElementById with a cast. */
+function $<T extends HTMLElement = HTMLElement>(id: string): T {
+    return document.getElementById(id) as T;
+}
+
 customElements.define('urdf-viewer', URDFManipulator);
 
-const viewer = document.getElementById('viewer') as URDFManipulator;
-const jointsPanel = document.getElementById('joints')!;
-const robotsPanel = document.getElementById('robots')!;
-const loadingEl = document.getElementById('loading')!;
+const viewer           = $<URDFManipulator>('viewer');
+const jointsPanel      = $('joints');
+const robotsPanel      = $('robots');
+const loadingEl        = $('loading');
+const partLabel        = $('part-label');
 
-const partLabel = document.getElementById('part-label')!;
+const gestureToggleBtn = $<HTMLButtonElement>('gesture-toggle');
+const gestureOverlay   = $<HTMLCanvasElement>('gesture-overlay');
+const gestureVideo     = $<HTMLVideoElement>('gesture-video');
+const gestureSectionEl = $('gesture-section');
+const gestureHeaderEl  = $('gesture-section-header');
 
-const gestureToggleBtn = document.getElementById('gesture-toggle') as HTMLButtonElement;
-const gestureOverlay   = document.getElementById('gesture-overlay') as HTMLCanvasElement;
-const gestureVideo     = document.getElementById('gesture-video') as HTMLVideoElement;
-const gestureSectionEl = document.getElementById('gesture-section')!;
-const gestureHeaderEl  = document.getElementById('gesture-section-header')!;
-
-const editorPanelEl = document.getElementById('editor-panel')!;
-const buildNoticeEl = document.getElementById('build-notice') as HTMLElement;
+const editorPanelEl    = $('editor-panel');
+const buildNoticeEl    = $('build-notice');
 
 const editorCtrl = new URDFEditorController(viewer, editorPanelEl);
 const buildCtrl  = new URDFBuildController(viewer, buildNoticeEl);
@@ -33,27 +37,27 @@ _buildGrid.raycast = () => {};   // GridHelper extends LineSegments whose raycas
 // Grid must be added after viewer element creates its scene (defer one frame)
 requestAnimationFrame(() => viewer.scene.add(_buildGrid));
 
-document.getElementById('tab-robot')!.addEventListener('click', () => {
+$('tab-robot').addEventListener('click', () => {
     editorCtrl.close();
     buildCtrl.close();
     _buildGrid.visible = false;
 });
-document.getElementById('tab-editor')!.addEventListener('click', () => {
+$('tab-editor').addEventListener('click', () => {
     buildCtrl.close();
     editorCtrl.open();
     _buildGrid.visible = false;
 });
-document.getElementById('tab-build')!.addEventListener('click', () => {
+$('tab-build').addEventListener('click', () => {
     editorCtrl.close();
     buildCtrl.open();
     _buildGrid.visible = true;
     _buildGrid.position.y = viewer.shadowPlane.position.y;
 });
 
-const ignoreLimitsEl = document.getElementById('ignore-limits') as HTMLInputElement;
-const showCollisionEl = document.getElementById('show-collision') as HTMLInputElement;
-const displayShadowEl = document.getElementById('display-shadow') as HTMLInputElement;
-const upAxisEl = document.getElementById('up-axis') as HTMLSelectElement;
+const ignoreLimitsEl  = $<HTMLInputElement>('ignore-limits');
+const showCollisionEl = $<HTMLInputElement>('show-collision');
+const displayShadowEl = $<HTMLInputElement>('display-shadow');
+const upAxisEl        = $<HTMLSelectElement>('up-axis');
 
 interface RobotConfig {
     name: string;
@@ -87,7 +91,6 @@ async function loadViaBrowserAssembly(robot: RobotConfig): Promise<void> {
     _partsBlobUrl  = URL.createObjectURL(new Blob([xml], { type: 'application/xml' }));
     viewer.urdf    = _partsBlobUrl;
 
-    // Restore persisted build state (replaces viewer.urdf if anything was saved)
     clearBuildUI();
     const restored = buildCtrl.restore();
     for (const { id, type } of restored) renderComponentItem(id, type, buildCtrl.getComponentData(id));
@@ -122,7 +125,7 @@ const ROBOTS: RobotConfig[] = [
 
 let currentRobotIndex = 0;
 
-const robotTrackSlider = document.getElementById('robot-track-slider') as HTMLElement;
+const robotTrackSlider = $('robot-track-slider');
 
 function moveSliderTo(btn: HTMLButtonElement): void {
     const trackRect  = robotsPanel.getBoundingClientRect();
@@ -150,7 +153,6 @@ function loadRobot(robot: RobotConfig, index: number): void {
     upAxisEl.value = robot.up;
     viewer.package = robot.package ?? '';
 
-    // Derive a stable source URL for the editor regardless of loading method
     const sourceUrl = robot.parts ? `${robot.parts}.urdf` : robot.urdf!;
 
     if (robot.parts) {
@@ -191,7 +193,6 @@ for (let i = 0; i < ROBOTS.length; i++) {
     robotsPanel.appendChild(btn);
 }
 
-// When leaving the pill entirely, cancel pending load and restore slider to active
 robotsPanel.closest('.robot-shell')!.addEventListener('mouseleave', () => {
     if (_hoverTimer) { clearTimeout(_hoverTimer); _hoverTimer = null; }
     moveSliderToActive();
@@ -233,17 +234,17 @@ function linkNameFor(jointName: string): string {
     return jointName.replace(/_joint$/, '');
 }
 
-const inspectorEl       = document.getElementById('inspector')!;
-const inspectorName     = document.getElementById('inspector-name')!;
-const inspectorX        = document.getElementById('inspector-x') as HTMLInputElement;
-const inspectorY        = document.getElementById('inspector-y') as HTMLInputElement;
-const inspectorZ        = document.getElementById('inspector-z') as HTMLInputElement;
-const inspectorScaleX   = document.getElementById('inspector-scale-x') as HTMLInputElement;
-const inspectorScaleY   = document.getElementById('inspector-scale-y') as HTMLInputElement;
-const inspectorScaleZ   = document.getElementById('inspector-scale-z') as HTMLInputElement;
-const inspectorSnippet  = document.getElementById('inspector-snippet')!;
-const inspectorCopy     = document.getElementById('inspector-copy') as HTMLButtonElement;
-const inspectorClose    = document.getElementById('inspector-close')!;
+const inspectorEl      = $('inspector');
+const inspectorName    = $('inspector-name');
+const inspectorX       = $<HTMLInputElement>('inspector-x');
+const inspectorY       = $<HTMLInputElement>('inspector-y');
+const inspectorZ       = $<HTMLInputElement>('inspector-z');
+const inspectorScaleX  = $<HTMLInputElement>('inspector-scale-x');
+const inspectorScaleY  = $<HTMLInputElement>('inspector-scale-y');
+const inspectorScaleZ  = $<HTMLInputElement>('inspector-scale-z');
+const inspectorSnippet = $('inspector-snippet');
+const inspectorCopy    = $<HTMLButtonElement>('inspector-copy');
+const inspectorClose   = $('inspector-close');
 
 let selectedJoint: string | null = null;
 let hoveredJointName: string | null = null;
@@ -314,13 +315,9 @@ function selectPart(jointName: string | null): void {
     gestureCtrl?.setSelectedJoint(jointName);
 }
 
-for (const el of [inspectorX, inspectorY, inspectorZ, inspectorScaleX, inspectorScaleY, inspectorScaleZ]) {
-    el.addEventListener('input', applyInspector);
-}
-
 /**
  * Make an inspector label scrub its paired number input on horizontal drag.
- * step attribute controls sensitivity (e.g. 0.001 → 1 mm/px, 0.01 → 1%/px).
+ * step attribute controls sensitivity (e.g. 0.001 -> 1 mm/px, 0.01 -> 1%/px).
  * A plain click (no drag) falls through to focus the input.
  */
 function makeScrubLabel(label: HTMLElement, input: HTMLInputElement): void {
@@ -337,19 +334,20 @@ function makeScrubLabel(label: HTMLElement, input: HTMLInputElement): void {
     label.addEventListener('pointermove', (e) => {
         if (!label.hasPointerCapture(e.pointerId)) return;
         const dx = e.clientX - startX;
-        if (!dragging && Math.abs(dx) < 3) return;   // 3 px dead zone
+        if (!dragging && Math.abs(dx) < 3) return;
         dragging = true;
         input.value = String(parseFloat((startVal + dx * step).toFixed(6)));
         input.dispatchEvent(new Event('input', { bubbles: true }));
     });
 
     label.addEventListener('pointerup', () => {
-        if (!dragging) input.focus();   // plain click → focus the input
+        if (!dragging) input.focus();
         dragging = false;
     });
 }
 
 for (const input of [inspectorX, inspectorY, inspectorZ, inspectorScaleX, inspectorScaleY, inspectorScaleZ]) {
+    input.addEventListener('input', applyInspector);
     const label = input.closest('.inspector-row')?.querySelector('label') as HTMLElement | null;
     if (label) makeScrubLabel(label, input);
 }
@@ -368,9 +366,9 @@ viewer.addEventListener('click', () => {
     if (editorCtrl.isOpen) void editorCtrl.jumpToJoint(hoveredJointName);
 });
 
-const urdfErrorBannerEl = document.getElementById('urdf-error-banner') as HTMLElement;
-const urdfErrorTextEl   = document.getElementById('urdf-error-text')   as HTMLElement;
-const urdfErrorCloseBtn = document.getElementById('urdf-error-close')  as HTMLButtonElement;
+const urdfErrorBannerEl = $('urdf-error-banner');
+const urdfErrorTextEl   = $('urdf-error-text');
+const urdfErrorCloseBtn = $<HTMLButtonElement>('urdf-error-close');
 
 viewer.addEventListener('urdf-change', () => {
     loadingEl.classList.add('visible');
@@ -565,7 +563,6 @@ gestureHeaderEl.addEventListener('keydown', (e: KeyboardEvent) => {
 
 // ── Build panel sliders ────────────────────────────────────────────────────
 
-/** Keep a range slider and a number input in sync. */
 function syncPair(slider: HTMLInputElement, num: HTMLInputElement, onChange: () => void): void {
     slider.addEventListener('input', () => { num.value = slider.value; onChange(); });
     num.addEventListener('change', () => {
@@ -576,26 +573,18 @@ function syncPair(slider: HTMLInputElement, num: HTMLInputElement, onChange: () 
     });
 }
 
-const buildChassisThicknessEl = document.getElementById('build-chassis-thickness')     as HTMLInputElement;
-const buildChassisBodyHWEl    = document.getElementById('build-chassis-body-hw')       as HTMLInputElement;
-const buildChassisRearHWEl    = document.getElementById('build-chassis-rear-hw')       as HTMLInputElement;
-const buildWheelRadiusEl      = document.getElementById('build-wheel-radius')          as HTMLInputElement;
-const buildWheelWidthEl       = document.getElementById('build-wheel-width')           as HTMLInputElement;
-
-// Set default values from generator defaults (convert m → mm)
-buildChassisThicknessEl.value = String(CHASSIS_DEFAULTS.thickness     * 1000);
-buildChassisBodyHWEl.value    = String(CHASSIS_DEFAULTS.bodyHalfWidth * 1000);
-buildChassisRearHWEl.value    = String(CHASSIS_DEFAULTS.rearHalfWidth * 1000);
-buildWheelRadiusEl.value      = String(WHEEL_DEFAULTS.radius           * 1000);
-buildWheelWidthEl.value       = String(WHEEL_DEFAULTS.width            * 1000);
-
-// Mirror initial values to number inputs
-for (const id of ['build-chassis-thickness', 'build-chassis-body-hw', 'build-chassis-rear-hw',
-                   'build-wheel-radius', 'build-wheel-width']) {
-    const slider = document.getElementById(id) as HTMLInputElement;
-    const num    = document.getElementById(`${id}-num`) as HTMLInputElement;
-    if (slider && num) num.value = slider.value;
-}
+const buildChassisThicknessEl = $<HTMLInputElement>('build-chassis-thickness');
+const buildChassisBodyHWEl   = $<HTMLInputElement>('build-chassis-body-hw');
+const buildChassisRearHWEl   = $<HTMLInputElement>('build-chassis-rear-hw');
+const buildWheelRadiusEl     = $<HTMLInputElement>('build-wheel-radius');
+const buildWheelWidthEl      = $<HTMLInputElement>('build-wheel-width');
+const buildCasterRadiusEl    = $<HTMLInputElement>('build-caster-radius');
+const buildCasterWidthEl     = $<HTMLInputElement>('build-caster-width');
+const buildBatteryLEl        = $<HTMLInputElement>('build-battery-l');
+const buildBatteryWEl        = $<HTMLInputElement>('build-battery-w');
+const buildBatteryHEl        = $<HTMLInputElement>('build-battery-h');
+const buildPowerbankREl      = $<HTMLInputElement>('build-powerbank-r');
+const buildPowerbankLEl      = $<HTMLInputElement>('build-powerbank-l');
 
 function onChassisChange(): void {
     if (!buildCtrl.isSupported) return;
@@ -613,20 +602,6 @@ function onWheelChange(): void {
         width:  parseFloat(buildWheelWidthEl.value)  / 1000,
     });
 }
-
-syncPair(buildChassisThicknessEl, document.getElementById('build-chassis-thickness-num') as HTMLInputElement, onChassisChange);
-syncPair(buildChassisBodyHWEl,    document.getElementById('build-chassis-body-hw-num')   as HTMLInputElement, onChassisChange);
-syncPair(buildChassisRearHWEl,    document.getElementById('build-chassis-rear-hw-num')   as HTMLInputElement, onChassisChange);
-syncPair(buildWheelRadiusEl,      document.getElementById('build-wheel-radius-num')      as HTMLInputElement, onWheelChange);
-syncPair(buildWheelWidthEl,       document.getElementById('build-wheel-width-num')       as HTMLInputElement, onWheelChange);
-
-const buildCasterRadiusEl  = document.getElementById('build-caster-radius')  as HTMLInputElement;
-const buildCasterWidthEl   = document.getElementById('build-caster-width')   as HTMLInputElement;
-const buildBatteryLEl      = document.getElementById('build-battery-l')      as HTMLInputElement;
-const buildBatteryWEl      = document.getElementById('build-battery-w')      as HTMLInputElement;
-const buildBatteryHEl      = document.getElementById('build-battery-h')      as HTMLInputElement;
-const buildPowerbankREl    = document.getElementById('build-powerbank-r')    as HTMLInputElement;
-const buildPowerbankLEl    = document.getElementById('build-powerbank-l')    as HTMLInputElement;
 
 function onCasterChange(): void {
     if (!buildCtrl.isSupported) return;
@@ -653,59 +628,73 @@ function onPowerbankChange(): void {
     );
 }
 
-syncPair(buildCasterRadiusEl, document.getElementById('build-caster-radius-num') as HTMLInputElement, onCasterChange);
-syncPair(buildCasterWidthEl,  document.getElementById('build-caster-width-num')  as HTMLInputElement, onCasterChange);
-syncPair(buildBatteryLEl,     document.getElementById('build-battery-l-num')     as HTMLInputElement, onBatteryChange);
-syncPair(buildBatteryWEl,     document.getElementById('build-battery-w-num')     as HTMLInputElement, onBatteryChange);
-syncPair(buildBatteryHEl,     document.getElementById('build-battery-h-num')     as HTMLInputElement, onBatteryChange);
-syncPair(buildPowerbankREl,   document.getElementById('build-powerbank-r-num')   as HTMLInputElement, onPowerbankChange);
-syncPair(buildPowerbankLEl,   document.getElementById('build-powerbank-l-num')   as HTMLInputElement, onPowerbankChange);
+// Set default values (m -> mm) and wire slider/number pairs
+const buildSliderPairs: Array<[HTMLInputElement, string, number, () => void]> = [
+    [buildChassisThicknessEl, 'build-chassis-thickness-num', CHASSIS_DEFAULTS.thickness     * 1000, onChassisChange],
+    [buildChassisBodyHWEl,    'build-chassis-body-hw-num',   CHASSIS_DEFAULTS.bodyHalfWidth * 1000, onChassisChange],
+    [buildChassisRearHWEl,    'build-chassis-rear-hw-num',   CHASSIS_DEFAULTS.rearHalfWidth * 1000, onChassisChange],
+    [buildWheelRadiusEl,      'build-wheel-radius-num',      WHEEL_DEFAULTS.radius          * 1000, onWheelChange],
+    [buildWheelWidthEl,       'build-wheel-width-num',       WHEEL_DEFAULTS.width           * 1000, onWheelChange],
+    [buildCasterRadiusEl,     'build-caster-radius-num',     0, onCasterChange],
+    [buildCasterWidthEl,      'build-caster-width-num',      0, onCasterChange],
+    [buildBatteryLEl,         'build-battery-l-num',         0, onBatteryChange],
+    [buildBatteryWEl,         'build-battery-w-num',         0, onBatteryChange],
+    [buildBatteryHEl,         'build-battery-h-num',         0, onBatteryChange],
+    [buildPowerbankREl,       'build-powerbank-r-num',       0, onPowerbankChange],
+    [buildPowerbankLEl,       'build-powerbank-l-num',       0, onPowerbankChange],
+];
 
-const buildExportBtn        = document.getElementById('build-export')          as HTMLButtonElement;
-const buildCopyUrdfBtn      = document.getElementById('build-copy-urdf')       as HTMLButtonElement;
-const buildUndoBtn          = document.getElementById('build-undo')            as HTMLButtonElement;
-const buildRedoBtn          = document.getElementById('build-redo')            as HTMLButtonElement;
-const buildResetBtn         = document.getElementById('build-reset')           as HTMLButtonElement;
-const buildPaletteEl        = document.getElementById('build-palette')          as HTMLElement;
-const buildComponentsListEl = document.getElementById('build-components-list') as HTMLElement;
-const buildNewNameEl        = document.getElementById('build-new-name')         as HTMLInputElement;
-const buildNewCreateBtn     = document.getElementById('build-new-create')       as HTMLButtonElement;
-const buildSavedToggleBtn   = document.getElementById('build-saved-toggle')      as HTMLButtonElement;
-const buildSavedListEl      = document.getElementById('build-saved-list')         as HTMLElement;
-const buildActiveHeaderEl   = document.getElementById('build-active-header')    as HTMLElement;
-const buildActiveNameEl     = document.getElementById('build-active-name')      as HTMLElement;
-const buildClearCustomBtn   = document.getElementById('build-clear-custom')     as HTMLButtonElement;
-const buildShortcutsToggle  = document.getElementById('build-shortcuts-toggle') as HTMLButtonElement;
-const buildShortcutsEl      = document.getElementById('build-shortcuts')        as HTMLElement;
-const buildCompCountEl      = document.getElementById('build-comp-count')       as HTMLElement;
-const buildCompEmptyEl      = document.getElementById('build-comp-empty')       as HTMLElement;
+for (const [slider, numId, defaultVal, onChange] of buildSliderPairs) {
+    if (defaultVal > 0) slider.value = String(defaultVal);
+    const num = $<HTMLInputElement>(numId);
+    num.value = slider.value;
+    syncPair(slider, num, onChange);
+}
 
-// Helper: sync all parametric sliders from controller state
+const buildExportBtn        = $<HTMLButtonElement>('build-export');
+const buildCopyUrdfBtn      = $<HTMLButtonElement>('build-copy-urdf');
+const buildUndoBtn          = $<HTMLButtonElement>('build-undo');
+const buildRedoBtn          = $<HTMLButtonElement>('build-redo');
+const buildResetBtn         = $<HTMLButtonElement>('build-reset');
+const buildPaletteEl        = $('build-palette');
+const buildComponentsListEl = $('build-components-list');
+const buildNewNameEl        = $<HTMLInputElement>('build-new-name');
+const buildNewCreateBtn     = $<HTMLButtonElement>('build-new-create');
+const buildSavedToggleBtn   = $<HTMLButtonElement>('build-saved-toggle');
+const buildSavedListEl      = $('build-saved-list');
+const buildActiveHeaderEl   = $('build-active-header');
+const buildActiveNameEl     = $('build-active-name');
+const buildClearCustomBtn   = $<HTMLButtonElement>('build-clear-custom');
+const buildShortcutsToggle  = $<HTMLButtonElement>('build-shortcuts-toggle');
+const buildShortcutsEl      = $('build-shortcuts');
+const buildCompCountEl      = $('build-comp-count');
+const buildCompEmptyEl      = $('build-comp-empty');
+
 function syncSlidersFromController(): void {
     const cp = buildCtrl.chassisParams;
     const wp = buildCtrl.wheelParams;
     const pb = buildCtrl.powerbank;
     const bb = buildCtrl.batteryBox;
-    function setSlider(el: HTMLInputElement, numId: string, v: number): void {
+    const values: Array<[HTMLInputElement, string, number]> = [
+        [buildChassisThicknessEl, 'build-chassis-thickness-num', cp.thickness     * 1000],
+        [buildChassisBodyHWEl,    'build-chassis-body-hw-num',   cp.bodyHalfWidth * 1000],
+        [buildChassisRearHWEl,    'build-chassis-rear-hw-num',   cp.rearHalfWidth * 1000],
+        [buildWheelRadiusEl,      'build-wheel-radius-num',      wp.radius        * 1000],
+        [buildWheelWidthEl,       'build-wheel-width-num',       wp.width         * 1000],
+        [buildCasterRadiusEl,     'build-caster-radius-num',     buildCtrl.casterRadius * 1000],
+        [buildCasterWidthEl,      'build-caster-width-num',      buildCtrl.casterWidth  * 1000],
+        [buildBatteryLEl,         'build-battery-l-num',         bb.l * 1000],
+        [buildBatteryWEl,         'build-battery-w-num',         bb.w * 1000],
+        [buildBatteryHEl,         'build-battery-h-num',         bb.h * 1000],
+        [buildPowerbankREl,       'build-powerbank-r-num',       pb.radius * 1000],
+        [buildPowerbankLEl,       'build-powerbank-l-num',       pb.length * 1000],
+    ];
+    for (const [el, numId, v] of values) {
         el.value = String(v);
-        const num = document.getElementById(numId) as HTMLInputElement | null;
-        if (num) num.value = String(v);
+        $<HTMLInputElement>(numId).value = String(v);
     }
-    setSlider(buildChassisThicknessEl, 'build-chassis-thickness-num', cp.thickness     * 1000);
-    setSlider(buildChassisBodyHWEl,    'build-chassis-body-hw-num',   cp.bodyHalfWidth * 1000);
-    setSlider(buildChassisRearHWEl,    'build-chassis-rear-hw-num',   cp.rearHalfWidth * 1000);
-    setSlider(buildWheelRadiusEl,      'build-wheel-radius-num',      wp.radius        * 1000);
-    setSlider(buildWheelWidthEl,       'build-wheel-width-num',       wp.width         * 1000);
-    setSlider(buildCasterRadiusEl,     'build-caster-radius-num',     buildCtrl.casterRadius * 1000);
-    setSlider(buildCasterWidthEl,      'build-caster-width-num',      buildCtrl.casterWidth  * 1000);
-    setSlider(buildBatteryLEl,         'build-battery-l-num',         bb.l * 1000);
-    setSlider(buildBatteryWEl,         'build-battery-w-num',         bb.w * 1000);
-    setSlider(buildBatteryHEl,         'build-battery-h-num',         bb.h * 1000);
-    setSlider(buildPowerbankREl,       'build-powerbank-r-num',       pb.radius * 1000);
-    setSlider(buildPowerbankLEl,       'build-powerbank-l-num',       pb.length * 1000);
 }
 
-// Undo/redo/reset buttons
 buildUndoBtn.addEventListener('click',  () => buildCtrl.undo());
 buildRedoBtn.addEventListener('click',  () => buildCtrl.redo());
 buildResetBtn.addEventListener('click', () => {
@@ -727,12 +716,11 @@ buildCtrl.onDOMRebuild = () => {
     buildCtrl.onHistoryChange?.();
 };
 
-// Keyboard shortcuts
 document.addEventListener('keydown', (e: KeyboardEvent) => {
     if (!buildCtrl.isActive) return;
     if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) { e.preventDefault(); buildCtrl.undo(); }
     if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) { e.preventDefault(); buildCtrl.redo(); }
-    // Delete/Backspace: remove the selected component
+
     if (_buildSelCompId && (e.key === 'Delete' || e.key === 'Backspace') && !e.ctrlKey && !e.metaKey) {
         const el = document.activeElement as HTMLElement;
         if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable) return;
@@ -747,12 +735,12 @@ document.addEventListener('keydown', (e: KeyboardEvent) => {
         refreshPaletteCounts();
         return;
     }
-    // Arrow key nudge: move selected component 1mm per keypress
+
     if (_buildSelCompId && ['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.key) && !e.ctrlKey && !e.metaKey) {
         e.preventDefault();
         const c = buildCtrl.getComponentData(_buildSelCompId);
         if (!c) return;
-        const d = 0.001;
+        const d = 0.001; // 1 mm nudge
         let { x, y, z } = c;
         if (e.shiftKey) {
             if (e.key === 'ArrowUp')   z += d;
@@ -764,7 +752,6 @@ document.addEventListener('keydown', (e: KeyboardEvent) => {
             if (e.key === 'ArrowDown')  x += d;
         }
         buildCtrl.updateComponent(_buildSelCompId, { x, y, z });
-        // Sync card inputs
         const inp = componentInputs.get(_buildSelCompId);
         if (inp) { inp['x'].value = x.toFixed(4); inp['y'].value = y.toFixed(4); inp['z'].value = z.toFixed(4); }
     }
@@ -785,7 +772,7 @@ buildNewCreateBtn.addEventListener('click', () => {
     clearBuildUI();
     buildCtrl.initFromScratch(buildNewNameEl.value);
     buildCtrl.open();
-    document.getElementById('tab-build')?.click();
+    $('tab-build').click();
     refreshSavedList();
     refreshBuildHeader();
     refreshPaletteCounts();
@@ -816,7 +803,7 @@ function refreshSavedList(): void {
             if (entries.length > 0) syncSlidersFromController();
             refreshPaletteCounts();
             buildCtrl.open();
-            document.getElementById('tab-build')?.click();
+            $('tab-build').click();
             refreshBuildHeader();
             buildSavedListEl.hidden = true;
         });
@@ -865,7 +852,6 @@ buildShortcutsToggle.addEventListener('click', (e) => {
 refreshSavedList();
 refreshBuildHeader();
 
-// Palette count badges: map from type → badge <span>
 const paletteBadges = new Map<string, HTMLSpanElement>();
 
 function refreshPaletteCounts(): void {
@@ -884,7 +870,6 @@ function refreshPaletteCounts(): void {
     buildCompEmptyEl.hidden = total > 0 || !buildCtrl.isCatalogActive;
 }
 
-// Populate component palette
 for (const [type, def] of Object.entries(COMPONENT_CATALOG)) {
     const btn = document.createElement('button');
     btn.type = 'button';
@@ -902,21 +887,16 @@ for (const [type, def] of Object.entries(COMPONENT_CATALOG)) {
         addOptionToParentSelects(id);
         renderComponentItem(id, type);
         refreshPaletteCounts();
-        // Scroll newly added card into view
         buildComponentsListEl.querySelector<HTMLElement>(`[data-id="${id}"]`)
             ?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     });
     buildPaletteEl.appendChild(btn);
 }
 
-// Map from component ID to its card's input elements (for drag position sync)
-const componentInputs = new Map<string, Record<string, HTMLInputElement>>();
-// Map from component ID to its card's parent <select> (for live options refresh)
+const componentInputs  = new Map<string, Record<string, HTMLInputElement>>();
 const componentSelects = new Map<string, HTMLSelectElement>();
-// Last selected component ID (for keyboard nudge)
 let _buildSelCompId: string | null = null;
 
-/** Clear all build-panel UI state (component list, inputs map, selects map, selection). */
 function clearBuildUI(): void {
     buildComponentsListEl.innerHTML = '';
     componentInputs.clear();
@@ -924,7 +904,6 @@ function clearBuildUI(): void {
     _buildSelCompId = null;
 }
 
-/** Add an option for `id` to every parent <select> that does not already have it. */
 function addOptionToParentSelects(id: string): void {
     for (const [existingId, sel] of componentSelects) {
         if (existingId !== id && !Array.from(sel.options).some(o => o.value === id)) {
@@ -935,7 +914,6 @@ function addOptionToParentSelects(id: string): void {
     }
 }
 
-/** Remove the option for `id` from every parent <select>. */
 function removeOptionFromParentSelects(id: string): void {
     for (const sel of componentSelects.values()) {
         const opt = Array.from(sel.options).find(o => o.value === id);
@@ -945,7 +923,6 @@ function removeOptionFromParentSelects(id: string): void {
 
 function _selectCompCard(id: string): void {
     _buildSelCompId = id;
-    // Visual feedback: add 'selected' class, remove from others
     for (const el of buildComponentsListEl.querySelectorAll<HTMLElement>('.build-component')) {
         el.classList.toggle('selected', el.dataset.id === id);
     }
@@ -982,7 +959,7 @@ function renderComponentItem(id: string, type: string, saved?: BuildComponent | 
     removeBtn.title = 'Remove';
     removeBtn.textContent = '×';
     removeBtn.addEventListener('click', (e) => {
-        e.stopPropagation(); // don't toggle collapse
+        e.stopPropagation();
         buildCtrl.removeComponent(id);
         componentInputs.delete(id);
         componentSelects.delete(id);
@@ -996,7 +973,6 @@ function renderComponentItem(id: string, type: string, saved?: BuildComponent | 
     // ── Input rows ────────────────────────────────────────────────────
     const body = document.createElement('div');
     body.className = 'build-component-body';
-    // Start collapsed; header click toggles and selects
     body.hidden = true;
     header.addEventListener('click', () => {
         body.hidden = !body.hidden;
@@ -1074,19 +1050,16 @@ function renderComponentItem(id: string, type: string, saved?: BuildComponent | 
         container.appendChild(row);
     }
 
-    // Position
     addGroupLabel('Position');
     addRow('x',  'axis-x', 'X', 0.005, saved?.x  ?? 0);
     addRow('y',  'axis-y', 'Y', 0.005, saved?.y  ?? 0);
     addRow('z',  'axis-z', 'Z', 0.005, saved?.z  ?? def.defaultZ);
 
-    // Rotation
     addGroupLabel('Rotation');
     addRow('rx', 'axis-x', 'Rx', 0.01, saved?.rx ?? 0);
     addRow('ry', 'axis-y', 'Ry', 0.01, saved?.ry ?? 0);
     addRow('rz', 'axis-z', 'Rz', 0.01, saved?.rz ?? 0);
 
-    // Dimensions
     addGroupLabel('Size');
     if (def.geomType === 'cylinder') {
         addRow('r', 'axis-x', 'R',  0.005, saved?.dims[0] ?? def.defaultDims[0]);
@@ -1097,15 +1070,15 @@ function renderComponentItem(id: string, type: string, saved?: BuildComponent | 
         addRow('h', 'axis-z', 'H',  0.005, saved?.dims[2] ?? def.defaultDims[2]);
     }
 
-    // Joint
     addGroupLabel('Joint');
     addSelectRow('parent', 'Parent', buildCtrl.getAvailableLinks().filter(l => l !== id));
     addSelectRow('jt', 'Type', ['fixed', 'continuous', 'revolute', 'prismatic']);
     if (saved?.parent && selects['parent']) selects['parent'].value = saved.parent;
     if (saved?.jointType && selects['jt'])  selects['jt'].value    = saved.jointType;
 
-    // Axis section (shown for non-fixed joints)
     const savedJt = saved?.jointType ?? 'fixed';
+    const hasLimits = savedJt === 'revolute' || savedJt === 'prismatic';
+
     const axisSection = document.createElement('div');
     addGroupLabel('Axis', axisSection);
     addRow('ax', 'axis-x', 'X', 0.1, saved?.axis[0] ?? 0, axisSection);
@@ -1114,15 +1087,13 @@ function renderComponentItem(id: string, type: string, saved?: BuildComponent | 
     axisSection.hidden = savedJt === 'fixed';
     body.appendChild(axisSection);
 
-    // Limits section (shown for revolute/prismatic)
     const limitsSection = document.createElement('div');
     addGroupLabel('Limits', limitsSection);
     addRow('limitMin', 'axis-x', 'Min', 0.01, saved?.limitLower ?? -1.5708, limitsSection);
     addRow('limitMax', 'axis-z', 'Max', 0.01, saved?.limitUpper ??  1.5708, limitsSection);
-    limitsSection.hidden = savedJt !== 'revolute' && savedJt !== 'prismatic';
+    limitsSection.hidden = !hasLimits;
     body.appendChild(limitsSection);
 
-    // Preview slider (revolute/prismatic only, drives joint live without reload)
     const previewSection = document.createElement('div');
     const previewSlider  = document.createElement('input');
     previewSlider.type  = 'range';
@@ -1142,15 +1113,16 @@ function renderComponentItem(id: string, type: string, saved?: BuildComponent | 
     previewRow.className = 'build-preview-row';
     previewRow.appendChild(previewSlider);
     previewSection.appendChild(previewRow);
-    previewSection.hidden = savedJt !== 'revolute' && savedJt !== 'prismatic';
+    previewSection.hidden = !hasLimits;
     body.appendChild(previewSection);
 
     selects['jt'].addEventListener('change', () => {
         const jt = selects['jt'].value;
+        const showLimits = jt === 'revolute' || jt === 'prismatic';
         axisSection.hidden    = jt === 'fixed';
-        limitsSection.hidden  = jt !== 'revolute' && jt !== 'prismatic';
-        previewSection.hidden = jt !== 'revolute' && jt !== 'prismatic';
-        if (previewSection.hidden) {
+        limitsSection.hidden  = !showLimits;
+        previewSection.hidden = !showLimits;
+        if (!showLimits) {
             previewSlider.value = '0';
             viewer.robot?.setJointValue(`${id}_joint`, 0);
         }
@@ -1285,7 +1257,6 @@ viewer.renderer.domElement.addEventListener('pointerup', (e: PointerEvent) => {
     viewer.renderer.domElement.style.cursor = '';
     _compDragCard?.classList.remove('dragging');
 
-    // Click (no drag): select, expand the card and scroll it into view
     if (!wasDrag && _compDragCard) {
         const cardId = _compDragCard.dataset.id;
         if (cardId) _selectCompCard(cardId);
@@ -1299,7 +1270,7 @@ viewer.renderer.domElement.addEventListener('pointerup', (e: PointerEvent) => {
 });
 
 // ── Component hover tooltip ────────────────────────────────────────────────
-const _hoverTip = document.getElementById('build-hover-tip') as HTMLElement;
+const _hoverTip = $('build-hover-tip');
 let _hoverTipRaf = 0;
 
 viewer.renderer.domElement.addEventListener('pointermove', (e: PointerEvent) => {
