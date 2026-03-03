@@ -85,7 +85,6 @@ export class URDFChatController {
     private _sendBtn!:     HTMLButtonElement;
     private _abortBtn!:    HTMLButtonElement;
     private _briefBtn!:    HTMLButtonElement;
-    private _guideBtn!:    HTMLButtonElement;
     private _continueBtn!: HTMLButtonElement;
     private _toolCountBtn!: HTMLButtonElement;
     private _cmdAcEl!:     HTMLElement;
@@ -102,7 +101,6 @@ export class URDFChatController {
         this._sendBtn     = document.getElementById('chat-send') as HTMLButtonElement;
         this._abortBtn    = document.getElementById('chat-abort') as HTMLButtonElement;
         this._briefBtn    = document.getElementById('chat-brief-toggle') as HTMLButtonElement;
-        this._guideBtn    = document.getElementById('chat-guide-toggle') as HTMLButtonElement;
         this._continueBtn = document.getElementById('chat-continue') as HTMLButtonElement;
         this._toolCountBtn = document.getElementById('chat-tool-count') as HTMLButtonElement;
         this._cmdAcEl     = document.getElementById('cmd-ac') as HTMLElement;
@@ -158,19 +156,11 @@ export class URDFChatController {
             this._cb.onBriefToggle(this._brief);
         });
 
-        this._guideBtn.addEventListener('click', () => {
-            this._guide = !this._guide;
-            this._guideBtn.classList.toggle('active', this._guide);
-            this._guideBtn.setAttribute('aria-pressed', String(this._guide));
-        });
-
         this._continueBtn.addEventListener('click', () => this._pauseResolve?.(false));
 
         document.getElementById('chat-guide-start')!.addEventListener('click', () => {
             this._guide = true;
             this._brief = false;
-            this._guideBtn.classList.add('active');
-            this._guideBtn.setAttribute('aria-pressed', 'true');
             this._briefBtn.classList.add('active');
             this._briefBtn.setAttribute('aria-pressed', 'true');
             this._cb.onBriefToggle(false);

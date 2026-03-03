@@ -1648,28 +1648,6 @@
       color: var(--blue-text);
     }
 
-    #chat-guide-toggle {
-      background: none;
-      border: 1px solid var(--border);
-      border-radius: 999px;
-      color: var(--text-3);
-      cursor: pointer;
-      font-size: 0.625rem;
-      font-weight: 600;
-      letter-spacing: 0.05em;
-      padding: 2px 8px;
-      text-transform: uppercase;
-      transition: border-color 0.12s, color 0.12s, background 0.12s;
-    }
-
-    #chat-guide-toggle:hover { border-color: var(--text-2); color: var(--text-2); }
-
-    #chat-guide-toggle.active {
-      background: rgba(52, 199, 89, 0.15);
-      border-color: rgba(52, 199, 89, 0.4);
-      color: #34c759;
-    }
-
     .chat-continue-btn {
       width: 100%; padding: 10px; border-radius: 8px;
       background: var(--blue); color: #fff; border: none;
@@ -1717,7 +1695,7 @@
     }
     .build-inspector-title { flex: 1; }
   </style>
-  <script type="module" crossorigin src="/assets/index-C9T948Ef.js"></script>
+  <script type="module" crossorigin src="/assets/index-seP3RnBa.js"></script>
 </head>
 <body>
   <aside id="control-panel" aria-label="Controls">
@@ -2096,11 +2074,7 @@
         </button>
       </div>
       <div class="chat-compose-toolbar">
-        <div style="display:flex;gap:4px;align-items:center;">
-          <button type="button" id="chat-brief-toggle" aria-pressed="false" title="Toggle detailed responses">Detail</button>
-          <button type="button" id="chat-guide-toggle" aria-pressed="false"
-                  title="Step-by-step guided assembly">Guide</button>
-        </div>
+        <button type="button" id="chat-brief-toggle" aria-pressed="false" title="Toggle detailed responses">Detail</button>
         <button type="button" id="chat-tool-count" class="chat-tool-count-btn"
                 aria-label="Active tools" title="Active build tools">0 tools</button>
       </div>
