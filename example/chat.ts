@@ -37,6 +37,7 @@ export interface ChatCallbacks {
     switchToBuildTab:         () => void;
     onBriefToggle:            (v: boolean) => void;
     refreshPaletteCounts:     () => void;
+    getFocusedComponent:      () => { id: string; type: string; data: ReturnType<URDFBuildController['getComponentData']> } | null;
 }
 
 // ── Slash-command action maps ─────────────────────────────────────────────────
@@ -622,6 +623,11 @@ export class URDFChatController {
         const cp = this._buildCtrl.chassisParams;
         const wp = this._buildCtrl.wheelParams;
 
+        const focused = this._cb.getFocusedComponent();
+        const focusedBlock = focused?.data
+            ? `\nFOCUSED: ${focused.id} (${focused.type}) @ x=${focused.data.x} y=${focused.data.y} z=${focused.data.z} — joint: ${focused.data.jointType}\nWhen the user says "this", "it", or "the selected one", refer to this component.`
+            : '';
+
         const briefNote = this._brief
             ? '\nBRIEF MODE: Answer in fewer than 4 lines. No preamble. Direct answers only.'
             : '';
@@ -634,7 +640,7 @@ Current wheels: radius=${(wp.radius * 1000).toFixed(1)}mm  width=${(wp.width * 1
 Current components:
 ${compList}
 
-Available library components: ${LIBRARY.map(e => e.id).join(', ')}
+Available library components: ${LIBRARY.map(e => e.id).join(', ')}${focusedBlock}
 
 Use tools to modify the robot. Prefer direct tool calls over lengthy explanations.${briefNote}`;
     }

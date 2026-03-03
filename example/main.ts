@@ -125,7 +125,7 @@ async function loadViaBrowserAssembly(robot: RobotConfig): Promise<void> {
                     .catch(err => console.warn('[restore] mesh regen failed for', id, err));
             }
         }
-        renderComponentItem(id, type, buildCtrl.getComponentData(id));
+        renderComponentItem(id, type);
     }
 
     if (restored.length > 0) syncSlidersFromController();
@@ -707,6 +707,11 @@ const libNoBuildEl          = $('lib-no-build');
 const libEmptyEl            = $('lib-empty');
 const buildCompCountEl      = $('build-comp-count');
 const buildCompEmptyEl      = $('build-comp-empty');
+const contextBarEl          = document.getElementById('chat-context-bar')!;
+const buildInspEl           = document.getElementById('build-inspector')!;
+const buildInspTitle        = document.getElementById('build-inspector-title')!;
+const buildInspBody         = document.getElementById('build-inspector-body')!;
+const buildInspClose        = document.getElementById('build-inspector-close') as HTMLButtonElement;
 
 function syncSlidersFromController(): void {
     const cp = buildCtrl.chassisParams;
@@ -731,6 +736,11 @@ function syncSlidersFromController(): void {
         el.value = String(v);
         $<HTMLInputElement>(numId).value = String(v);
     }
+    // Re-render inspector to sync values after AI tool call or undo/redo
+    if (_buildSelCompId) {
+        const entry = buildCtrl.getComponentEntries().find(e => e.id === _buildSelCompId);
+        if (entry) renderInspector(_buildSelCompId, entry.type);
+    }
 }
 
 buildUndoBtn.addEventListener('click',  () => buildCtrl.undo());
@@ -747,16 +757,20 @@ buildCtrl.onHistoryChange = () => {
 };
 
 buildCtrl.onDOMRebuild = () => {
+    const prevSel = _buildSelCompId;
     clearBuildUI();
     for (const { id, type } of buildCtrl.getComponentEntries()) {
-        renderComponentItem(id, type, buildCtrl.getComponentData(id));
+        renderComponentItem(id, type);
         if (COMPONENT_CATALOG[type]?.geomType === 'mesh') regenMeshBlob(id, type);
     }
     syncSlidersFromController();
     refreshPaletteCounts();
     buildCtrl.onHistoryChange?.();
     chatCtrl?.syncToolCount();
+    if (prevSel && buildCtrl.getComponentData(prevSel)) _selectCompCard(prevSel);
 };
+
+buildInspClose.addEventListener('click', () => _deselectComp());
 
 document.addEventListener('keydown', (e: KeyboardEvent) => {
     if (!buildCtrl.isActive) return;
@@ -767,14 +781,20 @@ document.addEventListener('keydown', (e: KeyboardEvent) => {
         const el = document.activeElement as HTMLElement;
         if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable) return;
         e.preventDefault();
-        const card = buildComponentsListEl.querySelector<HTMLElement>(`[data-id="${_buildSelCompId}"]`);
-        buildCtrl.removeComponent(_buildSelCompId);
-        componentInputs.delete(_buildSelCompId);
-        componentSelects.delete(_buildSelCompId);
-        removeOptionFromParentSelects(_buildSelCompId);
+        const id   = _buildSelCompId;
+        const card = buildComponentsListEl.querySelector<HTMLElement>(`[data-id="${id}"]`);
+        buildCtrl.removeComponent(id);
+        _deselectComp();
+        removeOptionFromParentSelects(id);
         card?.remove();
-        _buildSelCompId = null;
         refreshPaletteCounts();
+        return;
+    }
+
+    if (e.key === 'Escape' && _buildSelCompId) {
+        const el = document.activeElement as HTMLElement;
+        if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') return;
+        _deselectComp();
         return;
     }
 
@@ -841,7 +861,7 @@ function refreshSavedList(): void {
         loadBtn.addEventListener('click', () => {
             clearBuildUI();
             const entries = buildCtrl.restoreCustomByName(name);
-            for (const { id, type } of entries) renderComponentItem(id, type, buildCtrl.getComponentData(id));
+            for (const { id, type } of entries) renderComponentItem(id, type);
             if (entries.length > 0) syncSlidersFromController();
             refreshPaletteCounts();
             buildCtrl.open();
@@ -942,9 +962,39 @@ let _buildSelCompId: string | null = null;
 
 function clearBuildUI(): void {
     buildComponentsListEl.innerHTML = '';
+    _deselectComp();
+}
+
+function _deselectComp(): void {
+    _buildSelCompId = null;
+    for (const el of buildComponentsListEl.querySelectorAll<HTMLElement>('.build-component'))
+        el.classList.remove('selected');
+    buildInspEl.hidden = true;
+    buildInspBody.innerHTML = '';
     componentInputs.clear();
     componentSelects.clear();
-    _buildSelCompId = null;
+    _updateContextPill(null);
+}
+
+function _updateContextPill(id: string | null): void {
+    contextBarEl.innerHTML = '';
+    contextBarEl.hidden = !id;
+    if (!id) return;
+    const type = buildCtrl.getComponentEntries().find(e => e.id === id)?.type ?? '';
+    const def  = COMPONENT_CATALOG[type];
+    const pill = document.createElement('span');
+    pill.className = 'context-pill';
+    const dot = document.createElement('span');
+    dot.className = 'context-pill-dot';
+    dot.style.background = def?.cssColor ?? '#888';
+    const label = document.createElement('span');
+    label.textContent = `${def?.label ?? type} · ${id}`;
+    const dismiss = document.createElement('button');
+    dismiss.type = 'button'; dismiss.className = 'context-pill-dismiss';
+    dismiss.textContent = '×'; dismiss.title = 'Deselect';
+    dismiss.addEventListener('click', _deselectComp);
+    pill.append(dot, label, dismiss);
+    contextBarEl.appendChild(pill);
 }
 
 function addOptionToParentSelects(id: string): void {
@@ -966,23 +1016,28 @@ function removeOptionFromParentSelects(id: string): void {
 
 function _selectCompCard(id: string): void {
     _buildSelCompId = id;
-    for (const el of buildComponentsListEl.querySelectorAll<HTMLElement>('.build-component')) {
+    for (const el of buildComponentsListEl.querySelectorAll<HTMLElement>('.build-component'))
         el.classList.toggle('selected', el.dataset.id === id);
-    }
+    const entry = buildCtrl.getComponentEntries().find(e => e.id === id);
+    if (entry) renderInspector(id, entry.type);
+    _updateContextPill(id);
 }
 
-function renderComponentItem(id: string, type: string, saved?: BuildComponent | null): void {
+function renderComponentItem(id: string, type: string, _saved?: BuildComponent | null): void {
     const def  = COMPONENT_CATALOG[type];
     const item = document.createElement('div');
     item.className = 'build-component';
     item.dataset.id = id;
 
-    // ── Header ────────────────────────────────────────────────────────
     const header = document.createElement('div');
     header.className = 'build-component-header';
-    header.setAttribute('aria-expanded', 'false');
+
+    const dot = document.createElement('span');
+    dot.style.cssText = `width:7px;height:7px;border-radius:50%;flex-shrink:0;background:${def?.cssColor ?? '#888'}`;
+
     const labelEl = document.createElement('span');
     labelEl.textContent = `${def.label} ${id.split('_').pop()}`;
+
     const dupBtn = document.createElement('button');
     dupBtn.type = 'button';
     dupBtn.className = 'build-remove-btn';
@@ -993,10 +1048,11 @@ function renderComponentItem(id: string, type: string, saved?: BuildComponent | 
         const newId = buildCtrl.duplicateComponent(id);
         if (!newId) return;
         addOptionToParentSelects(newId);
-        renderComponentItem(newId, type, buildCtrl.getComponentData(newId));
+        renderComponentItem(newId, type);
         if (COMPONENT_CATALOG[type]?.geomType === 'mesh') regenMeshBlob(newId, type);
         refreshPaletteCounts();
     });
+
     const removeBtn = document.createElement('button');
     removeBtn.type = 'button';
     removeBtn.className = 'build-remove-btn';
@@ -1005,24 +1061,26 @@ function renderComponentItem(id: string, type: string, saved?: BuildComponent | 
     removeBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         buildCtrl.removeComponent(id);
-        componentInputs.delete(id);
-        componentSelects.delete(id);
+        if (_buildSelCompId === id) _deselectComp();
         removeOptionFromParentSelects(id);
-        if (_buildSelCompId === id) _buildSelCompId = null;
         item.remove();
         refreshPaletteCounts();
     });
-    header.append(labelEl, dupBtn, removeBtn);
 
-    // ── Input rows ────────────────────────────────────────────────────
-    const body = document.createElement('div');
-    body.className = 'build-component-body';
-    body.hidden = true;
-    header.addEventListener('click', () => {
-        body.hidden = !body.hidden;
-        header.setAttribute('aria-expanded', String(!body.hidden));
-        _selectCompCard(id);
-    });
+    header.addEventListener('click', () => _selectCompCard(id));
+    header.append(dot, labelEl, dupBtn, removeBtn);
+    item.appendChild(header);
+    buildComponentsListEl.appendChild(item);
+}
+
+function renderInspector(id: string, type: string): void {
+    const saved = buildCtrl.getComponentData(id);
+    if (!saved) return;
+    const def = COMPONENT_CATALOG[type];
+
+    buildInspBody.innerHTML = '';
+    componentInputs.delete(id);
+    componentSelects.delete(id);
 
     const inputs:  Record<string, HTMLInputElement>  = {};
     const selects: Record<string, HTMLSelectElement> = {};
@@ -1052,7 +1110,7 @@ function renderComponentItem(id: string, type: string, saved?: BuildComponent | 
         });
     }
 
-    function addRow(key: string, axisClass: string, label: string, step: number, value: number, container: HTMLElement = body): void {
+    function addRow(key: string, axisClass: string, label: string, step: number, value: number, container: HTMLElement = buildInspBody): void {
         const row = document.createElement('div');
         row.className = 'inspector-row';
         const lbl = document.createElement('label');
@@ -1069,14 +1127,14 @@ function renderComponentItem(id: string, type: string, saved?: BuildComponent | 
         container.appendChild(row);
     }
 
-    function addGroupLabel(text: string, container: HTMLElement = body): void {
+    function addGroupLabel(text: string, container: HTMLElement = buildInspBody): void {
         const lbl = document.createElement('div');
         lbl.className   = 'build-group-label';
         lbl.textContent = text;
         container.appendChild(lbl);
     }
 
-    function addSelectRow(key: string, label: string, options: string[], container: HTMLElement = body): void {
+    function addSelectRow(key: string, label: string, options: string[], container: HTMLElement = buildInspBody): void {
         const row = document.createElement('div');
         row.className = 'inspector-row';
         const lbl = document.createElement('label');
@@ -1095,22 +1153,22 @@ function renderComponentItem(id: string, type: string, saved?: BuildComponent | 
     }
 
     addGroupLabel('Position');
-    addRow('x',  'axis-x', 'X', 0.005, saved?.x  ?? 0);
-    addRow('y',  'axis-y', 'Y', 0.005, saved?.y  ?? 0);
-    addRow('z',  'axis-z', 'Z', 0.005, saved?.z  ?? def.defaultZ);
+    addRow('x',  'axis-x', 'X', 0.005, saved.x  ?? 0);
+    addRow('y',  'axis-y', 'Y', 0.005, saved.y  ?? 0);
+    addRow('z',  'axis-z', 'Z', 0.005, saved.z  ?? def.defaultZ);
 
     addGroupLabel('Size');
     if (def.geomType === 'cylinder') {
-        addRow('r', 'axis-x', 'R',  0.005, saved?.dims[0] ?? def.defaultDims[0]);
-        addRow('l', 'axis-z', 'L',  0.005, saved?.dims[1] ?? def.defaultDims[1]);
+        addRow('r', 'axis-x', 'R', 0.005, saved.dims[0] ?? def.defaultDims[0]);
+        addRow('l', 'axis-z', 'L', 0.005, saved.dims[1] ?? def.defaultDims[1]);
     } else {
-        addRow('w', 'axis-x', 'W',  0.005, saved?.dims[0] ?? def.defaultDims[0]);
-        addRow('d', 'axis-y', 'D',  0.005, saved?.dims[1] ?? def.defaultDims[1]);
-        addRow('h', 'axis-z', 'H',  0.005, saved?.dims[2] ?? def.defaultDims[2]);
+        addRow('w', 'axis-x', 'W', 0.005, saved.dims[0] ?? def.defaultDims[0]);
+        addRow('d', 'axis-y', 'D', 0.005, saved.dims[1] ?? def.defaultDims[1]);
+        addRow('h', 'axis-z', 'H', 0.005, saved.dims[2] ?? def.defaultDims[2]);
     }
 
     // ── Advanced section (Rotation, Joint, Axis, Limits, Preview) ─────────
-    const savedJt   = saved?.jointType ?? 'fixed';
+    const savedJt   = saved.jointType ?? 'fixed';
     const hasLimits = savedJt === 'revolute' || savedJt === 'prismatic';
 
     const advancedDetails = document.createElement('details');
@@ -1119,31 +1177,31 @@ function renderComponentItem(id: string, type: string, saved?: BuildComponent | 
     const advancedSummary = document.createElement('summary');
     advancedSummary.textContent = 'Rotation · Joint · Limits';
     advancedDetails.appendChild(advancedSummary);
-    body.appendChild(advancedDetails);
+    buildInspBody.appendChild(advancedDetails);
 
     addGroupLabel('Rotation', advancedDetails);
-    addRow('rx', 'axis-x', 'Rx', 0.01, saved?.rx ?? 0, advancedDetails);
-    addRow('ry', 'axis-y', 'Ry', 0.01, saved?.ry ?? 0, advancedDetails);
-    addRow('rz', 'axis-z', 'Rz', 0.01, saved?.rz ?? 0, advancedDetails);
+    addRow('rx', 'axis-x', 'Rx', 0.01, saved.rx ?? 0, advancedDetails);
+    addRow('ry', 'axis-y', 'Ry', 0.01, saved.ry ?? 0, advancedDetails);
+    addRow('rz', 'axis-z', 'Rz', 0.01, saved.rz ?? 0, advancedDetails);
 
     addGroupLabel('Joint', advancedDetails);
     addSelectRow('parent', 'Parent', buildCtrl.getAvailableLinks().filter(l => l !== id), advancedDetails);
     addSelectRow('jt', 'Type', ['fixed', 'continuous', 'revolute', 'prismatic'], advancedDetails);
-    if (saved?.parent && selects['parent']) selects['parent'].value = saved.parent;
-    if (saved?.jointType && selects['jt'])  selects['jt'].value    = saved.jointType;
+    if (saved.parent && selects['parent']) selects['parent'].value = saved.parent;
+    if (saved.jointType && selects['jt'])  selects['jt'].value    = saved.jointType;
 
     const axisSection = document.createElement('div');
     addGroupLabel('Axis', axisSection);
-    addRow('ax', 'axis-x', 'X', 0.1, saved?.axis[0] ?? 0, axisSection);
-    addRow('ay', 'axis-y', 'Y', 0.1, saved?.axis[1] ?? 0, axisSection);
-    addRow('az', 'axis-z', 'Z', 0.1, saved?.axis[2] ?? 1, axisSection);
+    addRow('ax', 'axis-x', 'X', 0.1, saved.axis[0] ?? 0, axisSection);
+    addRow('ay', 'axis-y', 'Y', 0.1, saved.axis[1] ?? 0, axisSection);
+    addRow('az', 'axis-z', 'Z', 0.1, saved.axis[2] ?? 1, axisSection);
     axisSection.hidden = savedJt === 'fixed';
     advancedDetails.appendChild(axisSection);
 
     const limitsSection = document.createElement('div');
     addGroupLabel('Limits', limitsSection);
-    addRow('limitMin', 'axis-x', 'Min', 0.01, saved?.limitLower ?? -1.5708, limitsSection);
-    addRow('limitMax', 'axis-z', 'Max', 0.01, saved?.limitUpper ??  1.5708, limitsSection);
+    addRow('limitMin', 'axis-x', 'Min', 0.01, saved.limitLower ?? -1.5708, limitsSection);
+    addRow('limitMax', 'axis-z', 'Max', 0.01, saved.limitUpper ??  1.5708, limitsSection);
     limitsSection.hidden = !hasLimits;
     advancedDetails.appendChild(limitsSection);
 
@@ -1151,8 +1209,8 @@ function renderComponentItem(id: string, type: string, saved?: BuildComponent | 
     const previewSlider  = document.createElement('input');
     previewSlider.type  = 'range';
     previewSlider.step  = '0.01';
-    previewSlider.min   = String(saved?.limitLower ?? -1.5708);
-    previewSlider.max   = String(saved?.limitUpper ??  1.5708);
+    previewSlider.min   = String(saved.limitLower ?? -1.5708);
+    previewSlider.max   = String(saved.limitUpper ??  1.5708);
     previewSlider.value = '0';
     previewSlider.dataset.preview = 'true';
     previewSlider.style.cssText = 'width: 100%; margin-top: 2px;';
@@ -1184,8 +1242,8 @@ function renderComponentItem(id: string, type: string, saved?: BuildComponent | 
 
     componentInputs.set(id, inputs);
     if (selects['parent']) componentSelects.set(id, selects['parent']);
-    item.append(header, body);
-    buildComponentsListEl.appendChild(item);
+    buildInspTitle.textContent = `${def.label} · ${id}`;
+    buildInspEl.hidden = false;
 }
 
 function removeComponentItem(id: string): void {
@@ -1193,7 +1251,7 @@ function removeComponentItem(id: string): void {
     componentInputs.delete(id);
     componentSelects.delete(id);
     removeOptionFromParentSelects(id);
-    if (_buildSelCompId === id) _buildSelCompId = null;
+    if (_buildSelCompId === id) _deselectComp();
     card?.remove();
 }
 
@@ -1206,13 +1264,19 @@ function removeComponentItem(id: string): void {
         handleEditorInput:        (t) => editorCtrl.handleExternalInput(t),
         onComponentAdded:         (id, type) => {
             addOptionToParentSelects(id);
-            renderComponentItem(id, type, buildCtrl.getComponentData(id));
+            renderComponentItem(id, type);
         },
         onComponentRemoved:       (id) => removeComponentItem(id),
         syncSlidersFromController,
         switchToBuildTab:         () => $<HTMLButtonElement>('tab-build').click(),
         onBriefToggle:            (v) => { editorCtrl.brief = v; },
         refreshPaletteCounts,
+        getFocusedComponent: () => {
+            if (!_buildSelCompId) return null;
+            const entry = buildCtrl.getComponentEntries().find(e => e.id === _buildSelCompId);
+            if (!entry) return null;
+            return { id: _buildSelCompId, type: entry.type, data: buildCtrl.getComponentData(_buildSelCompId) };
+        },
     };
     chatCtrl = new URDFChatController(buildCtrl, chatCallbacks);
     chatCtrl.init();
@@ -1300,6 +1364,7 @@ viewer.renderer.domElement.addEventListener('pointerdown', (e: PointerEvent) => 
 
     _compDragCard = buildComponentsListEl.querySelector<HTMLElement>(`[data-id="${id}"]`);
     _compDragCard?.classList.add('dragging');
+    _selectCompCard(id);  // ensures inspector inputs exist for drag position updates
 
     viewer.renderer.domElement.setPointerCapture(e.pointerId);
     e.stopPropagation();
@@ -1344,8 +1409,6 @@ viewer.renderer.domElement.addEventListener('pointerup', (e: PointerEvent) => {
     if (!wasDrag && _compDragCard) {
         const cardId = _compDragCard.dataset.id;
         if (cardId) _selectCompCard(cardId);
-        const cardBody = _compDragCard.querySelector<HTMLElement>('.build-component-body');
-        if (cardBody) cardBody.hidden = false;
         _compDragCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
 
@@ -1465,7 +1528,7 @@ async function handleLibraryAdd(entry: LibraryEntry, btn: HTMLButtonElement): Pr
         const stl = generate();
         const id = buildCtrl.addMeshComponent(entry.id, stl);
         addOptionToParentSelects(id);
-        renderComponentItem(id, entry.id, buildCtrl.getComponentData(id));
+        renderComponentItem(id, entry.id);
         refreshPaletteCounts();
         $<HTMLButtonElement>('tab-build').click();
         buildComponentsListEl
