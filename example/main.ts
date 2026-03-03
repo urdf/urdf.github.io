@@ -683,6 +683,7 @@ buildCtrl.onHistoryChange = () => {
 
 buildCtrl.onDOMRebuild = () => {
     componentInputs.clear();
+    componentSelects.clear();
     buildComponentsListEl.innerHTML = '';
     for (const { id, type } of buildCtrl.getComponentEntries()) renderComponentItem(id, type);
     syncSlidersFromController();
@@ -715,6 +716,14 @@ for (const [type, def] of Object.entries(COMPONENT_CATALOG)) {
     btn.addEventListener('click', () => {
         if (!buildCtrl.isCatalogActive) return;
         const id = buildCtrl.addComponent(type);
+        // Refresh existing parent dropdowns to include the new component
+        for (const [existingId, sel] of componentSelects) {
+            if (existingId !== id && !Array.from(sel.options).some(o => o.value === id)) {
+                const o = document.createElement('option');
+                o.value = o.textContent = id;
+                sel.appendChild(o);
+            }
+        }
         renderComponentItem(id, type);
     });
     buildPaletteEl.appendChild(btn);
@@ -722,6 +731,8 @@ for (const [type, def] of Object.entries(COMPONENT_CATALOG)) {
 
 // Map from component ID to its card's input elements (for drag position sync)
 const componentInputs = new Map<string, Record<string, HTMLInputElement>>();
+// Map from component ID to its card's parent <select> (for live options refresh)
+const componentSelects = new Map<string, HTMLSelectElement>();
 
 function renderComponentItem(id: string, type: string): void {
     const def  = COMPONENT_CATALOG[type];
@@ -739,7 +750,16 @@ function renderComponentItem(id: string, type: string): void {
     removeBtn.className = 'build-remove-btn';
     removeBtn.title = 'Remove';
     removeBtn.textContent = '×';
-    removeBtn.addEventListener('click', () => { buildCtrl.removeComponent(id); componentInputs.delete(id); item.remove(); });
+    removeBtn.addEventListener('click', () => {
+        buildCtrl.removeComponent(id);
+        componentInputs.delete(id);
+        componentSelects.delete(id);
+        for (const sel of componentSelects.values()) {
+            const opt = Array.from(sel.options).find(o => o.value === id);
+            if (opt) sel.removeChild(opt);
+        }
+        item.remove();
+    });
     header.append(labelEl, removeBtn);
 
     // ── Input rows ────────────────────────────────────────────────────
@@ -868,6 +888,7 @@ function renderComponentItem(id: string, type: string): void {
     });
 
     componentInputs.set(id, inputs);
+    if (selects['parent']) componentSelects.set(id, selects['parent']);
     item.append(header, body);
     buildComponentsListEl.appendChild(item);
 }
