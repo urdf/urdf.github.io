@@ -175,7 +175,7 @@
     .build-notice {
       padding: 12px;
       color: var(--text-2);
-      font-size: 12px;
+      font-size: 0.6875rem;
     }
 
     .component-palette {
@@ -202,7 +202,7 @@
       justify-content: space-between;
       align-items: center;
       margin-bottom: 4px;
-      font-size: 12px;
+      font-size: 0.6875rem;
       color: var(--text-1);
       cursor: pointer;
     }
@@ -225,7 +225,7 @@
     .build-component.selected  { border-color: var(--blue); }
 
     .build-group-label {
-      font-size: 10px;
+      font-size: 0.6875rem;
       color: var(--text-3);
       text-transform: uppercase;
       letter-spacing: 0.06em;
@@ -321,23 +321,88 @@
     }
     .build-palette-header .section-label { padding: 0; }
 
-    .build-comp-count { font-size: 10px; color: var(--text-3); }
+    .build-comp-count { font-size: 0.6875rem; color: var(--text-3); }
 
-    .build-comp-empty { font-size: 11px; color: var(--text-3); padding: 6px 12px; margin: 0; }
+    .build-comp-empty { font-size: 0.6875rem; color: var(--text-3); padding: 6px 12px; margin: 0; }
 
-    .build-action-row { padding: 4px 12px; display: flex; gap: 6px; }
-
-    .build-action-row--bottom { padding-bottom: 8px; }
+    /* ── Build sticky footer ──────────────────────────────────────────────── */
+    .build-footer {
+      flex-shrink: 0;
+      border-top: 1px solid var(--border);
+      padding: 6px 12px 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      background: var(--surface);
+    }
+    .build-footer-row { display: flex; gap: 6px; }
 
     #build-reset { margin-left: auto; }
-
     #build-export { flex: 2; }
-
     #build-copy-urdf { flex: 1; }
+
+    /* ── Parametric accordions ────────────────────────────────────────────── */
+    .build-section { border-top: 1px solid var(--border); }
+
+    .build-section > summary {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 12px;
+      font-size: 0.6875rem;
+      font-weight: 500;
+      color: var(--text-2);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      cursor: pointer;
+      user-select: none;
+      list-style: none;
+    }
+    .build-section > summary::-webkit-details-marker { display: none; }
+    .build-section > summary::after {
+      content: '›';
+      font-size: 0.875rem;
+      color: var(--text-3);
+      flex-shrink: 0;
+      transition: transform 0.15s;
+    }
+    .build-section[open] > summary::after { transform: rotate(90deg); }
+    .build-section > summary:hover { background: var(--surface-hover); }
+
+    .build-section-body { padding-bottom: 4px; }
+
+    /* ── Component card advanced toggle ──────────────────────────────────── */
+    .build-comp-advanced { margin-top: 4px; }
+
+    .build-comp-advanced > summary {
+      list-style: none;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 3px 0;
+      font-size: 10px;
+      font-weight: 500;
+      color: var(--text-3);
+      cursor: pointer;
+      user-select: none;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+    .build-comp-advanced > summary::-webkit-details-marker { display: none; }
+    .build-comp-advanced > summary::after {
+      content: '›';
+      font-size: 0.75rem;
+      transition: transform 0.15s;
+      flex-shrink: 0;
+    }
+    .build-comp-advanced[open] > summary::after { transform: rotate(90deg); }
 
     .build-component-body { display: flex; flex-direction: column; gap: 2px; }
 
     .build-preview-row { padding: 0 0 4px; }
+
+    /* Hide new-robot form when a robot is already active */
+    #build-active-header:not([hidden]) ~ #build-new-robot { display: none; }
 
     #build-hover-tip {
       position: fixed;
@@ -390,7 +455,7 @@
         font-size: 12px;
       }
 
-      .build-group-label { font-size: 11px; padding: 6px 0 2px; }
+      .build-group-label { font-size: 0.6875rem; padding: 6px 0 2px; }
     }
 
     .build-param {
@@ -1202,7 +1267,7 @@
     }
 
     .chat-pane {
-      height: var(--chat-h, 220px);
+      height: var(--chat-h, 160px);
       flex-shrink: 0;
       display: flex;
       flex-direction: column;
@@ -1523,13 +1588,11 @@
       border: 1px solid var(--border);
       border-radius: 10px;
       color: var(--text-3);
-      cursor: default;
       font-size: 9px;
       font-weight: 600;
       padding: 2px 7px;
-      transition: color 0.1s, border-color 0.1s;
+      pointer-events: none;
     }
-    .chat-tool-count-btn:hover { color: var(--text-2); border-color: var(--text-3); }
 
     #chat-brief-toggle {
       background: none;
@@ -1577,7 +1640,7 @@
     .chat-resize-handle.dragging::after { height: 2px; background: rgba(0, 122, 255, 0.6); }
     .chat-resize-handle.dragging::after { background: var(--blue); }
   </style>
-  <script type="module" crossorigin src="/assets/index-CyuafzMj.js"></script>
+  <script type="module" crossorigin src="/assets/index-es4-v4vq.js"></script>
 </head>
 <body>
   <button type="button" id="gesture-toggle" aria-label="Toggle gesture mode" title="Gesture mode">
@@ -1767,112 +1830,119 @@
         </div>
 
         <div id="build-parametric">
-        <div class="section-label">Chassis</div>
+          <details class="build-section">
+            <summary>Chassis</summary>
+            <div class="build-section-body">
+              <div class="build-param joint">
+                <div class="joint-name">Thickness <span class="unit">mm</span></div>
+                <div class="joint-row">
+                  <input type="range"  id="build-chassis-thickness" min="1" max="10" step="0.5" value="3">
+                  <input type="number" id="build-chassis-thickness-num" min="1" max="10" step="0.5" value="3">
+                </div>
+              </div>
+              <div class="build-param joint">
+                <div class="joint-name">Body width <span class="unit">mm × 2</span></div>
+                <div class="joint-row">
+                  <input type="range"  id="build-chassis-body-hw" min="40" max="90" step="1" value="62">
+                  <input type="number" id="build-chassis-body-hw-num" min="40" max="90" step="1" value="62">
+                </div>
+              </div>
+              <div class="build-param joint">
+                <div class="joint-name">Rear width <span class="unit">mm × 2</span></div>
+                <div class="joint-row">
+                  <input type="range"  id="build-chassis-rear-hw" min="85" max="130" step="1" value="95">
+                  <input type="number" id="build-chassis-rear-hw-num" min="85" max="130" step="1" value="95">
+                </div>
+              </div>
+            </div>
+          </details>
 
-        <div class="build-param joint">
-          <div class="joint-name">Thickness <span class="unit">mm</span></div>
-          <div class="joint-row">
-            <input type="range"  id="build-chassis-thickness" min="1" max="10" step="0.5" value="3">
-            <input type="number" id="build-chassis-thickness-num" min="1" max="10" step="0.5" value="3">
-          </div>
-        </div>
+          <details class="build-section">
+            <summary>Wheels</summary>
+            <div class="build-section-body">
+              <div class="build-param joint">
+                <div class="joint-name">Radius <span class="unit">mm</span></div>
+                <div class="joint-row">
+                  <input type="range"  id="build-wheel-radius" min="20" max="50" step="0.5" value="32.5">
+                  <input type="number" id="build-wheel-radius-num" min="20" max="50" step="0.5" value="32.5">
+                </div>
+              </div>
+              <div class="build-param joint">
+                <div class="joint-name">Width <span class="unit">mm</span></div>
+                <div class="joint-row">
+                  <input type="range"  id="build-wheel-width" min="8" max="30" step="1" value="26">
+                  <input type="number" id="build-wheel-width-num" min="8" max="30" step="1" value="26">
+                </div>
+              </div>
+            </div>
+          </details>
 
-        <div class="build-param joint">
-          <div class="joint-name">Body width <span class="unit">mm × 2</span></div>
-          <div class="joint-row">
-            <input type="range"  id="build-chassis-body-hw" min="40" max="90" step="1" value="62">
-            <input type="number" id="build-chassis-body-hw-num" min="40" max="90" step="1" value="62">
-          </div>
-        </div>
+          <details class="build-section">
+            <summary>Caster</summary>
+            <div class="build-section-body">
+              <div class="build-param joint">
+                <div class="joint-name">Radius <span class="unit">mm</span></div>
+                <div class="joint-row">
+                  <input type="range"  id="build-caster-radius" min="8" max="25" step="0.5" value="14.6">
+                  <input type="number" id="build-caster-radius-num" min="8" max="25" step="0.5" value="14.6">
+                </div>
+              </div>
+              <div class="build-param joint">
+                <div class="joint-name">Width <span class="unit">mm</span></div>
+                <div class="joint-row">
+                  <input type="range"  id="build-caster-width" min="5" max="25" step="0.5" value="14.5">
+                  <input type="number" id="build-caster-width-num" min="5" max="25" step="0.5" value="14.5">
+                </div>
+              </div>
+            </div>
+          </details>
 
-        <div class="build-param joint">
-          <div class="joint-name">Rear width <span class="unit">mm × 2</span></div>
-          <div class="joint-row">
-            <input type="range"  id="build-chassis-rear-hw" min="85" max="130" step="1" value="95">
-            <input type="number" id="build-chassis-rear-hw-num" min="85" max="130" step="1" value="95">
-          </div>
-        </div>
+          <details class="build-section">
+            <summary>Battery Box</summary>
+            <div class="build-section-body">
+              <div class="build-param joint">
+                <div class="joint-name">Length <span class="unit">mm</span></div>
+                <div class="joint-row">
+                  <input type="range"  id="build-battery-l" min="40" max="120" step="1" value="80.6">
+                  <input type="number" id="build-battery-l-num" min="40" max="120" step="1" value="80.6">
+                </div>
+              </div>
+              <div class="build-param joint">
+                <div class="joint-name">Width <span class="unit">mm</span></div>
+                <div class="joint-row">
+                  <input type="range"  id="build-battery-w" min="25" max="80" step="1" value="44.2">
+                  <input type="number" id="build-battery-w-num" min="25" max="80" step="1" value="44.2">
+                </div>
+              </div>
+              <div class="build-param joint">
+                <div class="joint-name">Height <span class="unit">mm</span></div>
+                <div class="joint-row">
+                  <input type="range"  id="build-battery-h" min="15" max="50" step="1" value="22">
+                  <input type="number" id="build-battery-h-num" min="15" max="50" step="1" value="22">
+                </div>
+              </div>
+            </div>
+          </details>
 
-        <div class="section-label">Wheels</div>
-
-        <div class="build-param joint">
-          <div class="joint-name">Radius <span class="unit">mm</span></div>
-          <div class="joint-row">
-            <input type="range"  id="build-wheel-radius" min="20" max="50" step="0.5" value="32.5">
-            <input type="number" id="build-wheel-radius-num" min="20" max="50" step="0.5" value="32.5">
-          </div>
-        </div>
-
-        <div class="build-param joint">
-          <div class="joint-name">Width <span class="unit">mm</span></div>
-          <div class="joint-row">
-            <input type="range"  id="build-wheel-width" min="8" max="30" step="1" value="26">
-            <input type="number" id="build-wheel-width-num" min="8" max="30" step="1" value="26">
-          </div>
-        </div>
-
-        <div class="section-label">Caster</div>
-
-        <div class="build-param joint">
-          <div class="joint-name">Radius <span class="unit">mm</span></div>
-          <div class="joint-row">
-            <input type="range"  id="build-caster-radius" min="8" max="25" step="0.5" value="14.6">
-            <input type="number" id="build-caster-radius-num" min="8" max="25" step="0.5" value="14.6">
-          </div>
-        </div>
-
-        <div class="build-param joint">
-          <div class="joint-name">Width <span class="unit">mm</span></div>
-          <div class="joint-row">
-            <input type="range"  id="build-caster-width" min="5" max="25" step="0.5" value="14.5">
-            <input type="number" id="build-caster-width-num" min="5" max="25" step="0.5" value="14.5">
-          </div>
-        </div>
-
-        <div class="section-label">Battery Box</div>
-
-        <div class="build-param joint">
-          <div class="joint-name">Length <span class="unit">mm</span></div>
-          <div class="joint-row">
-            <input type="range"  id="build-battery-l" min="40" max="120" step="1" value="80.6">
-            <input type="number" id="build-battery-l-num" min="40" max="120" step="1" value="80.6">
-          </div>
-        </div>
-
-        <div class="build-param joint">
-          <div class="joint-name">Width <span class="unit">mm</span></div>
-          <div class="joint-row">
-            <input type="range"  id="build-battery-w" min="25" max="80" step="1" value="44.2">
-            <input type="number" id="build-battery-w-num" min="25" max="80" step="1" value="44.2">
-          </div>
-        </div>
-
-        <div class="build-param joint">
-          <div class="joint-name">Height <span class="unit">mm</span></div>
-          <div class="joint-row">
-            <input type="range"  id="build-battery-h" min="15" max="50" step="1" value="22">
-            <input type="number" id="build-battery-h-num" min="15" max="50" step="1" value="22">
-          </div>
-        </div>
-
-        <div class="section-label">Power Bank</div>
-
-        <div class="build-param joint">
-          <div class="joint-name">Radius <span class="unit">mm</span></div>
-          <div class="joint-row">
-            <input type="range"  id="build-powerbank-r" min="8" max="25" step="0.5" value="11.5">
-            <input type="number" id="build-powerbank-r-num" min="8" max="25" step="0.5" value="11.5">
-          </div>
-        </div>
-
-        <div class="build-param joint">
-          <div class="joint-name">Length <span class="unit">mm</span></div>
-          <div class="joint-row">
-            <input type="range"  id="build-powerbank-l" min="50" max="200" step="1" value="119.9">
-            <input type="number" id="build-powerbank-l-num" min="50" max="200" step="1" value="119.9">
-          </div>
-        </div>
-
+          <details class="build-section">
+            <summary>Power Bank</summary>
+            <div class="build-section-body">
+              <div class="build-param joint">
+                <div class="joint-name">Radius <span class="unit">mm</span></div>
+                <div class="joint-row">
+                  <input type="range"  id="build-powerbank-r" min="8" max="25" step="0.5" value="11.5">
+                  <input type="number" id="build-powerbank-r-num" min="8" max="25" step="0.5" value="11.5">
+                </div>
+              </div>
+              <div class="build-param joint">
+                <div class="joint-name">Length <span class="unit">mm</span></div>
+                <div class="joint-row">
+                  <input type="range"  id="build-powerbank-l" min="50" max="200" step="1" value="119.9">
+                  <input type="number" id="build-powerbank-l-num" min="50" max="200" step="1" value="119.9">
+                </div>
+              </div>
+            </div>
+          </details>
         </div><!-- #build-parametric -->
 
         <div class="build-palette-header">
@@ -1884,13 +1954,16 @@
           <p id="build-comp-empty" class="build-comp-empty" hidden>No components yet. Click a type above to add one.</p>
         </div>
 
-        <div class="build-action-row">
+      </div><!-- .sidebar-scroll -->
+
+      <!-- Sticky footer: always visible, never scrolls away -->
+      <div class="build-footer">
+        <div class="build-footer-row">
           <button id="build-undo" class="robot-btn" title="Undo (Ctrl+Z)" disabled>Undo</button>
           <button id="build-redo" class="robot-btn" title="Redo (Ctrl+Y)" disabled>Redo</button>
           <button id="build-reset" class="robot-btn" title="Reset to defaults">Reset</button>
         </div>
-
-        <div class="build-action-row build-action-row--bottom">
+        <div class="build-footer-row">
           <button id="build-export" class="build-export-btn">Download .zip</button>
           <button id="build-copy-urdf" class="build-export-btn" title="Copy URDF XML to clipboard">Copy URDF</button>
         </div>
@@ -1901,7 +1974,7 @@
       role="separator"
       aria-label="Resize chat"
       aria-orientation="horizontal"
-      aria-valuenow="220"
+      aria-valuenow="160"
       aria-valuemin="100"
       aria-valuemax="600"
       tabindex="0"
@@ -2039,7 +2112,7 @@
     // ── Chat resize (horizontal splitter) ────────────────────────────────────
 
     const CHAT_H_KEY     = 'urdf-chat-h';
-    const CHAT_H_DEFAULT = 220;
+    const CHAT_H_DEFAULT = 160;
     const MIN_CH         = 100;
 
     const chatHandle = document.querySelector('.chat-resize-handle');

@@ -171,7 +171,9 @@ export class URDFChatController {
 
     syncToolCount(): void {
         if (this._toolCountBtn) {
-            this._toolCountBtn.textContent = `${this._buildTools().length} tools`;
+            const n = this._buildTools().length;
+            this._toolCountBtn.textContent = `${n} tools`;
+            this._toolCountBtn.hidden = n === 0;
         }
     }
 

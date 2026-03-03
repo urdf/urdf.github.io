@@ -1096,11 +1096,6 @@ function renderComponentItem(id: string, type: string, saved?: BuildComponent | 
     addRow('y',  'axis-y', 'Y', 0.005, saved?.y  ?? 0);
     addRow('z',  'axis-z', 'Z', 0.005, saved?.z  ?? def.defaultZ);
 
-    addGroupLabel('Rotation');
-    addRow('rx', 'axis-x', 'Rx', 0.01, saved?.rx ?? 0);
-    addRow('ry', 'axis-y', 'Ry', 0.01, saved?.ry ?? 0);
-    addRow('rz', 'axis-z', 'Rz', 0.01, saved?.rz ?? 0);
-
     addGroupLabel('Size');
     if (def.geomType === 'cylinder') {
         addRow('r', 'axis-x', 'R',  0.005, saved?.dims[0] ?? def.defaultDims[0]);
@@ -1111,14 +1106,28 @@ function renderComponentItem(id: string, type: string, saved?: BuildComponent | 
         addRow('h', 'axis-z', 'H',  0.005, saved?.dims[2] ?? def.defaultDims[2]);
     }
 
-    addGroupLabel('Joint');
-    addSelectRow('parent', 'Parent', buildCtrl.getAvailableLinks().filter(l => l !== id));
-    addSelectRow('jt', 'Type', ['fixed', 'continuous', 'revolute', 'prismatic']);
+    // ── Advanced section (Rotation, Joint, Axis, Limits, Preview) ─────────
+    const savedJt   = saved?.jointType ?? 'fixed';
+    const hasLimits = savedJt === 'revolute' || savedJt === 'prismatic';
+
+    const advancedDetails = document.createElement('details');
+    advancedDetails.className = 'build-comp-advanced';
+    if (savedJt !== 'fixed') advancedDetails.open = true;
+    const advancedSummary = document.createElement('summary');
+    advancedSummary.textContent = 'Rotation · Joint · Limits';
+    advancedDetails.appendChild(advancedSummary);
+    body.appendChild(advancedDetails);
+
+    addGroupLabel('Rotation', advancedDetails);
+    addRow('rx', 'axis-x', 'Rx', 0.01, saved?.rx ?? 0, advancedDetails);
+    addRow('ry', 'axis-y', 'Ry', 0.01, saved?.ry ?? 0, advancedDetails);
+    addRow('rz', 'axis-z', 'Rz', 0.01, saved?.rz ?? 0, advancedDetails);
+
+    addGroupLabel('Joint', advancedDetails);
+    addSelectRow('parent', 'Parent', buildCtrl.getAvailableLinks().filter(l => l !== id), advancedDetails);
+    addSelectRow('jt', 'Type', ['fixed', 'continuous', 'revolute', 'prismatic'], advancedDetails);
     if (saved?.parent && selects['parent']) selects['parent'].value = saved.parent;
     if (saved?.jointType && selects['jt'])  selects['jt'].value    = saved.jointType;
-
-    const savedJt = saved?.jointType ?? 'fixed';
-    const hasLimits = savedJt === 'revolute' || savedJt === 'prismatic';
 
     const axisSection = document.createElement('div');
     addGroupLabel('Axis', axisSection);
@@ -1126,14 +1135,14 @@ function renderComponentItem(id: string, type: string, saved?: BuildComponent | 
     addRow('ay', 'axis-y', 'Y', 0.1, saved?.axis[1] ?? 0, axisSection);
     addRow('az', 'axis-z', 'Z', 0.1, saved?.axis[2] ?? 1, axisSection);
     axisSection.hidden = savedJt === 'fixed';
-    body.appendChild(axisSection);
+    advancedDetails.appendChild(axisSection);
 
     const limitsSection = document.createElement('div');
     addGroupLabel('Limits', limitsSection);
     addRow('limitMin', 'axis-x', 'Min', 0.01, saved?.limitLower ?? -1.5708, limitsSection);
     addRow('limitMax', 'axis-z', 'Max', 0.01, saved?.limitUpper ??  1.5708, limitsSection);
     limitsSection.hidden = !hasLimits;
-    body.appendChild(limitsSection);
+    advancedDetails.appendChild(limitsSection);
 
     const previewSection = document.createElement('div');
     const previewSlider  = document.createElement('input');
@@ -1155,7 +1164,7 @@ function renderComponentItem(id: string, type: string, saved?: BuildComponent | 
     previewRow.appendChild(previewSlider);
     previewSection.appendChild(previewRow);
     previewSection.hidden = !hasLimits;
-    body.appendChild(previewSection);
+    advancedDetails.appendChild(previewSection);
 
     selects['jt'].addEventListener('change', () => {
         const jt = selects['jt'].value;
@@ -1163,6 +1172,7 @@ function renderComponentItem(id: string, type: string, saved?: BuildComponent | 
         axisSection.hidden    = jt === 'fixed';
         limitsSection.hidden  = !showLimits;
         previewSection.hidden = !showLimits;
+        if (jt !== 'fixed' && !advancedDetails.open) advancedDetails.open = true;
         if (!showLimits) {
             previewSlider.value = '0';
             viewer.robot?.setJointValue(`${id}_joint`, 0);
