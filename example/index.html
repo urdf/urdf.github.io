@@ -166,6 +166,10 @@
     body.build-open  .tab-btn[data-tab="build"]  { color: var(--blue-text); border-bottom-color: var(--blue); }
     body.build-open  .tab-body[data-tab="robot"] { display: none; }
     body.build-open  .tab-body[data-tab="build"] { display: flex; }
+    body.library-open .tab-btn[data-tab="robot"]   { color: var(--text-2);   border-bottom-color: transparent; }
+    body.library-open .tab-btn[data-tab="library"] { color: var(--blue-text); border-bottom-color: var(--blue); }
+    body.library-open .tab-body[data-tab="robot"]  { display: none; }
+    body.library-open .tab-body[data-tab="library"] { display: flex; }
 
     /* ── Build panel ─────────────────────────────────────────────────────────── */
     .build-notice {
@@ -440,6 +444,65 @@
     .tab-body[data-tab="robot"] { display: flex; }
     body.editor-open .tab-body[data-tab="robot"] { display: none; }
     body.editor-open .tab-body[data-tab="editor"] { display: flex; }
+
+    /* ── Library tab ────────────────────────────────────────────────────── */
+
+    .library-toolbar { padding: 8px 12px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+    .lib-search-input {
+      width: 100%; background: var(--surface-hi); border: 1px solid var(--border);
+      border-radius: 6px; color: var(--text-1); font-size: 12px; padding: 5px 10px; outline: none;
+      box-sizing: border-box;
+    }
+    .lib-search-input::placeholder { color: var(--text-3); }
+    .lib-search-input:focus { border-color: var(--blue); }
+
+    .lib-pills {
+      display: flex; gap: 4px; padding: 6px 12px; flex-wrap: wrap;
+      border-bottom: 1px solid var(--border); flex-shrink: 0;
+    }
+    .lib-pill {
+      background: var(--surface-hi); border: 1px solid var(--border); border-radius: 12px;
+      color: var(--text-2); font-size: 10px; font-weight: 500; padding: 3px 8px;
+      transition: background 0.1s, color 0.1s, border-color 0.1s; white-space: nowrap; cursor: pointer;
+    }
+    .lib-pill:hover { color: var(--text-1); border-color: var(--text-2); }
+    .lib-pill--active { background: var(--blue-bg); border-color: var(--blue); color: var(--blue-text); }
+    .lib-pill:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+
+    .lib-scroll { padding: 8px 12px; }
+    .lib-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+
+    .lib-card {
+      background: var(--surface-hi); border: 1px solid var(--border); border-radius: 8px;
+      overflow: hidden; display: flex; flex-direction: column;
+    }
+    .lib-card:hover { border-color: var(--text-3); }
+
+    .lib-thumb {
+      height: 52px; display: flex; align-items: center; justify-content: center;
+      font-size: 20px; flex-shrink: 0;
+    }
+
+    .lib-card-info { padding: 6px 8px 8px; flex: 1; display: flex; flex-direction: column; gap: 3px; }
+    .lib-card-name { font-size: 11px; font-weight: 600; color: var(--text-1); }
+    .lib-card-meta { display: flex; align-items: center; justify-content: space-between; gap: 4px; }
+    .lib-card-cat  { font-size: 9px; font-weight: 500; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.05em; }
+    .lib-card-dims { font-size: 9px; color: var(--text-3); font-family: ui-monospace, monospace; }
+
+    .lib-card-add {
+      margin-top: 4px; width: 100%; background: var(--blue); border: none; border-radius: 4px;
+      color: #fff; font-size: 10px; font-weight: 600; padding: 5px 0;
+      transition: background 0.1s; cursor: pointer;
+    }
+    .lib-card-add:hover   { background: var(--blue-hover); }
+    .lib-card-add:active  { transform: scale(0.98); }
+    .lib-card-add:disabled { opacity: 0.5; cursor: wait; }
+    .lib-card-add:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+
+    .lib-no-build, .lib-empty {
+      font-size: 11px; color: var(--text-2); padding: 16px 4px; text-align: center;
+      line-height: 1.5; margin: 0;
+    }
 
     /* ── Section blocks ──────────────────────────────────────────────────── */
 
@@ -1528,6 +1591,11 @@
             <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
           </svg>
         </button>
+        <button type="button" class="tab-btn" data-tab="library" id="tab-library" aria-label="Library" title="Library">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <rect width="7" height="18" x="3" y="3" rx="1"/><rect width="7" height="18" x="14" y="3" rx="1"/>
+          </svg>
+        </button>
       </div>
       <div class="panel-header-actions">
         <button type="button" class="panel-close" id="panel-close" aria-label="Close panel">✕</button>
@@ -1838,6 +1906,28 @@
             </svg>
           </button>
         </div>
+      </div>
+    </div>
+
+    <div class="tab-body" data-tab="library" id="library-panel">
+      <div class="library-toolbar">
+        <input type="search" id="lib-search" class="lib-search-input"
+               placeholder="Search components…" autocomplete="off" aria-label="Search components">
+      </div>
+      <div class="lib-pills" id="lib-pills" role="group" aria-label="Category filter">
+        <button type="button" class="lib-pill lib-pill--active" data-cat="">All</button>
+        <button type="button" class="lib-pill" data-cat="Sensor">Sensor</button>
+        <button type="button" class="lib-pill" data-cat="Actuator">Actuator</button>
+        <button type="button" class="lib-pill" data-cat="MCU">MCU</button>
+        <button type="button" class="lib-pill" data-cat="Power">Power</button>
+        <button type="button" class="lib-pill" data-cat="Structural">Structural</button>
+      </div>
+      <div class="sidebar-scroll lib-scroll">
+        <p id="lib-no-build" class="lib-no-build" hidden>
+          Create or load a robot in the Build tab first.
+        </p>
+        <div class="lib-grid" id="lib-grid"></div>
+        <p class="lib-empty" id="lib-empty" hidden>No components match.</p>
       </div>
     </div>
 

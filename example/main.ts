@@ -3,6 +3,8 @@ import { URDFEditorController } from './editor.js';
 import { URDFBuildController, CHASSIS_DEFAULTS, WHEEL_DEFAULTS, COMPONENT_CATALOG } from './build.js';
 import type { Component as BuildComponent } from './build.js';
 import type { GestureController } from './gesture.js';
+import { LIBRARY } from '../src/generators/components/index.js';
+import type { LibraryEntry } from '../src/generators/components/index.js';
 import { Raycaster, Vector2, Vector3, Plane, GridHelper } from 'three';
 
 /** Typed shorthand for getElementById with a cast. */
@@ -40,18 +42,28 @@ requestAnimationFrame(() => viewer.scene.add(_buildGrid));
 $('tab-robot').addEventListener('click', () => {
     editorCtrl.close();
     buildCtrl.close();
+    document.body.classList.remove('library-open');
     _buildGrid.visible = false;
 });
 $('tab-editor').addEventListener('click', () => {
     buildCtrl.close();
+    document.body.classList.remove('library-open');
     editorCtrl.open();
     _buildGrid.visible = false;
 });
 $('tab-build').addEventListener('click', () => {
     editorCtrl.close();
+    document.body.classList.remove('library-open');
     buildCtrl.open();
     _buildGrid.visible = true;
     _buildGrid.position.y = viewer.shadowPlane.position.y;
+});
+$('tab-library').addEventListener('click', () => {
+    editorCtrl.close();
+    buildCtrl.close();
+    _buildGrid.visible = false;
+    document.body.classList.add('library-open');
+    buildLibraryGrid();
 });
 
 const ignoreLimitsEl  = $<HTMLInputElement>('ignore-limits');
@@ -93,7 +105,18 @@ async function loadViaBrowserAssembly(robot: RobotConfig): Promise<void> {
 
     clearBuildUI();
     const restored = buildCtrl.restore();
-    for (const { id, type } of restored) renderComponentItem(id, type, buildCtrl.getComponentData(id));
+    for (const { id, type } of restored) {
+        const def = COMPONENT_CATALOG[type];
+        if (def?.geomType === 'mesh') {
+            const libEntry = LIBRARY.find(e => e.id === type);
+            if (libEntry) {
+                libEntry.factory()
+                    .then(({ generate }) => buildCtrl.restoreMeshBlob(id, generate()))
+                    .catch(err => console.warn('[restore] mesh regen failed for', id, err));
+            }
+        }
+        renderComponentItem(id, type, buildCtrl.getComponentData(id));
+    }
 
     if (restored.length > 0) syncSlidersFromController();
     refreshPaletteCounts();
@@ -667,6 +690,11 @@ const buildActiveNameEl     = $('build-active-name');
 const buildClearCustomBtn   = $<HTMLButtonElement>('build-clear-custom');
 const buildShortcutsToggle  = $<HTMLButtonElement>('build-shortcuts-toggle');
 const buildShortcutsEl      = $('build-shortcuts');
+const libSearchEl           = $<HTMLInputElement>('lib-search');
+const libPillsEl            = $('lib-pills');
+const libGridEl             = $('lib-grid');
+const libNoBuildEl          = $('lib-no-build');
+const libEmptyEl            = $('lib-empty');
 const buildCompCountEl      = $('build-comp-count');
 const buildCompEmptyEl      = $('build-comp-empty');
 
@@ -1297,3 +1325,103 @@ viewer.renderer.domElement.addEventListener('pointermove', (e: PointerEvent) => 
 viewer.renderer.domElement.addEventListener('pointerleave', () => {
     _hoverTip.style.display = 'none';
 });
+
+// ── Library tab ───────────────────────────────────────────────────────────────
+
+const CATEGORY_ICON: Record<string, string> = {
+    Sensor: '📡', Actuator: '⚙️', MCU: '💾', Power: '🔋', Structural: '🧱',
+};
+
+let _libActiveCat = '';
+
+function buildLibraryGrid(): void {
+    const hasBuild = buildCtrl.isActive;
+    const query    = libSearchEl.value.trim().toLowerCase();
+
+    libNoBuildEl.hidden = hasBuild;
+
+    const entries = LIBRARY.filter(e => {
+        if (_libActiveCat && e.category !== _libActiveCat) return false;
+        if (query && !e.label.toLowerCase().includes(query)
+                  && !e.description.toLowerCase().includes(query)) return false;
+        return true;
+    });
+
+    libGridEl.innerHTML = '';
+    libEmptyEl.hidden = entries.length > 0;
+    for (const entry of entries) libGridEl.appendChild(createLibCard(entry, hasBuild));
+}
+
+function createLibCard(entry: LibraryEntry, hasBuild: boolean): HTMLElement {
+    const card = document.createElement('div');
+    card.className = 'lib-card';
+
+    const thumb = document.createElement('div');
+    thumb.className = 'lib-thumb';
+    thumb.style.background = entry.cssColor + '33';
+    thumb.style.borderBottom = `2px solid ${entry.cssColor}`;
+    thumb.textContent = CATEGORY_ICON[entry.category] ?? '📦';
+
+    const info = document.createElement('div');
+    info.className = 'lib-card-info';
+
+    const name = document.createElement('div');
+    name.className = 'lib-card-name';
+    name.textContent = entry.label;
+    name.title = entry.description;
+
+    const meta = document.createElement('div');
+    meta.className = 'lib-card-meta';
+    const cat  = Object.assign(document.createElement('span'), { className: 'lib-card-cat',  textContent: entry.category });
+    const dims = Object.assign(document.createElement('span'), { className: 'lib-card-dims', textContent: entry.dims });
+    meta.append(cat, dims);
+
+    const addBtn = document.createElement('button');
+    addBtn.type = 'button';
+    addBtn.className = 'lib-card-add';
+    addBtn.textContent = 'Add to Build';
+    addBtn.disabled = !hasBuild;
+    addBtn.addEventListener('click', () => void handleLibraryAdd(entry, addBtn));
+
+    info.append(name, meta, addBtn);
+    card.append(thumb, info);
+    return card;
+}
+
+async function handleLibraryAdd(entry: LibraryEntry, btn: HTMLButtonElement): Promise<void> {
+    if (!buildCtrl.isActive) return;
+    const origText = btn.textContent ?? 'Add to Build';
+    btn.disabled = true;
+    btn.textContent = 'Generating…';
+    try {
+        const { generate } = await entry.factory();
+        const stl = generate();
+        const id = buildCtrl.addMeshComponent(entry.id, stl);
+        addOptionToParentSelects(id);
+        renderComponentItem(id, entry.id, buildCtrl.getComponentData(id));
+        refreshPaletteCounts();
+        $<HTMLButtonElement>('tab-build').click();
+        buildComponentsListEl
+            .querySelector<HTMLElement>(`[data-id="${id}"]`)
+            ?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    } catch (err) {
+        console.error('[Library] generate failed:', err);
+        btn.textContent = 'Error';
+        setTimeout(() => { btn.textContent = origText; btn.disabled = !buildCtrl.isActive; }, 2000);
+        return;
+    }
+    btn.textContent = origText;
+    btn.disabled = false;
+}
+
+libSearchEl.addEventListener('input', buildLibraryGrid);
+
+for (const pill of libPillsEl.querySelectorAll<HTMLButtonElement>('.lib-pill')) {
+    pill.addEventListener('click', () => {
+        for (const p of libPillsEl.querySelectorAll<HTMLButtonElement>('.lib-pill'))
+            p.classList.remove('lib-pill--active');
+        pill.classList.add('lib-pill--active');
+        _libActiveCat = pill.dataset.cat ?? '';
+        buildLibraryGrid();
+    });
+}

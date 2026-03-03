@@ -34,8 +34,10 @@ export interface ComponentDef {
     label:       string;
     color:       string;              // URDF rgba string
     defaultZ:    number;              // metres
-    geomType:    'box' | 'cylinder';
-    defaultDims: number[];            // [w,d,h] for box · [r,l] for cylinder
+    geomType:    'box' | 'cylinder' | 'mesh';
+    defaultDims: number[];            // [w,d,h] for box · [r,l] for cylinder · bounding box for mesh
+    category?:   string;
+    cssColor?:   string;
 }
 
 export const COMPONENT_CATALOG: Record<string, ComponentDef> = {
@@ -79,6 +81,41 @@ export const COMPONENT_CATALOG: Record<string, ComponentDef> = {
         label: 'Box',         color: '0.65 0.65 0.65 1.00',
         defaultZ: 0.020, geomType: 'box', defaultDims: [0.040, 0.040, 0.020],
     },
+    hcsr04: {
+        label: 'HC-SR04',     color: '0.20 0.45 0.90 1.00',
+        defaultZ: 0.015, geomType: 'mesh', defaultDims: [0.045, 0.020, 0.015],
+        category: 'Sensor', cssColor: '#3373e5',
+    },
+    l298n: {
+        label: 'L298N',       color: '0.24 0.48 0.84 1.00',
+        defaultZ: 0.005, geomType: 'mesh', defaultDims: [0.043, 0.043, 0.020],
+        category: 'Actuator', cssColor: '#3d7ad6',
+    },
+    esp32cam_lib: {
+        label: 'ESP32-CAM',   color: '0.00 0.45 0.20 1.00',
+        defaultZ: 0.005, geomType: 'mesh', defaultDims: [0.041, 0.027, 0.013],
+        category: 'MCU', cssColor: '#1a7a3c',
+    },
+    tt_motor: {
+        label: 'TT Motor',    color: '0.83 0.63 0.09 1.00',
+        defaultZ: 0.011, geomType: 'mesh', defaultDims: [0.036, 0.018, 0.022],
+        category: 'Actuator', cssColor: '#c89a14',
+    },
+    sg90: {
+        label: 'SG90',        color: '0.90 0.50 0.15 1.00',
+        defaultZ: 0.012, geomType: 'mesh', defaultDims: [0.022, 0.012, 0.023],
+        category: 'Actuator', cssColor: '#e07810',
+    },
+    arduino_nano: {
+        label: 'Arduino Nano', color: '0.00 0.50 0.30 1.00',
+        defaultZ: 0.005, geomType: 'mesh', defaultDims: [0.043, 0.018, 0.002],
+        category: 'MCU', cssColor: '#006e33',
+    },
+    mpu6050: {
+        label: 'MPU-6050',   color: '0.55 0.35 0.80 1.00',
+        defaultZ: 0.005, geomType: 'mesh', defaultDims: [0.020, 0.020, 0.002],
+        category: 'Sensor', cssColor: '#7a52cc',
+    },
 };
 
 // ── Internals ──────────────────────────────────────────────────────────────
@@ -120,6 +157,7 @@ export class URDFBuildController {
 
     private _components   = new Map<string, Component>();
     private _compCounters = new Map<string, number>();
+    private _meshBlobs    = new Map<string, string>();   // componentId → blobUrl#id.stl
     private _isCustom     = false;
 
     // Inline geometry patches (no STL needed — primitive shapes)
@@ -159,6 +197,8 @@ export class URDFBuildController {
 
         for (const url of this._stlBlobs.values()) URL.revokeObjectURL(url.split('#')[0]);
         this._stlBlobs.clear();
+        for (const url of this._meshBlobs.values()) URL.revokeObjectURL(url.split('#')[0]);
+        this._meshBlobs.clear();
         this._jointZPatches.clear();
         this._components.clear();
         this._compCounters.clear();
@@ -186,6 +226,8 @@ export class URDFBuildController {
 
         for (const url of this._stlBlobs.values()) URL.revokeObjectURL(url.split('#')[0]);
         this._stlBlobs.clear();
+        for (const url of this._meshBlobs.values()) URL.revokeObjectURL(url.split('#')[0]);
+        this._meshBlobs.clear();
         this._jointZPatches.clear();
         this._components.clear();
         this._compCounters.clear();
@@ -264,8 +306,41 @@ export class URDFBuildController {
         return id;
     }
 
+    addMeshComponent(type: string, stl: ArrayBuffer): string {
+        this._pushUndo();
+        const n  = (this._compCounters.get(type) ?? 0) + 1;
+        this._compCounters.set(type, n);
+        const id = `${type}_${n}`;
+        const base = URL.createObjectURL(new Blob([stl], { type: 'application/octet-stream' }));
+        this._meshBlobs.set(id, `${base}#${id}.stl`);
+        const def = COMPONENT_CATALOG[type];
+        this._components.set(id, {
+            type, x: 0, y: 0, z: def?.defaultZ ?? 0.020,
+            rx: 0, ry: 0, rz: 0,
+            dims:       [...(def?.defaultDims ?? [0.040, 0.040, 0.020])],
+            jointType:  'fixed',
+            axis:       [0, 0, 1],
+            limitLower: -1.5708,
+            limitUpper:  1.5708,
+            parent:     'base_link',
+        });
+        this._reload();
+        return id;
+    }
+
+    restoreMeshBlob(id: string, stl: ArrayBuffer): void {
+        if (!this._components.has(id)) return;
+        const old = this._meshBlobs.get(id);
+        if (old) URL.revokeObjectURL(old.split('#')[0]);
+        const base = URL.createObjectURL(new Blob([stl], { type: 'application/octet-stream' }));
+        this._meshBlobs.set(id, `${base}#${id}.stl`);
+        this._reload();
+    }
+
     removeComponent(id: string): void {
         this._pushUndo();
+        const meshUrl = this._meshBlobs.get(id);
+        if (meshUrl) { URL.revokeObjectURL(meshUrl.split('#')[0]); this._meshBlobs.delete(id); }
         this._components.delete(id);
         this._reload();
     }
@@ -357,6 +432,8 @@ export class URDFBuildController {
 
         for (const url of this._stlBlobs.values()) URL.revokeObjectURL(url.split('#')[0]);
         this._stlBlobs.clear();
+        for (const url of this._meshBlobs.values()) URL.revokeObjectURL(url.split('#')[0]);
+        this._meshBlobs.clear();
 
         try { localStorage.removeItem(`urdf-build-${this._robotName}`); } catch { /**/ }
 
@@ -426,17 +503,36 @@ export class URDFBuildController {
         btn.textContent = 'Exporting…';
         btn.disabled = true;
         try {
-            const xml      = this._buildXML();
+            // Start with raw XML (blob URLs for mesh components, relative names for STL blobs)
+            let xml = this._buildXML();
+
+            // Replace mesh blob URLs with their short relative names (e.g. "hcsr04_1.stl")
+            for (const [, blobUrlWithHash] of this._meshBlobs) {
+                const shortName = blobUrlWithHash.split('#')[1];
+                if (shortName) xml = xml.replaceAll(blobUrlWithHash, shortName);
+            }
+
+            // Now all filenames are relative — extract them (blob URLs excluded by [^/"]+)
             const stlNames = new Set<string>(
-                [...xml.matchAll(/filename="([^"]+\.stl)"/g)].map(m => m[1])
+                [...xml.matchAll(/filename="([^/"]+\.stl)"/g)].map(m => m[1])
             );
+
+            // Also add mesh blob names in case any weren't found above
+            for (const [, url] of this._meshBlobs) {
+                const name = url.split('#')[1];
+                if (name) stlNames.add(name);
+            }
 
             const files: Record<string, Uint8Array> = {};
             for (const name of stlNames) {
-                const url = this._stlBlobs.has(name)
-                    ? this._stlBlobs.get(name)!.split('#')[0]
-                    : `${this._dir}/${name}`;
-                files[name] = new Uint8Array(await fetch(url).then(r => r.arrayBuffer()));
+                let fetchUrl: string;
+                if (this._stlBlobs.has(name)) {
+                    fetchUrl = this._stlBlobs.get(name)!.split('#')[0];
+                } else {
+                    const meshEntry = [...this._meshBlobs.values()].find(v => v.endsWith(`#${name}`));
+                    fetchUrl = meshEntry ? meshEntry.split('#')[0] : `${this._dir}/${name}`;
+                }
+                files[name] = new Uint8Array(await fetch(fetchUrl).then(r => r.arrayBuffer()));
             }
             files[`${this._robotName}.urdf`] = new TextEncoder().encode(xml);
 
@@ -536,16 +632,22 @@ export class URDFBuildController {
         const parts = [...this._components.entries()]
             .map(([id, c]) => {
                 const def  = COMPONENT_CATALOG[c.type];
-                const geom = def.geomType === 'cylinder'
-                    ? `<cylinder radius="${c.dims[0].toFixed(4)}" length="${c.dims[1].toFixed(4)}"/>`
-                    : `<box size="${c.dims[0].toFixed(4)} ${c.dims[1].toFixed(4)} ${c.dims[2].toFixed(4)}"/>`;
+                let geom: string;
+                if (def?.geomType === 'mesh') {
+                    const blobUrl = this._meshBlobs.get(id) ?? `${id}.stl`;
+                    geom = `<mesh filename="${blobUrl}"/>`;
+                } else if (def?.geomType === 'cylinder') {
+                    geom = `<cylinder radius="${c.dims[0].toFixed(4)}" length="${c.dims[1].toFixed(4)}"/>`;
+                } else {
+                    geom = `<box size="${c.dims[0].toFixed(4)} ${c.dims[1].toFixed(4)} ${c.dims[2].toFixed(4)}"/>`;
+                }
                 const axisXml  = c.jointType !== 'fixed'
                     ? `\n    <axis xyz="${c.axis[0]} ${c.axis[1]} ${c.axis[2]}"/>`
                     : '';
                 const limitXml = (c.jointType === 'revolute' || c.jointType === 'prismatic')
                     ? `\n    <limit lower="${c.limitLower.toFixed(4)}" upper="${c.limitUpper.toFixed(4)}" effort="1" velocity="1"/>`
                     : '';
-                return `\n  <link name="${id}">\n    <visual>\n      <geometry>${geom}</geometry>\n      <material name="${id}_mat"><color rgba="${def.color}"/></material>\n    </visual>\n  </link>\n  <joint name="${id}_joint" type="${c.jointType}">\n    <parent link="${c.parent}"/>\n    <child link="${id}"/>\n    <origin xyz="${c.x.toFixed(4)} ${c.y.toFixed(4)} ${c.z.toFixed(4)}" rpy="${c.rx.toFixed(4)} ${c.ry.toFixed(4)} ${c.rz.toFixed(4)}"/>${axisXml}${limitXml}\n  </joint>`;
+                return `\n  <link name="${id}">\n    <visual>\n      <geometry>${geom}</geometry>\n      <material name="${id}_mat"><color rgba="${def?.color ?? '0.65 0.65 0.65 1.00'}"/></material>\n    </visual>\n  </link>\n  <joint name="${id}_joint" type="${c.jointType}">\n    <parent link="${c.parent}"/>\n    <child link="${id}"/>\n    <origin xyz="${c.x.toFixed(4)} ${c.y.toFixed(4)} ${c.z.toFixed(4)}" rpy="${c.rx.toFixed(4)} ${c.ry.toFixed(4)} ${c.rz.toFixed(4)}"/>${axisXml}${limitXml}\n  </joint>`;
             })
             .join('\n');
         return xml.replace('</robot>', `${parts}\n</robot>`);
@@ -597,6 +699,9 @@ export class URDFBuildController {
 
         for (const url of this._stlBlobs.values()) URL.revokeObjectURL(url.split('#')[0]);
         this._stlBlobs.clear();
+        // TODO: mesh blobs are lost on undo/redo — caller must re-run generators for mesh components
+        for (const url of this._meshBlobs.values()) URL.revokeObjectURL(url.split('#')[0]);
+        this._meshBlobs.clear();
         this._storeSTLBlob('chassis.stl', generateChassis(this._chassisParams));
         this._storeSTLBlob('wheel.stl',   generateWheel(this._wheelParams));
 
