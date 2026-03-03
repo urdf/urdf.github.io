@@ -1,44 +1,52 @@
 # @urdf/loader
 
-Parse and render URDF robot models in the browser.
+Visualize, interact with, and build URDF robots in the browser.
 
-**[Live demo →](https://urdf.github.io)**
-
----
-
-## Features
-
-- **Full URDF support** — links, joints (fixed, revolute, prismatic, continuous, planar, floating), mimic joints, materials, and primitives
-- **Mesh formats** — STL, Collada (DAE), and GLTF/GLB out of the box
-- **Web component** — drop `<urdf-viewer>` into any page, no framework required
-- **Interactive** — drag joints directly in the viewport; joint sliders included in the viewer element
-- **TypeScript** — full types, no separate `.d.ts` files
-- **Tree-shakeable** — import only what you need
+**[Try the live demo →](https://urdf.github.io)**
 
 ---
 
-## Install
+## Demo app — urdf.github.io
+
+A full robot development environment that runs entirely in the browser.
+
+**AI robot builder** — describe what you want and the AI assembles the URDF for you, using tool calls to add components, set joint types, adjust positions, and configure limits. No XML required.
+
+**URDF editor** — edit raw URDF XML with an AI pair programmer. Ask it to move a joint, add a link, or explain what a part does. Changes reflect live in the viewer.
+
+**Gesture control** — control the viewer with your hands via MediaPipe: closed fist to orbit, point to select a joint, open palm to reset all joints, two hands to zoom.
+
+**Component library** — drag in pre-built components: HC-SR04 ultrasonic sensor, L298N motor driver, ESP32-CAM, TT Motor, SG90 servo, Arduino Nano, MPU-6050 IMU.
+
+**Parametric builder** — generate a robot chassis, wheels, and caster from sliders. Export as a complete URDF zip.
+
+---
+
+## Library — `@urdf/loader`
+
+Load and render any ROS URDF in your own Three.js app.
 
 ```sh
 npm install @urdf/loader three
 ```
 
----
+- All joint types: fixed, revolute, prismatic, continuous, planar, floating
+- Mesh formats: STL, Collada (DAE), GLTF/GLB
+- Web component — drop `<urdf-viewer>` into any page, no framework needed
+- Drag joints directly in the viewport with `URDFManipulator`
+- Full TypeScript types, tree-shakeable
 
-## Usage
-
-### Loader (headless)
+### Loader
 
 ```ts
 import { URDFLoader } from '@urdf/loader';
 
 const loader = new URDFLoader();
-loader.packages = '/path/to/ros/packages'; // or a { name: path } map
+loader.packages = '/path/to/ros/packages'; // or { name: path } map
 
 const robot = await loader.load('/path/to/robot.urdf');
 scene.add(robot);
 
-// Move a joint
 robot.setJointValue('shoulder_pan_joint', Math.PI / 4);
 ```
 
@@ -67,7 +75,7 @@ robot.setJointValue('shoulder_pan_joint', Math.PI / 4);
   customElements.define('urdf-viewer', URDFManipulator);
 </script>
 
-<!-- Same attributes as URDFViewer; adds mouse drag to move joints -->
+<!-- Same attributes as URDFViewer; adds mouse/touch drag to move joints -->
 <urdf-viewer urdf="/robot.urdf" style="width:100%;height:600px;"></urdf-viewer>
 ```
 
@@ -80,20 +88,15 @@ robot.setJointValue('shoulder_pan_joint', Math.PI / 4);
 ```ts
 const loader = new URDFLoader();
 
-// Options (set on the instance or passed per-call)
-loader.packages      = '';        // string | { pkg: path } | (pkg) => path
-loader.workingPath   = '';        // prepended to relative mesh paths
-loader.parseVisual   = true;
+loader.packages       = '';     // string | { pkg: path } | (pkg) => path
+loader.workingPath    = '';     // prepended to relative mesh paths
+loader.parseVisual    = true;
 loader.parseCollision = false;
-loader.fetchOptions  = {};        // passed to fetch()
+loader.fetchOptions   = {};     // passed to fetch()
 
-// Override mesh loading (return null to skip)
-loader.loadMesh = async (path, manager) => { ... };
+loader.loadMesh = async (path, manager) => { ... }; // override mesh loading
 
-// Load from URL
 const robot = await loader.load(url, options?);
-
-// Parse from string/Document
 const robot = loader.parse(xmlString, options?);
 ```
 
@@ -102,12 +105,11 @@ const robot = loader.parse(xmlString, options?);
 Extends `THREE.Object3D`. Returned by `loader.load()`.
 
 ```ts
-robot.robotName                        // string
-robot.joints                           // Record<string, URDFJoint>
-robot.links                            // Record<string, URDFLink>
-robot.frames                           // all named frames
-
-robot.setJointValue(name, value)       // → boolean (changed?)
+robot.robotName                   // string
+robot.joints                      // Record<string, URDFJoint>
+robot.links                       // Record<string, URDFLink>
+robot.frames                      // all named frames
+robot.setJointValue(name, value)  // → boolean (changed?)
 ```
 
 ### `URDFJoint`
@@ -124,13 +126,13 @@ joint.mimicJoints  // URDFMimicJoint[]
 joint.setJointValue(...values)  // → boolean
 ```
 
-### `URDFViewer` (web component)
+### `URDFViewer` attributes
 
 | Attribute | Type | Default | Description |
 |---|---|---|---|
 | `urdf` | string | `''` | URL of the URDF file |
 | `package` | string | `''` | Package path or `"name: path, ..."` map |
-| `up` | string | `'+Z'` | Up axis (`+Z`, `-Z`, `+Y`, `-Y`, `+X`, `-X`) |
+| `up` | string | `'+Z'` | Up axis: `+Z`, `-Z`, `+Y`, `-Y`, `+X`, `-X` |
 | `ignore-limits` | boolean | false | Ignore joint limits |
 | `show-collision` | boolean | false | Show collision geometry |
 | `display-shadow` | boolean | false | Cast shadows |
@@ -138,7 +140,7 @@ joint.setJointValue(...values)  // → boolean
 
 | Event | Detail | Description |
 |---|---|---|
-| `urdf-change` | — | A new URDF started loading |
+| `urdf-change` | — | New URDF started loading |
 | `urdf-processed` | — | Robot fully loaded |
 | `angle-change` | joint name | A joint value changed |
 | `ignore-limits-change` | — | `ignore-limits` toggled |
@@ -152,7 +154,7 @@ viewer.setJointValue(name, value)
 
 ### `URDFManipulator` (extends `URDFViewer`)
 
-Adds mouse/touch drag to rotate or slide joints directly in the viewport.
+Adds mouse/touch drag to rotate or slide joints in the viewport.
 
 | Attribute | Default | Description |
 |---|---|---|
@@ -171,7 +173,7 @@ Adds mouse/touch drag to rotate or slide joints directly in the viewport.
 ## Development
 
 ```sh
-make dev          # start dev server (example app at localhost:5173)
+make dev          # start dev server (localhost:5173)
 make build        # build the npm library → dist/
 make build-site   # build the demo site → docs/
 make lint         # type-check
