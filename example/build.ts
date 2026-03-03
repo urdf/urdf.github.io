@@ -87,9 +87,9 @@ export const COMPONENT_CATALOG: Record<string, ComponentDef> = {
         category: 'Sensor', cssColor: '#3373e5',
     },
     l298n: {
-        label: 'L298N',       color: '0.24 0.48 0.84 1.00',
+        label: 'L298N',       color: '0.75 0.12 0.12 1.00',
         defaultZ: 0.005, geomType: 'mesh', defaultDims: [0.043, 0.043, 0.020],
-        category: 'Actuator', cssColor: '#3d7ad6',
+        category: 'Actuator', cssColor: '#c01f1f',
     },
     esp32cam_lib: {
         label: 'ESP32-CAM',   color: '0.00 0.45 0.20 1.00',

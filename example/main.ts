@@ -899,6 +899,7 @@ function refreshPaletteCounts(): void {
 }
 
 for (const [type, def] of Object.entries(COMPONENT_CATALOG)) {
+    if (def.geomType === 'mesh') continue;  // mesh types added via Library tab only
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'robot-btn';

@@ -22,7 +22,7 @@ export const LIBRARY: LibraryEntry[] = [
     {
         id: 'l298n', label: 'L298N', category: 'Actuator',
         description: 'Dual H-bridge motor driver', dims: '43×43×20 mm',
-        cssColor: '#3d7ad6', urdfRgba: '0.24 0.48 0.84 1.00', defaultZ: 0.005,
+        cssColor: '#c01f1f', urdfRgba: '0.75 0.12 0.12 1.00', defaultZ: 0.005,
         factory: () => import('./l298n.js').then(m => ({ generate: m.generateL298n })),
     },
     {
