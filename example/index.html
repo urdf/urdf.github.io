@@ -98,7 +98,7 @@
 
     #chat-panel {
       position: fixed; right: 0; top: 0; height: 100dvh;
-      width: 300px; z-index: 200;
+      width: var(--chat-w, 360px); z-index: 200;
       background: var(--surface); border-left: 1px solid var(--border);
       display: flex; flex-direction: column; overflow: hidden;
       transform: translateX(100%);
@@ -827,7 +827,9 @@
     }
 
     #control-panel.open.pinned ~ main { left: var(--panel-w, 380px); }
-    #chat-panel.open.pinned ~ main    { right: 300px; }
+    #chat-panel.open.pinned ~ main    { right: var(--chat-w, 360px); }
+
+    #chat-panel .panel-resize-handle { left: 0; right: auto; }
 
     urdf-viewer {
       width: 100%;
@@ -1987,6 +1989,9 @@
   </aside>
 
   <aside id="chat-panel" aria-label="AI Chat">
+    <div class="panel-resize-handle" role="separator" aria-label="Resize chat panel"
+         aria-orientation="vertical" aria-valuenow="360" aria-valuemin="260"
+         aria-valuemax="600" tabindex="0"></div>
     <div class="chat-header">
       <span>AI Assistant</span>
       <button type="button" class="chat-header-close" id="chat-panel-close" aria-label="Close chat">✕</button>
@@ -2114,9 +2119,6 @@
     chatClose.addEventListener('click', () => closePanel(chatPanel));
     backdrop.addEventListener('click', () => { if (_mobilePanel) closePanel(_mobilePanel); });
 
-    // Open control panel by default on desktop
-    if (isDesktop()) openPanel(ctrlPanel);
-
     // ── Left panel resize (right-edge drag, desktop only) ────────────────────
 
     const PANEL_W_KEY     = 'urdf-panel-w';
@@ -2199,6 +2201,77 @@
         const cur = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--panel-w'), 10);
         if (cur > maxW()) applyWidth(cur);
       }, 50);
+    });
+
+    // ── Chat panel resize (left-edge drag, desktop only) ─────────────────────
+
+    const CHAT_W_KEY     = 'urdf-chat-w';
+    const CHAT_W_DEFAULT = 360;
+    const MIN_CHAT_W     = 260;
+
+    const chatResizeHandle = chatPanel.querySelector('.panel-resize-handle');
+
+    function maxChatW() { return Math.min(600, window.innerWidth * 0.6); }
+
+    function applyChatWidth(w) {
+      const clamped = Math.max(MIN_CHAT_W, Math.min(maxChatW(), w));
+      document.documentElement.style.setProperty('--chat-w', clamped + 'px');
+      chatResizeHandle.setAttribute('aria-valuenow', Math.round(clamped));
+      return clamped;
+    }
+
+    function saveChatWidth() {
+      try { localStorage.setItem(CHAT_W_KEY, chatPanel.offsetWidth); } catch {}
+    }
+
+    if (isDesktop()) {
+      const saved = parseInt(localStorage.getItem(CHAT_W_KEY), 10);
+      if (saved >= MIN_CHAT_W) applyChatWidth(saved);
+    }
+
+    chatResizeHandle.addEventListener('pointerdown', e => {
+      e.preventDefault();
+      const startX = e.clientX;
+      const startW = chatPanel.offsetWidth;
+      chatResizeHandle.setPointerCapture(e.pointerId);
+      chatResizeHandle.classList.add('dragging');
+      mainEl.style.transition = 'none';
+
+      function onMove(ev) {
+        // Right panel: drag left = wider (negative delta)
+        let w = startW - (ev.clientX - startX);
+        if (Math.abs(w - CHAT_W_DEFAULT) <= SNAP_RADIUS) w = CHAT_W_DEFAULT;
+        const applied = applyChatWidth(w);
+        widthTooltip.textContent = Math.round(applied) + 'px';
+        widthTooltip.style.left    = (ev.clientX + 12) + 'px';
+        widthTooltip.style.top     = (ev.clientY - 20) + 'px';
+        widthTooltip.style.display = 'block';
+      }
+      function onUp() {
+        chatResizeHandle.classList.remove('dragging');
+        mainEl.style.transition = '';
+        widthTooltip.style.display = 'none';
+        chatResizeHandle.removeEventListener('pointermove', onMove);
+        chatResizeHandle.removeEventListener('pointerup', onUp);
+        saveChatWidth();
+      }
+      chatResizeHandle.addEventListener('pointermove', onMove);
+      chatResizeHandle.addEventListener('pointerup', onUp);
+    });
+
+    chatResizeHandle.addEventListener('dblclick', () => { applyChatWidth(CHAT_W_DEFAULT); saveChatWidth(); });
+
+    chatResizeHandle.addEventListener('keydown', e => {
+      const cur = chatPanel.offsetWidth;
+      let next;
+      switch (e.key) {
+        case 'ArrowLeft':  next = cur + 16; break;
+        case 'ArrowRight': next = cur - 16; break;
+        case 'Home':       next = MIN_CHAT_W;  break;
+        case 'End':        next = maxChatW();  break;
+        default: return;
+      }
+      e.preventDefault(); applyChatWidth(next); saveChatWidth();
     });
 
     // Convert vertical wheel scroll to horizontal on the editor tab bar
