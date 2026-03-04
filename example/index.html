@@ -397,7 +397,7 @@
     .build-comp-advanced > summary::-webkit-details-marker { display: none; }
     .build-comp-advanced > summary::after {
       content: '›';
-      font-size: 0.75rem;
+      font-size: 0.875rem;
       transition: transform 0.15s;
       flex-shrink: 0;
     }
@@ -726,6 +726,8 @@
       overflow-y: auto;
       scrollbar-width: thin;
       scrollbar-color: rgba(100, 116, 139, 0.4) transparent;
+      mask-image: linear-gradient(to bottom, black calc(100% - 36px), transparent 100%);
+      -webkit-mask-image: linear-gradient(to bottom, black calc(100% - 36px), transparent 100%);
     }
 
     .sidebar-scroll::-webkit-scrollbar { width: 6px; }
@@ -1134,7 +1136,7 @@
     }
 
     #gesture-section-chevron {
-      font-size: 0.6875rem; color: var(--text-3);
+      font-size: 0.875rem; color: var(--text-3);
       transition: transform 0.15s; flex-shrink: 0;
     }
 
@@ -1288,7 +1290,7 @@
       padding: 10px 10px 6px;
       display: flex;
       flex-direction: column;
-      gap: 6px;
+      gap: 10px;
       min-height: 0;
       scrollbar-width: thin;
       scrollbar-color: rgba(100, 116, 139, 0.4) transparent;
@@ -1372,6 +1374,23 @@
       margin: 6px 0; padding-left: 10px; color: var(--text-2);
     }
 
+    .chat-msg-assistant table {
+      border-collapse: collapse;
+      font-size: 0.75rem;
+      margin: 5px 0;
+      width: 100%;
+    }
+    .chat-msg-assistant th,
+    .chat-msg-assistant td {
+      border: 1px solid var(--border);
+      padding: 3px 7px;
+      text-align: left;
+    }
+    .chat-msg-assistant th {
+      background: var(--surface);
+      font-weight: 600;
+    }
+
     /* ── Tool card ────────────────────────────────────────────────────────── */
 
     .chat-tool-card {
@@ -1379,20 +1398,66 @@
       border: 1px solid var(--border);
       border-radius: 6px;
       background: var(--surface);
-      display: flex; align-items: center; gap: 8px;
-      padding: 4px 10px;
       font-family: ui-monospace, monospace;
       font-size: 0.6875rem;
+      min-width: 0;
+      max-width: 100%;
     }
-
-    .chat-tool-card-name { color: var(--text-2); font-weight: 500; }
-
+    .chat-tool-card > summary {
+      display: flex; align-items: center; gap: 8px;
+      padding: 4px 10px;
+      list-style: none;
+      cursor: default;
+      min-height: 28px;
+    }
+    .chat-tool-card > summary::-webkit-details-marker { display: none; }
+    .chat-tool-card:has(.chat-tool-card-body) > summary { cursor: pointer; }
+    .chat-tool-card:has(.chat-tool-card-body) > summary::after {
+      content: '▸';
+      font-size: 11px;
+      color: var(--text-3);
+      margin-left: auto;
+      flex-shrink: 0;
+    }
+    .chat-tool-card[open]:has(.chat-tool-card-body) > summary::after { content: '▾'; }
+    .chat-tool-card-name { color: var(--text-2); font-weight: 500; flex-shrink: 0; }
+    .chat-tool-card-subtitle {
+      color: var(--text-3);
+      font-size: 0.5625rem;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      flex: 1;
+      min-width: 0;
+    }
+    .chat-tool-card-body {
+      border-top: 1px solid var(--border);
+      padding: 5px 10px;
+      color: var(--text-3);
+      font-size: 0.5625rem;
+      white-space: pre-wrap;
+      word-break: break-all;
+      max-height: 120px;
+      overflow-y: auto;
+      font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+    }
+    .j-dir  { color: var(--text-3); }
+    .j-key  { color: #4da3ff; }
+    .j-str  { color: #86efac; }
+    .j-num  { color: #fbbf24; }
+    .j-kw   { color: #f87171; }
+    @media (prefers-color-scheme: light) {
+      .j-key { color: #0066cc; }
+      .j-str { color: #15803d; }
+      .j-num { color: #b45309; }
+      .j-kw  { color: #dc2626; }
+    }
     .chat-tool-card-status {
       width: 14px; height: 14px;
       display: flex; align-items: center; justify-content: center;
       position: relative;
+      flex-shrink: 0;
     }
-
     .chat-tool-card-status:not(.ok):not(.err)::before {
       content: '';
       position: absolute; width: 10px; height: 10px;
@@ -1401,7 +1466,6 @@
       border-radius: 50%;
       animation: tool-spin 0.7s linear infinite;
     }
-
     @keyframes tool-spin { to { transform: rotate(360deg); } }
     .chat-tool-card-status.ok  { color: var(--blue-text); font-size: 0.75rem; }
     .chat-tool-card-status.err { color: #f44; font-size: 0.75rem; }
@@ -1447,9 +1511,91 @@
       border-radius: 8px;
     }
 
-    .chat-msg-user, .chat-msg-assistant, .chat-tool-card, .chat-spinner {
+    .chat-msg-user, .chat-msg-assistant, .chat-tool-card, .chat-spinner,
+    .chat-recap-card, .chat-action-card, .chat-continue-bubble {
       animation: fadeInUp 0.18s cubic-bezier(0.2, 0.8, 0.2, 1) both;
     }
+
+    /* ── Guide continue button ────────────────────────────────────────────── */
+
+    .chat-continue-bubble {
+      align-self: flex-start;
+      border: 1px solid rgba(0, 122, 255, 0.4);
+      border-radius: 8px;
+      background: var(--blue);
+      color: #fff;
+      font-size: 0.6875rem;
+      font-weight: 500;
+      min-height: 28px;
+      padding: 4px 12px;
+      cursor: pointer;
+      max-width: 100%;
+    }
+    .chat-continue-bubble:hover { background: var(--blue-hover); }
+    .chat-continue-bubble:active { transform: scale(0.97); }
+
+    /* ── Panel recap card ─────────────────────────────────────────────────── */
+
+    .chat-recap-card {
+      align-self: stretch;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-left: 2px solid var(--text-3);
+      border-radius: 6px;
+      padding: 6px 10px;
+      font-size: 0.625rem;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+    .chat-recap-card-title {
+      font-size: 0.625rem; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.06em;
+      color: var(--text-3);
+      margin-bottom: 2px;
+    }
+    .chat-recap-card-row {
+      display: flex; justify-content: space-between;
+      color: var(--text-2);
+    }
+    .chat-recap-card-row span:last-child {
+      color: var(--text-1);
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* ── Panel action card (AI suggestion) ────────────────────────────────── */
+
+    .chat-action-card {
+      align-self: stretch;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-left: 2px solid var(--blue);
+      border-radius: 6px;
+      padding: 8px 10px;
+      font-size: 0.6875rem;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .chat-action-card-title {
+      font-size: 0.625rem; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.06em;
+      color: var(--blue-text);
+    }
+    .chat-action-card-msg { color: var(--text-1); line-height: 1.5; }
+    .chat-action-card-footer { display: flex; gap: 6px; }
+    .chat-action-btn {
+      flex: 1; border: 1px solid var(--border); border-radius: 4px;
+      background: var(--surface-hi); color: var(--text-2);
+      cursor: pointer; font-size: 0.625rem; font-weight: 500;
+      padding: 4px 0; text-align: center;
+    }
+    .chat-action-btn:hover { background: var(--surface-hover); color: var(--text-1); }
+    .chat-action-btn.primary {
+      background: var(--blue-bg); color: var(--blue-text);
+      border-color: rgba(0, 122, 255, 0.3);
+    }
+    .chat-action-btn.primary:hover { background: rgba(0, 122, 255, 0.25); }
 
     /* ── Command autocomplete ────────────────────────────────────────────── */
 
@@ -1589,6 +1735,117 @@
       flex-shrink: 0;
     }
 
+    .chat-model-wrap {
+      flex: 1;
+      position: relative;
+      display: flex;
+      align-items: center;
+      min-width: 0;
+      overflow: hidden;
+    }
+    .chat-model-select {
+      width: 100%;
+      background: none;
+      border: none;
+      color: var(--text-2);
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      cursor: pointer;
+      padding: 0 18px 0 0;
+      appearance: none;
+      -webkit-appearance: none;
+      outline: none;
+    }
+    .chat-model-select:hover,
+    .chat-model-select:focus { color: var(--text-1); }
+    .chat-model-select option { background: var(--surface); color: var(--text-1); }
+    .chat-model-arrow {
+      position: absolute;
+      right: 2px;
+      font-size: 12px;
+      color: var(--text-3);
+      pointer-events: none;
+      line-height: 1;
+    }
+
+    .chat-github-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      padding: 5px 8px 5px 12px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface-hi);
+      gap: 6px 8px;
+      flex-shrink: 0;
+    }
+    .chat-github-note {
+      flex-basis: 100%;
+      font-size: 0.5625rem;
+      color: #fbbf24;
+      margin-top: 1px;
+    }
+    @media (prefers-color-scheme: light) {
+      .chat-github-note { color: #92400e; }
+    }
+    .chat-github-user {
+      font-size: 0.6875rem;
+      color: var(--text-2);
+      flex: 1;
+    }
+    .chat-github-connect,
+    .chat-github-disconnect {
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      background: var(--surface);
+      color: var(--text-2);
+      font-size: 0.625rem;
+      font-weight: 500;
+      padding: 3px 8px;
+      cursor: pointer;
+    }
+    .chat-github-connect:hover { background: var(--blue-bg); color: var(--blue-text); border-color: rgba(0,122,255,0.3); }
+    .chat-github-disconnect:hover { background: var(--surface-hover); color: var(--text-1); }
+
+    .chat-apikey-bar {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 10px;
+      background: var(--surface-hi);
+      flex-shrink: 0;
+    }
+    .chat-apikey-bar input[type=password] {
+      flex: 1;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      color: var(--text-1);
+      font-size: 0.6875rem;
+      padding: 3px 6px;
+      min-width: 0;
+    }
+    .chat-apikey-saved {
+      flex: 1;
+      font-size: 0.6875rem;
+      color: var(--text-2);
+    }
+    .chat-apikey-save,
+    .chat-apikey-remove {
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      background: var(--surface);
+      color: var(--text-2);
+      font-size: 0.6875rem;
+      font-weight: 500;
+      padding: 3px 8px;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+    .chat-apikey-save:hover { background: var(--blue-bg); color: var(--blue-text); border-color: rgba(0,122,255,0.3); }
+    .chat-apikey-remove:hover { background: var(--surface-hover); color: var(--text-1); }
+
     .chat-header-close {
       background: none;
       border: none;
@@ -1694,6 +1951,94 @@
       margin-bottom: 6px; font-size: 0.6875rem; font-weight: 600; color: var(--text-1);
     }
     .build-inspector-title { flex: 1; }
+
+    /* ── Floating control panels ──────────────────────────────────── */
+    #float-panels, #gesture-hint-host { position: fixed; inset: 0; pointer-events: none; z-index: 400; }
+
+    .float-panel {
+      position: absolute;
+      left: 20px; top: 60px;
+      width: 244px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      box-shadow: 0 8px 32px var(--shadow);
+      pointer-events: all;
+      user-select: none;
+      font-size: 0.6875rem;
+      color: var(--text-1);
+    }
+    @supports (backdrop-filter: blur(1px)) {
+      .float-panel {
+        background: rgba(19, 21, 28, 0.72);
+        backdrop-filter: blur(20px) saturate(160%);
+        -webkit-backdrop-filter: blur(20px) saturate(160%);
+      }
+    }
+    @media (prefers-color-scheme: light) {
+      @supports (backdrop-filter: blur(1px)) {
+        .float-panel { background: rgba(255, 255, 255, 0.78); }
+      }
+    }
+    .float-panel-header {
+      display: flex; align-items: center; gap: 6px;
+      padding: 7px 10px;
+      border-bottom: 1px solid var(--border);
+      cursor: grab;
+    }
+    .float-panel-header:active { cursor: grabbing; }
+    .float-panel-grip {
+      display: grid;
+      grid-template-columns: repeat(3, 3px);
+      grid-template-rows: repeat(2, 3px);
+      gap: 2px;
+      flex-shrink: 0;
+    }
+    .float-panel-grip span {
+      width: 3px; height: 3px; border-radius: 50%;
+      background: var(--text-3);
+    }
+    .float-panel-title {
+      flex: 1;
+      font-weight: 600; font-size: 0.625rem;
+      text-transform: uppercase; letter-spacing: 0.06em;
+      color: var(--text-2);
+    }
+    .float-panel-close {
+      background: none; border: none; padding: 0 2px;
+      color: var(--text-3); cursor: pointer; font-size: 15px; line-height: 1;
+    }
+    .float-panel-close:hover { color: var(--text-1); }
+    .float-panel-body { padding: 10px; display: flex; flex-direction: column; gap: 10px; }
+    .float-panel-row-head { display: flex; justify-content: space-between; margin-bottom: 3px; }
+    .float-panel-row-label { font-size: 0.625rem; color: var(--text-2); }
+    .float-panel-row-unit  { font-size: 0.625rem; color: var(--text-3); }
+    .float-panel-row-inputs { display: flex; align-items: center; gap: 6px; }
+    .float-panel-row-inputs input[type=range]  { flex: 1; }
+    .float-panel-row-inputs input[type=number] {
+      width: 44px; text-align: right; padding: 2px 4px;
+      background: var(--surface-hi); border: 1px solid var(--border);
+      border-radius: 4px; color: var(--text-1); font-size: 0.6875rem;
+    }
+    .float-panel-row.fp-gesture-active {
+      border-left: 2px solid #007aff;
+      border-radius: 3px;
+      background: rgba(0,122,255,0.07);
+      padding-left: 5px;
+      margin-left: -7px;
+    }
+
+    /* Detach button inside sidebar section summaries */
+    .build-section-detach {
+      background: none; border: none; padding: 1px 4px;
+      color: var(--text-3); cursor: pointer; font-size: 11px;
+      border-radius: 4px; line-height: 1; flex-shrink: 0;
+      opacity: 0;
+      transition: opacity 0.12s, color 0.12s, background 0.12s;
+    }
+    .build-section > summary:hover .build-section-detach,
+    .build-section > summary:focus-within .build-section-detach { opacity: 1; }
+    .build-section-detach:hover { color: var(--text-1); background: var(--surface-hover); }
   </style>
 </head>
 <body>
@@ -1881,8 +2226,8 @@
         </div>
 
         <div id="build-parametric">
-          <details class="build-section">
-            <summary>Chassis</summary>
+          <details class="build-section" data-panel="chassis">
+            <summary>Chassis <button type="button" class="build-section-detach" title="Open as floating panel">⊡</button></summary>
             <div class="build-section-body">
               <div class="build-param joint">
                 <div class="joint-name">Thickness <span class="unit">mm</span></div>
@@ -1908,8 +2253,8 @@
             </div>
           </details>
 
-          <details class="build-section">
-            <summary>Wheels</summary>
+          <details class="build-section" data-panel="wheels">
+            <summary>Wheels <button type="button" class="build-section-detach" title="Open as floating panel">⊡</button></summary>
             <div class="build-section-body">
               <div class="build-param joint">
                 <div class="joint-name">Radius <span class="unit">mm</span></div>
@@ -1928,8 +2273,8 @@
             </div>
           </details>
 
-          <details class="build-section">
-            <summary>Caster</summary>
+          <details class="build-section" data-panel="caster">
+            <summary>Caster <button type="button" class="build-section-detach" title="Open as floating panel">⊡</button></summary>
             <div class="build-section-body">
               <div class="build-param joint">
                 <div class="joint-name">Radius <span class="unit">mm</span></div>
@@ -1948,8 +2293,8 @@
             </div>
           </details>
 
-          <details class="build-section">
-            <summary>Battery Box</summary>
+          <details class="build-section" data-panel="battery">
+            <summary>Battery Box <button type="button" class="build-section-detach" title="Open as floating panel">⊡</button></summary>
             <div class="build-section-body">
               <div class="build-param joint">
                 <div class="joint-name">Length <span class="unit">mm</span></div>
@@ -1975,8 +2320,8 @@
             </div>
           </details>
 
-          <details class="build-section">
-            <summary>Power Bank</summary>
+          <details class="build-section" data-panel="powerbank">
+            <summary>Power Bank <button type="button" class="build-section-detach" title="Open as floating panel">⊡</button></summary>
             <div class="build-section-body">
               <div class="build-param joint">
                 <div class="joint-name">Radius <span class="unit">mm</span></div>
@@ -2050,9 +2395,21 @@
          aria-orientation="vertical" aria-valuenow="360" aria-valuemin="260"
          aria-valuemax="600" tabindex="0"></div>
     <div class="chat-header">
-      <span>AI Assistant</span>
+      <div class="chat-model-wrap">
+        <select id="chat-model-select" class="chat-model-select" aria-label="AI model">
+          <option value="anthropic:claude-sonnet-4-6">Claude Sonnet 4.6</option>
+          <option value="github:openai/gpt-4.1">GitHub · GPT-4.1</option>
+          <option value="github:openai/gpt-4.1-mini">GitHub · GPT-4.1 mini</option>
+          <option value="github:openai/gpt-4.1-nano">GitHub · GPT-4.1 nano</option>
+          <option value="github:openai/gpt-5">GitHub · GPT-5</option>
+          <option value="github:openai/gpt-5-mini">GitHub · GPT-5 mini</option>
+        </select>
+        <span class="chat-model-arrow" aria-hidden="true">▾</span>
+      </div>
       <button type="button" class="chat-header-close" id="chat-panel-close" aria-label="Close chat">✕</button>
     </div>
+    <div id="chat-github-bar" class="chat-github-bar" hidden></div>
+    <div id="chat-apikey-bar" class="chat-apikey-bar" hidden></div>
     <div id="chat-context-bar" hidden></div>
     <div class="chat-pane">
       <div class="chat-messages" id="chat-messages" aria-live="polite" aria-label="AI conversation"></div>
@@ -2104,6 +2461,8 @@
   </aside>
 
   <main>
+    <div id="float-panels" aria-live="polite"></div>
+    <div id="gesture-hint-host" aria-live="polite"></div>
     <button type="button" class="fab" id="control-panel-toggle" aria-label="Toggle controls">
       <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
         <rect width="18" height="18" x="3" y="3" rx="2"/>

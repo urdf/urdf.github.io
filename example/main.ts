@@ -351,6 +351,7 @@ function selectPart(jointName: string | null): void {
 
     refreshSnippet();
     gestureCtrl?.setSelectedJoint(jointName);
+    document.querySelectorAll<HTMLElement>('.fp-gesture-active').forEach(el => el.classList.remove('fp-gesture-active'));
 
     // In Build tab: surface existing URDF parts as AI context (skip dynamic components).
     if (document.body.classList.contains('build-open')) {
@@ -557,6 +558,24 @@ viewer.addEventListener('joint-mouseout', (e: Event) => {
 function onDwellSelect(clientX: number, clientY: number): void {
     const robotBtn = document.elementFromPoint(clientX, clientY)?.closest<HTMLButtonElement>('.robot-btn');
     if (robotBtn) { robotBtn.click(); return; }
+
+    const fpRow = document.elementFromPoint(clientX, clientY)?.closest<HTMLElement>('[data-fp-row-index]');
+    if (fpRow && gestureCtrl && _floatPanelInitSection) {
+        const def = FLOAT_PANEL_DEFS[_floatPanelInitSection];
+        const ri  = parseInt(fpRow.dataset.fpRowIndex!, 10);
+        const row = def?.rows[ri];
+        if (row) {
+            document.querySelectorAll<HTMLElement>('.fp-gesture-active').forEach(el => el.classList.remove('fp-gesture-active'));
+            fpRow.classList.add('fp-gesture-active');
+            gestureCtrl.setParamCallback((deltaRad: number) => {
+                const next = Math.max(row.min, Math.min(row.max, row.get() + deltaRad * 15));
+                row.set(next);
+                syncSlidersFromController();
+            });
+            return;
+        }
+    }
+
     const opts: PointerEventInit = { clientX, clientY, bubbles: true, pointerId: 1 };
     viewer.dispatchEvent(new PointerEvent('pointerdown', opts));
     viewer.dispatchEvent(new PointerEvent('pointerup', opts));
@@ -590,6 +609,7 @@ gestureToggleBtn.addEventListener('click', async () => {
             }
         },
         onPointerLeave() { _gestureHoverBtn = null; moveSliderToActive(); },
+        onThumbsUp() { chatCtrl?.resumeFromGesture(); },
         onStop() {
             gestureCtrl = null;
             gestureToggleBtn.classList.remove('active');
@@ -763,6 +783,270 @@ function syncSlidersFromController(): void {
         const entry = buildCtrl.getComponentEntries().find(e => e.id === _buildSelCompId);
         if (entry) renderInspector(_buildSelCompId, entry.type);
     }
+    _floatPanelSync?.();
+}
+
+// ── Floating control panels ────────────────────────────────────────────────
+
+interface FPRow {
+    label: string; unit: string;
+    min: number; max: number; step: number;
+    get: () => number;
+    set: (mm: number) => void;
+}
+
+const FLOAT_PANEL_DEFS: Record<string, { title: string; rows: FPRow[] }> = {
+    chassis: {
+        title: 'Chassis',
+        rows: [
+            { label: 'Thickness',  unit: 'mm',     min: 1,  max: 10,  step: 0.5,
+              get: () => buildCtrl.chassisParams.thickness     * 1000,
+              set: (v) => buildCtrl.updateChassis({ ...buildCtrl.chassisParams, thickness:     v / 1000 }) },
+            { label: 'Body width', unit: 'mm × 2', min: 40, max: 90,  step: 1,
+              get: () => buildCtrl.chassisParams.bodyHalfWidth * 1000,
+              set: (v) => buildCtrl.updateChassis({ ...buildCtrl.chassisParams, bodyHalfWidth: v / 1000 }) },
+            { label: 'Rear width', unit: 'mm × 2', min: 85, max: 130, step: 1,
+              get: () => buildCtrl.chassisParams.rearHalfWidth * 1000,
+              set: (v) => buildCtrl.updateChassis({ ...buildCtrl.chassisParams, rearHalfWidth: v / 1000 }) },
+        ],
+    },
+    wheels: {
+        title: 'Wheels',
+        rows: [
+            { label: 'Radius', unit: 'mm', min: 20, max: 50, step: 0.5,
+              get: () => buildCtrl.wheelParams.radius * 1000,
+              set: (v) => buildCtrl.updateWheel({ ...buildCtrl.wheelParams, radius: v / 1000 }) },
+            { label: 'Width',  unit: 'mm', min: 8,  max: 30, step: 1,
+              get: () => buildCtrl.wheelParams.width  * 1000,
+              set: (v) => buildCtrl.updateWheel({ ...buildCtrl.wheelParams, width:  v / 1000 }) },
+        ],
+    },
+    caster: {
+        title: 'Caster',
+        rows: [
+            { label: 'Radius', unit: 'mm', min: 8,  max: 25, step: 0.5,
+              get: () => buildCtrl.casterRadius * 1000,
+              set: (v) => buildCtrl.updateCaster(v / 1000, buildCtrl.casterWidth) },
+            { label: 'Width',  unit: 'mm', min: 5,  max: 25, step: 0.5,
+              get: () => buildCtrl.casterWidth  * 1000,
+              set: (v) => buildCtrl.updateCaster(buildCtrl.casterRadius, v / 1000) },
+        ],
+    },
+    battery: {
+        title: 'Battery Box',
+        rows: [
+            { label: 'Length', unit: 'mm', min: 40, max: 120, step: 1,
+              get: () => buildCtrl.batteryBox.l * 1000,
+              set: (v) => buildCtrl.updateBatteryBox(v / 1000, buildCtrl.batteryBox.w, buildCtrl.batteryBox.h) },
+            { label: 'Width',  unit: 'mm', min: 25, max: 80,  step: 1,
+              get: () => buildCtrl.batteryBox.w * 1000,
+              set: (v) => buildCtrl.updateBatteryBox(buildCtrl.batteryBox.l, v / 1000, buildCtrl.batteryBox.h) },
+            { label: 'Height', unit: 'mm', min: 15, max: 50,  step: 1,
+              get: () => buildCtrl.batteryBox.h * 1000,
+              set: (v) => buildCtrl.updateBatteryBox(buildCtrl.batteryBox.l, buildCtrl.batteryBox.w, v / 1000) },
+        ],
+    },
+    powerbank: {
+        title: 'Power Bank',
+        rows: [
+            { label: 'Radius', unit: 'mm', min: 8,  max: 25,  step: 0.5,
+              get: () => buildCtrl.powerbank.radius * 1000,
+              set: (v) => buildCtrl.updatePowerbank(v / 1000, buildCtrl.powerbank.length) },
+            { label: 'Length', unit: 'mm', min: 50, max: 200, step: 1,
+              get: () => buildCtrl.powerbank.length * 1000,
+              set: (v) => buildCtrl.updatePowerbank(buildCtrl.powerbank.radius, v / 1000) },
+        ],
+    },
+};
+
+let _floatPanelSync: (() => void) | null = null;
+let _floatPanelInitVals: number[] | null = null;
+let _floatPanelInitSection: string | null = null;
+
+function _closeCurrentPanel(): void {
+    const host = $('float-panels');
+    if (!host.hasChildNodes()) return;
+    if (_floatPanelInitVals && _floatPanelInitSection) {
+        const def = FLOAT_PANEL_DEFS[_floatPanelInitSection];
+        if (def) {
+            const changes = def.rows
+                .map((row, i) => ({ label: row.label, unit: row.unit, from: _floatPanelInitVals![i], to: row.get() }))
+                .filter(c => Math.abs(c.from - c.to) >= 0.01);
+            if (changes.length > 0) chatCtrl?.appendRecapCard(def.title, changes);
+        }
+    }
+    host.innerHTML = '';
+    _floatPanelSync = null;
+    _floatPanelInitVals = null;
+    _floatPanelInitSection = null;
+    gestureCtrl?.setParamCallback(null);
+}
+
+function openPanel(section: string): void {
+    _closeCurrentPanel();
+
+    const host = $('float-panels');
+    const def = FLOAT_PANEL_DEFS[section];
+    if (!def) return;
+
+    const panel = document.createElement('div');
+    panel.className = 'float-panel';
+    panel.dataset.panel = section;
+    panel.setAttribute('role', 'dialog');
+    panel.setAttribute('aria-label', `${def.title} controls`);
+
+    const header = document.createElement('div');
+    header.className = 'float-panel-header';
+    const grip = document.createElement('div');
+    grip.className = 'float-panel-grip';
+    for (let i = 0; i < 6; i++) grip.appendChild(document.createElement('span'));
+    const titleEl = document.createElement('span');
+    titleEl.className = 'float-panel-title';
+    titleEl.textContent = def.title;
+    const closeBtn = document.createElement('button');
+    closeBtn.type = 'button';
+    closeBtn.className = 'float-panel-close';
+    closeBtn.setAttribute('aria-label', 'Close panel');
+    closeBtn.textContent = '×';
+    closeBtn.addEventListener('click', () => _closeCurrentPanel());
+    header.append(grip, titleEl, closeBtn);
+
+    const body = document.createElement('div');
+    body.className = 'float-panel-body';
+    const syncFns: Array<(mm: number) => void> = [];
+
+    for (let ri = 0; ri < def.rows.length; ri++) {
+        const row = def.rows[ri];
+        const rowEl = document.createElement('div');
+        rowEl.className = 'float-panel-row';
+        rowEl.setAttribute('data-gesture-track', '');
+        rowEl.dataset.fpRowIndex = String(ri);
+
+        const head = document.createElement('div');
+        head.className = 'float-panel-row-head';
+        const lbl  = document.createElement('span'); lbl.className  = 'float-panel-row-label'; lbl.textContent  = row.label;
+        const unit = document.createElement('span'); unit.className = 'float-panel-row-unit';  unit.textContent = row.unit;
+        head.append(lbl, unit);
+
+        const controls = document.createElement('div');
+        controls.className = 'float-panel-row-inputs';
+
+        const slider = document.createElement('input');
+        slider.type = 'range';
+        slider.min = String(row.min); slider.max = String(row.max); slider.step = String(row.step);
+        slider.value = String(row.get());
+
+        const num = document.createElement('input');
+        num.type = 'number';
+        num.min = String(row.min); num.max = String(row.max); num.step = String(row.step);
+        num.value = String(row.get());
+
+        const onChange = (mm: number): void => {
+            row.set(mm);
+            syncSlidersFromController();
+        };
+        slider.addEventListener('input',  () => { num.value    = slider.value; onChange(parseFloat(slider.value)); });
+        num.addEventListener('change',    () => { slider.value = num.value;    onChange(parseFloat(num.value));    });
+
+        syncFns.push((mm) => { slider.value = String(mm); num.value = String(mm); });
+        controls.append(slider, num);
+        rowEl.append(head, controls);
+        body.appendChild(rowEl);
+    }
+
+    _floatPanelSync = () => def.rows.forEach((row, i) => syncFns[i](row.get()));
+    _floatPanelInitVals = def.rows.map(r => r.get());
+    _floatPanelInitSection = section;
+
+    const panelTop = nextPanelTop();
+    panel.append(header, body);
+    host.appendChild(panel);
+    panel.style.top = `${panelTop}px`;
+    makeDraggable(panel, header);
+    panel.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') _closeCurrentPanel();
+    });
+}
+
+function nextPanelTop(): number {
+    let maxBottom = 60;
+    document.querySelectorAll<HTMLElement>('.float-panel').forEach(p => {
+        const r = p.getBoundingClientRect();
+        if (r.width > 0) maxBottom = Math.max(maxBottom, r.bottom + 8);
+    });
+    return maxBottom;
+}
+
+function makeDraggable(panel: HTMLElement, handle: HTMLElement): void {
+    handle.addEventListener('pointerdown', (e: PointerEvent) => {
+        if ((e.target as HTMLElement).closest('.float-panel-close')) return;
+        handle.setPointerCapture(e.pointerId);
+        const rect = panel.getBoundingClientRect();
+        const ox = e.clientX - rect.left;
+        const oy = e.clientY - rect.top;
+        const onMove = (ev: PointerEvent) => {
+            panel.style.left = `${ev.clientX - ox}px`;
+            panel.style.top  = `${ev.clientY - oy}px`;
+        };
+        handle.addEventListener('pointermove', onMove);
+        handle.addEventListener('pointerup', () => handle.removeEventListener('pointermove', onMove), { once: true });
+    });
+}
+
+function openGestureHint(): void {
+    const host = $('gesture-hint-host');
+    if (!host) return;
+    if (host.querySelector('.float-panel')) return; // already open
+
+    const rows: Array<{ icon: string; html: string }> = [
+        { icon: '✊', html: '<strong>Fist + move</strong> — orbit camera' },
+        { icon: '☝️', html: '<strong>Point + dwell 0.8 s</strong> — select joint' },
+        { icon: '🤚', html: '<strong>Tilt wrist</strong> (joint selected) — rotate joint' },
+        { icon: '🖐️', html: '<strong>Open palm, hold 1 s</strong> — reset all joints' },
+        { icon: '🤲', html: '<strong>Two hands pinch/spread</strong> — zoom' },
+        { icon: '👍', html: '<strong>Thumbs up</strong> — confirm / Continue' },
+    ];
+
+    const panel = document.createElement('div');
+    panel.className = 'float-panel';
+
+    const header = document.createElement('div');
+    header.className = 'float-panel-header';
+    const grip = document.createElement('div');
+    grip.className = 'float-panel-grip';
+    for (let i = 0; i < 6; i++) grip.appendChild(document.createElement('span'));
+    const titleEl = document.createElement('span');
+    titleEl.className = 'float-panel-title';
+    titleEl.textContent = 'Gestures';
+    const closeBtn = document.createElement('button');
+    closeBtn.type = 'button';
+    closeBtn.className = 'float-panel-close';
+    closeBtn.setAttribute('aria-label', 'Close gesture hint');
+    closeBtn.textContent = '×';
+    closeBtn.addEventListener('click', () => { host.innerHTML = ''; });
+    header.append(grip, titleEl, closeBtn);
+
+    const body = document.createElement('div');
+    body.className = 'float-panel-body';
+    body.style.gap = '7px';
+    for (const row of rows) {
+        const rowEl = document.createElement('div');
+        rowEl.className = 'gesture-row';
+        const iconEl = document.createElement('span');
+        iconEl.className = 'gesture-icon';
+        iconEl.textContent = row.icon;
+        const descEl = document.createElement('span');
+        descEl.className = 'gesture-desc';
+        descEl.innerHTML = row.html;
+        rowEl.append(iconEl, descEl);
+        body.appendChild(rowEl);
+    }
+
+    const hintTop = nextPanelTop();
+    panel.append(header, body);
+    host.appendChild(panel);
+    panel.style.top = `${hintTop}px`;
+    makeDraggable(panel, header);
 }
 
 buildUndoBtn.addEventListener('click',  () => buildCtrl.undo());
@@ -1285,6 +1569,15 @@ function removeComponentItem(id: string): void {
     card?.remove();
 }
 
+document.querySelectorAll<HTMLButtonElement>('.build-section-detach').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const section = btn.closest<HTMLElement>('[data-panel]')?.dataset.panel ?? '';
+        openPanel(section);
+    });
+});
+
 // ── Chat controller wiring ─────────────────────────────────────────────────
 // Init here so all helpers (renderComponentItem, syncSlidersFromController,
 // refreshPaletteCounts) are in scope.
@@ -1309,6 +1602,14 @@ function removeComponentItem(id: string): void {
         initRobot: (type, name) => {
             clearBuildUI();
             buildCtrl.initFromScratch(type === 'robot-car' ? 'Robot Car' : (name ?? 'My Robot'));
+            if (type === 'robot-car') {
+                ['03-wheels.xml', '04-caster.xml', '06-power.xml'].forEach(f => {
+                    fetch(`robots/robot-car/parts/${f}`)
+                        .then(r => r.ok ? r.text() : null)
+                        .then(text => { if (text) buildCtrl.setPartTemplate(f, text); })
+                        .catch(() => {});
+                });
+            }
             buildCtrl.open();
             refreshSavedList();
             refreshBuildHeader();
@@ -1337,6 +1638,9 @@ function removeComponentItem(id: string): void {
             }
             return null;
         },
+        openPanel:        (section) => openPanel(section),
+        openGestureHint:  () => openGestureHint(),
+        isGestureActive:  () => gestureCtrl !== null,
     };
     chatCtrl = new URDFChatController(buildCtrl, chatCallbacks);
     chatCtrl.init();

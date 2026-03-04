@@ -75,6 +75,122 @@ export const COMPONENT_CATALOG: Record<string, ComponentDef> = {
 
 const SUPPORTED_ROBOTS = new Set(['robot-car']);
 
+const BLANK_WHEELS_XML = `<link name="wheel_left">
+  <visual>
+    <geometry><mesh filename="wheel.stl"/></geometry>
+    <material name="rubber"><color rgba="0.10 0.10 0.10 1.00"/></material>
+  </visual>
+  <visual>
+    <origin xyz="0 0 0.0075" rpy="0 0 0"/>
+    <geometry><cylinder radius="0.022" length="0.012"/></geometry>
+    <material name="hub_yellow"><color rgba="1.00 0.85 0.00 1.00"/></material>
+  </visual>
+</link>
+<joint name="wheel_left_joint" type="continuous">
+  <parent link="base_link"/>
+  <child link="wheel_left"/>
+  <origin xyz="-0.010 -0.090 0.0000" rpy="1.5708 0.0000 0.0000"/>
+  <axis xyz="0 0 1"/>
+  <limit effort="2.0" velocity="15.0"/>
+</joint>
+
+<link name="wheel_right">
+  <visual>
+    <geometry><mesh filename="wheel.stl"/></geometry>
+    <material name="rubber"><color rgba="0.10 0.10 0.10 1.00"/></material>
+  </visual>
+  <visual>
+    <origin xyz="0 0 -0.0075" rpy="0 0 0"/>
+    <geometry><cylinder radius="0.022" length="0.012"/></geometry>
+    <material name="hub_yellow"><color rgba="1.00 0.85 0.00 1.00"/></material>
+  </visual>
+</link>
+<joint name="wheel_right_joint" type="continuous">
+  <parent link="base_link"/>
+  <child link="wheel_right"/>
+  <origin xyz="-0.010 0.090 0.0000" rpy="1.5708 0.0000 0.0000"/>
+  <axis xyz="0 0 1"/>
+  <limit effort="2.0" velocity="15.0"/>
+</joint>`;
+
+const BLANK_CHASSIS_XML = `<joint name="chassis_joint" type="fixed">
+  <parent link="base_link"/>
+  <child link="chassis"/>
+  <origin xyz="0 0 0" rpy="0 0 0"/>
+</joint>
+
+<link name="chassis">
+  <visual>
+    <geometry>
+      <mesh filename="chassis.stl" scale="1.00 1.05 1.00"/>
+    </geometry>
+    <material name="acrylic">
+      <color rgba="0.72 0.91 1.00 0.50"/>
+    </material>
+  </visual>
+</link>`;
+
+const BLANK_CASTER_XML = `<link name="caster_plate">
+  <visual>
+    <geometry><box size="0.036 0.036 0.004"/></geometry>
+    <material name="caster_metal"><color rgba="0.76 0.76 0.78 1.00"/></material>
+  </visual>
+</link>
+<joint name="caster_plate_joint" type="fixed">
+  <parent link="base_link"/>
+  <child link="caster_plate"/>
+  <origin xyz="-0.1200 0.0000 -0.0040" rpy="0 0 0"/>
+</joint>
+
+<link name="caster_fork">
+  <visual>
+    <geometry><box size="0.008 0.016 0.030"/></geometry>
+    <material name="caster_metal"><color rgba="0.76 0.76 0.78 1.00"/></material>
+  </visual>
+</link>
+<joint name="caster_fork_joint" type="fixed">
+  <parent link="base_link"/>
+  <child link="caster_fork"/>
+  <origin xyz="-0.1200 0.0000 -0.0149" rpy="0 0 0"/>
+</joint>
+
+<link name="caster_wheel">
+  <visual>
+    <geometry><cylinder radius="0.0146" length="0.0145"/></geometry>
+    <material name="caster_rubber"><color rgba="0.08 0.08 0.08 1.00"/></material>
+  </visual>
+</link>
+<joint name="caster_wheel_joint" type="continuous">
+  <parent link="base_link"/>
+  <child link="caster_wheel"/>
+  <origin xyz="-0.1200 0.0000 -0.0289" rpy="1.5708 0.0000 0.0000"/>
+  <axis xyz="0 0 1"/>
+</joint>`;
+
+const BLANK_POWER_XML = `<link name="battery_box">
+  <visual>
+    <geometry><box size="0.0806 0.0442 0.022"/></geometry>
+    <material name="battery"><color rgba="0.12 0.12 0.14 1.00"/></material>
+  </visual>
+</link>
+<joint name="battery_box_joint" type="fixed">
+  <parent link="base_link"/>
+  <child link="battery_box"/>
+  <origin xyz="0.0460 0.0000 -0.0120" rpy="0 0 0"/>
+</joint>
+
+<link name="powerbank">
+  <visual>
+    <geometry><cylinder radius="0.0115" length="0.1199"/></geometry>
+    <material name="powerbank_blue"><color rgba="0.15 0.45 0.85 1.00"/></material>
+  </visual>
+</link>
+<joint name="powerbank_joint" type="fixed">
+  <parent link="base_link"/>
+  <child link="powerbank"/>
+  <origin xyz="-0.0350 0.0000 -0.0110" rpy="1.5708 0.0000 0.0000"/>
+</joint>`;
+
 type JointType = 'fixed' | 'continuous' | 'revolute' | 'prismatic';
 
 export interface Component {
@@ -111,6 +227,7 @@ export class URDFBuildController {
     private _components   = new Map<string, Component>();
     private _compCounters = new Map<string, number>();
     private _meshBlobs    = new Map<string, string>();   // componentId → blobUrl#id.stl
+    private _partTemplates = new Map<string, string>(); // fetched real-robot XML templates
     private _isCustom     = false;
 
     // Inline geometry patches (no STL needed — primitive shapes)
@@ -194,12 +311,17 @@ export class URDFBuildController {
         this._wheelGroundZ  = -WHEEL_DEFAULTS.radius;
         this._undoStack.length = 0;
         this._redoStack.length = 0;
+        this._partTemplates.clear();
 
-        // Minimal blank-slate robot: just a base_link
+        // Truly blank — parts appear progressively as update_* methods are called.
         this._partMap = new Map([['01-base.xml', '  <link name="base_link"/>']]);
 
         this.noticeEl.hidden = true;
         this._reload();
+    }
+
+    setPartTemplate(key: string, xml: string): void {
+        this._partTemplates.set(key, xml);
     }
 
     open(): void  { document.body.classList.add('build-open');    }
@@ -209,12 +331,18 @@ export class URDFBuildController {
 
     updateChassis(params: ChassisParams): void {
         this._pushUndo();
+        if (!this._partMap.has('02-chassis.xml')) this._partMap.set('02-chassis.xml', BLANK_CHASSIS_XML);
         this._chassisParams = { ...params };
         this._setSTL('chassis.stl', generateChassis(params));
     }
 
     updateWheel(params: WheelParams): void {
         this._pushUndo();
+        if (!this._partMap.has('03-wheels.xml')) {
+            this._partMap.set('03-wheels.xml', this._partTemplates.get('03-wheels.xml') ?? BLANK_WHEELS_XML);
+            const wz = this._parseJointZ('wheel_left_joint') ?? (-WHEEL_DEFAULTS.radius);
+            this._wheelGroundZ = wz - WHEEL_DEFAULTS.radius;
+        }
         this._wheelParams = { ...params };
         const z = params.radius + this._wheelGroundZ;
         this._jointZPatches.set('wheel_left_joint',  z);
@@ -226,6 +354,7 @@ export class URDFBuildController {
 
     updateCaster(radius: number, width: number): void {
         this._pushUndo();
+        if (!this._partMap.has('04-caster.xml')) this._partMap.set('04-caster.xml', this._partTemplates.get('04-caster.xml') ?? BLANK_CASTER_XML);
         this._casterRadius = radius;
         this._casterWidth  = width;
         this._reload();
@@ -233,6 +362,7 @@ export class URDFBuildController {
 
     updateBatteryBox(l: number, w: number, h: number): void {
         this._pushUndo();
+        if (!this._partMap.has('06-power.xml')) this._partMap.set('06-power.xml', this._partTemplates.get('06-power.xml') ?? BLANK_POWER_XML);
         this._batteryBox = { l, w, h };
         this._reload();
     }
@@ -340,6 +470,7 @@ export class URDFBuildController {
 
     updatePowerbank(radius: number, length: number): void {
         this._pushUndo();
+        if (!this._partMap.has('06-power.xml')) this._partMap.set('06-power.xml', this._partTemplates.get('06-power.xml') ?? BLANK_POWER_XML);
         this._powerbank = { radius, length };
         this._reload();
     }
@@ -423,13 +554,18 @@ export class URDFBuildController {
         this._compCounters  = new Map(saved.counters);
 
         this._chassisParams = { ...saved.chassis };
+        this._partMap.set('02-chassis.xml', BLANK_CHASSIS_XML);
         this._storeSTLBlob('chassis.stl', generateChassis(saved.chassis));
 
         this._wheelParams = { ...saved.wheel };
+        this._partMap.set('03-wheels.xml', BLANK_WHEELS_XML);
         const z = saved.wheel.radius + this._wheelGroundZ;
         this._jointZPatches.set('wheel_left_joint',  z);
         this._jointZPatches.set('wheel_right_joint', z);
         this._storeSTLBlob('wheel.stl', generateWheel(saved.wheel));
+
+        this._partMap.set('04-caster.xml', BLANK_CASTER_XML);
+        this._partMap.set('06-power.xml',  BLANK_POWER_XML);
 
         this._reload();
         return [...this._components.keys()].map(id => ({ id, type: this._components.get(id)!.type }));

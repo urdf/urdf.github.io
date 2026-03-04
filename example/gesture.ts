@@ -9,6 +9,7 @@ interface GestureControllerOptions {
     onDwellSelect(clientX: number, clientY: number): void;
     onPointerMove?(clientX: number, clientY: number): void;
     onPointerLeave?(): void;
+    onThumbsUp?(): void;
     onStop(): void;
 }
 
@@ -79,6 +80,7 @@ export class GestureController {
     private onDwellSelect: (x: number, y: number) => void;
     private onPointerMove: ((x: number, y: number) => void) | undefined;
     private onPointerLeave: (() => void) | undefined;
+    private onThumbsUp: (() => void) | undefined;
     private onStop: () => void;
 
     private recognizer: GestureRecognizer | null = null;
@@ -111,6 +113,7 @@ export class GestureController {
     private readonly PALM_RESET_MS = 1000;
 
     private prevWristAngle = Infinity;
+    private _paramCallback: ((deltaRad: number) => void) | null = null;
 
     private prevZoomDist = 0;
 
@@ -118,6 +121,7 @@ export class GestureController {
 
     private _prevGestureName = '';
     private _stableGestureName = '';
+    private _thumbsUpFired = false;
 
     private _raycaster = new THREE.Raycaster();
     private _overRobot = false;
@@ -131,6 +135,7 @@ export class GestureController {
         this.onDwellSelect = opts.onDwellSelect;
         this.onPointerMove = opts.onPointerMove;
         this.onPointerLeave = opts.onPointerLeave;
+        this.onThumbsUp = opts.onThumbsUp;
         this.onStop = opts.onStop;
     }
 
@@ -207,6 +212,15 @@ export class GestureController {
     setSelectedJoint(name: string | null): void {
         if (name !== this.selectedJoint) this.prevWristAngle = Infinity;
         this.selectedJoint = name;
+        this._paramCallback = null;
+    }
+
+    setParamCallback(cb: ((deltaRad: number) => void) | null): void {
+        this._paramCallback = cb;
+        if (cb) {
+            this.selectedJoint = null;
+            this.prevWristAngle = Infinity;
+        }
     }
 
     private _onResize = () => {
@@ -244,25 +258,37 @@ export class GestureController {
 
                 this._handleWristRoll(lms);
 
-                if (name === 'Open_Palm') {
-                    this._handlePalmReset(ctx, lms);
-                    this._resetDwell();
-                    this.prevHandPos = null;
-                    this._clearHover();
-                } else if (name === 'Closed_Fist') {
-                    this._handleOrbit(lms);
+                if (name === 'Thumb_Up') {
+                    if (!this._thumbsUpFired) {
+                        this._thumbsUpFired = true;
+                        this.onThumbsUp?.();
+                    }
                     this._resetDwell();
                     this._clearHover();
-                    this.palmResetStart = 0;
-                } else if (name === 'Pointing_Up' || this._isIndexPointing(lms)) {
-                    this._handleDwellAndHover(ctx, lms);
                     this.prevHandPos = null;
                     this.palmResetStart = 0;
                 } else {
-                    this._resetDwell();
-                    this._clearHover();
-                    this.prevHandPos = null;
-                    this.palmResetStart = 0;
+                    this._thumbsUpFired = false;
+                    if (name === 'Open_Palm') {
+                        this._handlePalmReset(ctx, lms);
+                        this._resetDwell();
+                        this.prevHandPos = null;
+                        this._clearHover();
+                    } else if (name === 'Closed_Fist') {
+                        this._handleOrbit(lms);
+                        this._resetDwell();
+                        this._clearHover();
+                        this.palmResetStart = 0;
+                    } else if (name === 'Pointing_Up' || this._isIndexPointing(lms)) {
+                        this._handleDwellAndHover(ctx, lms);
+                        this.prevHandPos = null;
+                        this.palmResetStart = 0;
+                    } else {
+                        this._resetDwell();
+                        this._clearHover();
+                        this.prevHandPos = null;
+                        this.palmResetStart = 0;
+                    }
                 }
             }
         }
@@ -451,9 +477,7 @@ export class GestureController {
     }
 
     private _handleWristRoll(lms: NormalizedLandmark[]): void {
-        if (!this.selectedJoint || !this.viewer.robot) return;
-        const joint = this.viewer.robot.joints[this.selectedJoint];
-        if (!joint || joint.jointType === 'fixed') return;
+        if (!this.selectedJoint && !this._paramCallback) return;
 
         const angle = Math.atan2(
             lms[5].y - lms[0].y,
@@ -470,13 +494,22 @@ export class GestureController {
         if (delta < -Math.PI) delta += 2 * Math.PI;
         this.prevWristAngle = angle;
 
-        const continuous  = joint.jointType === 'continuous';
+        if (this._paramCallback) {
+            this._paramCallback(delta);
+            return;
+        }
+
+        if (!this.viewer.robot) return;
+        const joint = this.viewer.robot.joints[this.selectedJoint!];
+        if (!joint || joint.jointType === 'fixed') return;
+
+        const continuous   = joint.jointType === 'continuous';
         const ignoreLimits = this.viewer.ignoreLimits;
         const lo = (ignoreLimits || continuous) ? -6.28 : joint.limit.lower;
         const hi = (ignoreLimits || continuous) ?  6.28 : joint.limit.upper;
 
         const current = joint.angle;
-        this.viewer.setJointValue(this.selectedJoint, Math.max(lo, Math.min(hi, current + delta * 1.5)));
+        this.viewer.setJointValue(this.selectedJoint!, Math.max(lo, Math.min(hi, current + delta * 1.5)));
     }
 
     private _handleZoom(hands: NormalizedLandmark[][]): void {

@@ -4,6 +4,18 @@ import { LIBRARY } from '../src/generators/components/index.js';
 const LOCAL_PROXY = 'http://127.0.0.1:7337/claude';
 const MODEL       = 'claude-sonnet-4-6';
 
+type GitHubAuth = { username: string; token: string };
+type Provider   = 'anthropic' | 'github';
+
+let _connectGitHubFn: ((scope: string, appId: string) => Promise<GitHubAuth>) | null = null;
+async function loadConnectGitHub(): Promise<(scope: string, appId: string) => Promise<GitHubAuth>> {
+    if (_connectGitHubFn) return _connectGitHubFn;
+    // @ts-ignore — CDN module, not bundled by Vite
+    const mod = await import(/* @vite-ignore */ 'https://neevs.io/auth/connect.js');
+    _connectGitHubFn = mod.connectGitHub;
+    return _connectGitHubFn!;
+}
+
 // ── Types shared with editor.ts ──────────────────────────────────────────────
 
 interface TextBlock    { type: 'text'; text: string; }
@@ -16,6 +28,15 @@ type Msg =
 
 declare const marked: { parse(s: string): string } | undefined;
 declare const DOMPurify: { sanitize(s: string, o?: object): string } | undefined;
+
+function highlightJson(raw: string): string {
+    const s = raw.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    return s
+        .replace(/"([^"\\]*(\\.[^"\\]*)*)"(\s*:)/g, '<span class="j-key">"$1"</span>$3')
+        .replace(/:\s*"([^"\\]*(\\.[^"\\]*)*)"/g, ': <span class="j-str">"$1"</span>')
+        .replace(/:\s*(-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)/g, ': <span class="j-num">$1</span>')
+        .replace(/:\s*(true|false|null)\b/g, ': <span class="j-kw">$1</span>');
+}
 
 function renderMd(text: string): string {
     if (typeof marked !== 'undefined' && typeof DOMPurify !== 'undefined') {
@@ -44,7 +65,17 @@ export interface ChatCallbacks {
     highlightPart:            (jointName: string | null) => void;
     getJointNames:            () => string[];
     initRobot:                (type: 'robot-car' | 'custom', name?: string) => void;
+    openPanel:                (section: string) => void;
+    openGestureHint:          () => void;
+    isGestureActive:          () => boolean;
 }
+
+const SECTION_TITLES: Record<string, string> = {
+    chassis: 'Chassis', wheels: 'Wheels', caster: 'Caster',
+    battery: 'Battery Box', powerbank: 'Power Bank',
+};
+
+type ToolCardHandle = { setResult(ok: boolean, input?: Record<string, unknown>, result?: unknown): void };
 
 // ── Slash-command action maps ─────────────────────────────────────────────────
 
@@ -78,18 +109,24 @@ export class URDFChatController {
     private _guide = false;
     private _cmdAcIdx = -1;
     private _pauseResolve: ((aborted: boolean) => void) | null = null;
+    private _provider: Provider = 'anthropic';
+    private _model = MODEL;
+    private _githubAuth: GitHubAuth | null = null;
 
     // DOM refs set in init()
-    private _messagesEl!:   HTMLElement;
-    private _emptyStateEl!: HTMLElement;
-    private _chatPaneEl!:   HTMLElement;
-    private _inputEl!:      HTMLTextAreaElement;
-    private _sendBtn!:     HTMLButtonElement;
-    private _abortBtn!:    HTMLButtonElement;
-    private _briefBtn!:    HTMLButtonElement;
-    private _continueBtn!: HTMLButtonElement;
-    private _toolCountBtn!: HTMLButtonElement;
-    private _cmdAcEl!:     HTMLElement;
+    private _messagesEl!:    HTMLElement;
+    private _emptyStateEl!:  HTMLElement;
+    private _chatPaneEl!:    HTMLElement;
+    private _inputEl!:       HTMLTextAreaElement;
+    private _sendBtn!:       HTMLButtonElement;
+    private _abortBtn!:      HTMLButtonElement;
+    private _briefBtn!:      HTMLButtonElement;
+    private _continueBtn!:   HTMLButtonElement;
+    private _toolCountBtn!:  HTMLButtonElement;
+    private _cmdAcEl!:       HTMLElement;
+    private _modelSelectEl!: HTMLSelectElement;
+    private _ghBarEl!:       HTMLElement;
+    private _apikeyBarEl!:   HTMLElement;
 
     constructor(buildCtrl: URDFBuildController, cb: ChatCallbacks) {
         this._buildCtrl = buildCtrl;
@@ -106,7 +143,24 @@ export class URDFChatController {
         this._briefBtn    = document.getElementById('chat-brief-toggle') as HTMLButtonElement;
         this._continueBtn = document.getElementById('chat-continue') as HTMLButtonElement;
         this._toolCountBtn = document.getElementById('chat-tool-count') as HTMLButtonElement;
-        this._cmdAcEl     = document.getElementById('cmd-ac') as HTMLElement;
+        this._cmdAcEl      = document.getElementById('cmd-ac') as HTMLElement;
+        this._modelSelectEl = document.getElementById('chat-model-select') as HTMLSelectElement;
+        this._ghBarEl       = document.getElementById('chat-github-bar') as HTMLElement;
+        this._apikeyBarEl   = document.getElementById('chat-apikey-bar') as HTMLElement;
+
+        // Restore persisted GitHub auth before applying model (so auth bar renders correctly)
+        const savedAuth = localStorage.getItem('urdf-gh-auth');
+        if (savedAuth) { try { this._githubAuth = JSON.parse(savedAuth); } catch { /**/ } }
+
+        // Restore persisted model selection
+        const savedModel = localStorage.getItem('urdf-chat-model');
+        if (savedModel) this._modelSelectEl.value = savedModel;
+        this._applyModel(this._modelSelectEl.value);
+
+        this._modelSelectEl.addEventListener('change', () => {
+            this._applyModel(this._modelSelectEl.value);
+            this._clearChat();
+        });
 
         // Textarea auto-height + autocomplete filter
         this._inputEl.addEventListener('input', () => {
@@ -163,10 +217,6 @@ export class URDFChatController {
 
         document.getElementById('chat-guide-start')!.addEventListener('click', () => {
             this._guide = true;
-            this._brief = false;
-            this._briefBtn.classList.add('active');
-            this._briefBtn.setAttribute('aria-pressed', 'true');
-            this._cb.onBriefToggle(false);
             // Always reset to a blank Build canvas before the guide starts —
             // don't leave this to Claude, it's too easy to skip.
             this._cb.initRobot('robot-car');
@@ -199,7 +249,7 @@ export class URDFChatController {
         });
 
         this.syncToolCount();
-        this._updateEmptyState();
+        this._restoreHistory();
     }
 
     syncToolCount(): void {
@@ -208,6 +258,10 @@ export class URDFChatController {
             this._toolCountBtn.hidden = !active;
             if (active) this._toolCountBtn.textContent = `${this._buildTools().length} tools`;
         }
+    }
+
+    resumeFromGesture(): void {
+        this._pauseResolve?.(false);
     }
 
     private _showContinueButton(): void {
@@ -549,7 +603,30 @@ export class URDFChatController {
                     },
                 },
             },
+            {
+                name: 'open_panel',
+                description: 'Open a floating control panel over the 3D viewer so the user can fine-tune a specific section while watching the robot update live. Use this before calling pause to give the user something to interact with.',
+                input_schema: {
+                    type: 'object',
+                    properties: {
+                        section: {
+                            type: 'string',
+                            enum: ['chassis', 'wheels', 'caster', 'battery', 'powerbank'],
+                            description: 'Which parametric section to open.',
+                        },
+                    },
+                    required: ['section'],
+                },
+            },
         ];
+
+        if (this._cb.isGestureActive()) {
+            tools.push({
+                name: 'show_gesture_hint',
+                description: 'Open a floating gesture reference card over the 3D viewer. Use this instead of writing a gesture list in chat. Call it once early in the conversation so the user has a persistent reference.',
+                input_schema: { type: 'object', properties: {} },
+            });
+        }
 
         const parts = this._cb.getPartsList();
         if (parts.length > 0) {
@@ -617,6 +694,25 @@ export class URDFChatController {
                         },
                     },
                 },
+                {
+                    name: 'propose_adjustment',
+                    description: 'Show an actionable suggestion card in the chat with an Open Panel button. Use after observing state_mm when a dimension is noteworthy — physically implausible, mechanically interesting, or very different from the real part. Do not call if the values are fine.',
+                    input_schema: {
+                        type: 'object',
+                        properties: {
+                            section: {
+                                type: 'string',
+                                enum: ['chassis', 'wheels', 'caster', 'battery', 'powerbank'],
+                                description: 'Which section to offer to open.',
+                            },
+                            message: {
+                                type: 'string',
+                                description: 'Brief educational observation (1–2 sentences). No preamble.',
+                            },
+                        },
+                        required: ['section', 'message'],
+                    },
+                },
             );
         }
 
@@ -654,7 +750,8 @@ export class URDFChatController {
                     this._cb.onComponentAdded(id, libEntry.id);
                     this._cb.syncSlidersFromController();
                     this._cb.refreshPaletteCounts();
-                    return { ok: true, id };
+                    const total = this._buildCtrl.getComponentEntries().length;
+                    return { ok: true, id, total_components: total };
                 }
                 // Primitive component
                 const id = this._buildCtrl.addComponent(type);
@@ -662,7 +759,8 @@ export class URDFChatController {
                 this._cb.onComponentAdded(id, type);
                 this._cb.syncSlidersFromController();
                 this._cb.refreshPaletteCounts();
-                return { ok: true, id };
+                const total = this._buildCtrl.getComponentEntries().length;
+                return { ok: true, id, total_components: total };
             }
             case 'remove_component': {
                 const id = args.id as string;
@@ -696,16 +794,20 @@ export class URDFChatController {
                 this._cb.syncSlidersFromController();
                 return { ok: true };
             case 'update_chassis': {
+                const merged = { ...this._buildCtrl.chassisParams, ...(args as Record<string, number>) };
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                this._buildCtrl.updateChassis(args as any);
+                this._buildCtrl.updateChassis(merged as any);
                 this._cb.syncSlidersFromController();
-                return { ok: true };
+                const cp = this._buildCtrl.chassisParams;
+                return { ok: true, chassis_m: cp };
             }
             case 'update_wheels': {
+                const merged = { ...this._buildCtrl.wheelParams, ...(args as Record<string, number>) };
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                this._buildCtrl.updateWheel(args as any);
+                this._buildCtrl.updateWheel(merged as any);
                 this._cb.syncSlidersFromController();
-                return { ok: true };
+                const wp = this._buildCtrl.wheelParams;
+                return { ok: true, wheels_m: wp };
             }
             case 'update_caster': {
                 const { radius, width } = args as { radius?: number; width?: number };
@@ -728,6 +830,18 @@ export class URDFChatController {
                 this._cb.syncSlidersFromController();
                 return { ok: true };
             }
+            case 'open_panel': {
+                this._cb.openPanel(args.section as string);
+                return { ok: true };
+            }
+            case 'show_gesture_hint': {
+                this._cb.openGestureHint();
+                return { ok: true };
+            }
+            case 'propose_adjustment': {
+                this._appendActionCard(args.section as string, args.message as string);
+                return { ok: true };
+            }
             case 'read_part': {
                 const filename = args.filename as string;
                 const xml = await this._cb.readPart(filename);
@@ -747,20 +861,46 @@ export class URDFChatController {
                 return { ok: true, note: type === 'robot-car' ? 'Robot Car is loading — call pause next to let it finish.' : 'Custom robot initialized.' };
             }
             case 'highlight_part': {
-                const joint = (args.joint as string) || null;
-                this._cb.highlightPart(joint);
+                const raw = (args.joint as string) || null;
+                // Accept link names too (e.g. "chassis" → "chassis_joint")
+                const joints = this._cb.getJointNames();
+                const resolved = raw && !joints.includes(raw) && joints.includes(raw + '_joint')
+                    ? raw + '_joint'
+                    : raw;
+                this._cb.highlightPart(resolved);
                 return { ok: true };
             }
             case 'pause': {
+                const continueBtn = document.createElement('button');
+                continueBtn.type = 'button';
+                continueBtn.className = 'chat-continue-bubble';
+                continueBtn.textContent = 'Continue →';
+                this._appendChat(continueBtn);
+                this._inputEl.disabled = true;
+                this._sendBtn.hidden   = true;
                 await new Promise<void>((resolve, reject) => {
                     this._pauseResolve = (aborted: boolean) => {
+                        continueBtn.remove();
                         if (aborted) reject(Object.assign(new Error('AbortError'), { name: 'AbortError' }));
                         else resolve();
                     };
-                    this._showContinueButton();
+                    continueBtn.addEventListener('click', () => this._pauseResolve?.(false));
                 });
                 this._hideContinueButton();
-                return { ok: true };
+                const cp2 = this._buildCtrl.chassisParams;
+                const wp2 = this._buildCtrl.wheelParams;
+                const bb2 = this._buildCtrl.batteryBox;
+                const pb2 = this._buildCtrl.powerbank;
+                return {
+                    ok: true,
+                    state_mm: {
+                        chassis:   { thickness: +(cp2.thickness * 1000).toFixed(2), bodyHalfWidth: +(cp2.bodyHalfWidth * 1000).toFixed(2), rearHalfWidth: +(cp2.rearHalfWidth * 1000).toFixed(2) },
+                        wheels:    { radius: +(wp2.radius * 1000).toFixed(2), width: +(wp2.width * 1000).toFixed(2) },
+                        caster:    { radius: +(this._buildCtrl.casterRadius * 1000).toFixed(2), width: +(this._buildCtrl.casterWidth * 1000).toFixed(2) },
+                        battery:   { l: +(bb2.l * 1000).toFixed(2), w: +(bb2.w * 1000).toFixed(2), h: +(bb2.h * 1000).toFixed(2) },
+                        powerbank: { radius: +(pb2.radius * 1000).toFixed(2), length: +(pb2.length * 1000).toFixed(2) },
+                    },
+                };
             }
             default:
                 return { error: `Unknown tool: ${name}` };
@@ -791,7 +931,7 @@ export class URDFChatController {
             ? `\nPart files (use read_part + update_part to change colors, materials, or geometry): ${parts.join(', ')}`
             : '';
 
-        const briefNote = this._brief
+        const briefNote = (this._brief && !this._guide)
             ? '\nBRIEF MODE: Answer in fewer than 4 lines. No preamble. Direct answers only. Emoji allowed as semantic shorthand when it replaces a word more efficiently than text.'
             : '';
 
@@ -803,19 +943,31 @@ export class URDFChatController {
             ? `The workspace is empty. Ask the user what they want to build, then call init_robot with their choice:
 • "robot-car" — Robot Car (TT motors, L298N controller, ESP32-CAM, 4-wheel chassis).
 • "custom" — blank chassis to build anything.`
-            : `The Build canvas is blank and ready. Guide the user through assembling the Robot Car from scratch, one step at a time. Logical order: chassis dimensions → wheels → caster → TT motors (×2) → L298N driver → battery box → power bank → HC-SR04 sensor → ESP32-CAM. Library components to use: tt_motor, l298n, esp32_cam, hcsr04. Do NOT add arduino_nano, mpu6050, or sg90.`;
+            : entries.length > 0
+            ? `Assembly in progress — library components already added: ${entries.map(e => e.type).join(', ')}. Continue from the next unfinished step. Do NOT re-add components that are already listed above.`
+            : `The viewer is blank. Build the Robot Car from scratch, one step at a time. Each tool call adds that part to the 3D scene for the first time. Logical order: (1) update_chassis → chassis appears, (2) update_wheels → drive wheels appear, (3) update_caster → caster wheel appears, (4) update_battery_box → battery box appears, (5) update_powerbank → power bank appears, (6) add_component('tt_motor') ×2, (7) add_component('l298n'), (8) add_component('hcsr04'), (9) add_component('esp32_cam'). Do NOT add arduino_nano, mpu6050, or sg90.`;
 
         const guideBlock = this._guide ? `GUIDE MODE: You are an interactive assembly guide. Rules:
+• NO welcome message, intro, step overview list, or preamble. Start immediately with Step 1 content.
+• Do NOT write out the gesture reference — it is already shown in the sidebar.
 • Write your explanation text FIRST, then call tools. Never call pause as your opening action.
 • One step per message. Call pause at the END of each step, after your text and any other tools.
 • Call highlight_part (before pause) to show the relevant part in the 3D viewer.
 • Be educational — assume the user is learning.
+• After pause resolves, the tool result includes state_mm with the current dimensions. If the user changed something noteworthy (physically implausible, mechanically interesting, or very different from the real part), make a brief educational observation before continuing. Otherwise say nothing about the values.
 • ${guideContext}
 ${jointNames.length > 0 ? `Current joints in viewer: ${jointNames.join(', ')}` : ''}
 
 ` : '';
 
-        return `${guideBlock}You are a robot builder assistant embedded in a live 3D URDF viewer.
+        const gestureBlock = this._cb.isGestureActive() ? `
+GESTURE MODE ACTIVE: The user controls the viewer with hand gestures.
+• NEVER write a gesture reference table or list in chat — call show_gesture_hint instead (opens a floating card in the viewer).
+• At each pause, end with one line: "Show 👍 to continue."
+• Reference other gestures inline only when contextually useful (e.g. "rotate with a fist to see the underside").
+` : '';
+
+        return `${guideBlock}${gestureBlock}You are a robot builder assistant embedded in a live 3D URDF viewer.
 The robot-car uses: −X = front, +X = rear, −Y = left, +Y = right, +Z = up.
 
 Current chassis: thickness=${(cp.thickness * 1000).toFixed(1)}mm  bodyHW=${(cp.bodyHalfWidth * 1000).toFixed(1)}mm  rearHW=${(cp.rearHalfWidth * 1000).toFixed(1)}mm
@@ -839,14 +991,14 @@ Use tools to modify the robot. Prefer direct tool calls over lengthy explanation
 
     private async _executeTools(
         toolCalls: ToolUseBlock[],
-        cardMap?: Map<string, { setResult(ok: boolean): void }>,
+        cardMap?: Map<string, ToolCardHandle>,
     ): Promise<void> {
         const results: ToolResBlock[] = [];
         for (const tc of toolCalls) {
             const card = cardMap?.get(tc.id) ?? this._appendToolCard(tc.name);
             const res  = await this._executeTool(tc.name, tc.input);
             const ok   = !(res as Record<string, unknown>).error;
-            card.setResult(ok);
+            card.setResult(ok, tc.input, res);
             results.push({ type: 'tool_result', tool_use_id: tc.id, content: JSON.stringify(res) });
         }
         this._history.push({ role: 'user', content: results });
@@ -856,10 +1008,12 @@ Use tools to modify the robot. Prefer direct tool calls over lengthy explanation
         while (true) {
             const spinner = this._appendSpinner();
             const stream  = await this._callAPI();
-            const { content, toolCalls, toolCards } = await this._processStream(stream, spinner);
-            this._history.push({ role: 'assistant', content });
-            if (!toolCalls.length) break;
-            await this._executeTools(toolCalls, toolCards);
+            const result  = this._provider === 'github'
+                ? await this._processStreamOpenAI(stream, spinner)
+                : await this._processStream(stream, spinner);
+            this._history.push({ role: 'assistant', content: result.content });
+            if (!result.toolCalls.length) break;
+            await this._executeTools(result.toolCalls, result.toolCards);
         }
     }
 
@@ -884,17 +1038,150 @@ Use tools to modify the robot. Prefer direct tool calls over lengthy explanation
         }
     }
 
+    private _saveHistory(): void {
+        try { localStorage.setItem('urdf-chat-history', JSON.stringify(this._history)); } catch { /**/ }
+    }
+
+    private _restoreHistory(): void {
+        const raw = localStorage.getItem('urdf-chat-history');
+        if (!raw) { this._updateEmptyState(); return; }
+        try { this._history = JSON.parse(raw) as Msg[]; } catch { return; }
+        for (let i = 0; i < this._history.length; i++) {
+            const msg = this._history[i];
+            if (msg.role === 'user') {
+                if (typeof msg.content === 'string') this._appendUserBubble(msg.content);
+            } else {
+                for (const block of msg.content as ContentBlock[]) {
+                    if (block.type === 'text' && block.text) {
+                        this._appendAssistantBubble(block.text);
+                    } else if (block.type === 'tool_use') {
+                        const nextMsg = this._history[i + 1];
+                        let result: unknown = { ok: true };
+                        if (nextMsg?.role === 'user' && Array.isArray(nextMsg.content)) {
+                            const tr = (nextMsg.content as ToolResBlock[]).find(r => r.tool_use_id === block.id);
+                            if (tr) try { result = JSON.parse(tr.content); } catch { result = tr.content; }
+                        }
+                        const card = this._appendToolCard(block.name);
+                        card.setResult(!(result as Record<string, unknown>)?.error, block.input, result);
+                    }
+                }
+            }
+        }
+        this._updateEmptyState();
+    }
+
     private async _runConversation(userText: string): Promise<void> {
         this._sanitizeHistory();
         this._appendUserBubble(userText);
         this._history.push({ role: 'user', content: userText });
+        this._saveHistory();
         this._updateEmptyState();
         await this._withSession(() => this._runLoop());
+        this._saveHistory();
+    }
+
+    // ── Model / provider management ───────────────────────────────────────────
+
+    private _applyModel(value: string): void {
+        const colon = value.indexOf(':');
+        this._provider = value.slice(0, colon) as Provider;
+        this._model    = this._provider === 'github' ? value.slice(colon + 1) : MODEL;
+        this._ghBarEl.hidden     = (this._provider !== 'github');
+        this._apikeyBarEl.hidden = (this._provider !== 'anthropic');
+        localStorage.setItem('urdf-chat-model', value);
+        this._updateGitHubBar();
+        this._updateApiKeyBar();
+    }
+
+    private _updateApiKeyBar(): void {
+        this._apikeyBarEl.innerHTML = '';
+        const key = localStorage.getItem('urdf-api-key');
+        if (key) {
+            const saved = document.createElement('span');
+            saved.className = 'chat-apikey-saved';
+            saved.textContent = 'API key saved';
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'chat-apikey-remove';
+            btn.textContent = 'Remove';
+            btn.addEventListener('click', () => {
+                localStorage.removeItem('urdf-api-key');
+                this._updateApiKeyBar();
+            });
+            this._apikeyBarEl.append(saved, btn);
+        } else {
+            const inp = document.createElement('input');
+            inp.type = 'password';
+            inp.placeholder = 'sk-ant-… Anthropic API key';
+            inp.setAttribute('aria-label', 'Anthropic API key');
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'chat-apikey-save';
+            btn.textContent = 'Save';
+            const save = () => {
+                const val = inp.value.trim();
+                if (!val) return;
+                localStorage.setItem('urdf-api-key', val);
+                this._updateApiKeyBar();
+            };
+            inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') save(); });
+            btn.addEventListener('click', save);
+            this._apikeyBarEl.append(inp, btn);
+        }
+    }
+
+    private _updateGitHubBar(): void {
+        this._ghBarEl.innerHTML = '';
+        if (this._githubAuth) {
+            const label = document.createElement('span');
+            label.className = 'chat-github-user';
+            label.textContent = `@${this._githubAuth.username}`;
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'chat-github-disconnect';
+            btn.textContent = 'Disconnect';
+            btn.addEventListener('click', () => {
+                this._githubAuth = null;
+                localStorage.removeItem('urdf-gh-auth');
+                this._clearChat();
+                this._updateGitHubBar();
+            });
+            this._ghBarEl.append(label, btn);
+        } else {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'chat-github-connect';
+            btn.textContent = 'Connect GitHub';
+            btn.addEventListener('click', async () => {
+                btn.textContent = 'Connecting…';
+                btn.disabled = true;
+                try {
+                    const connect = await loadConnectGitHub();
+                    this._githubAuth = await connect('read:user', 'urdf-viewer');
+                    localStorage.setItem('urdf-gh-auth', JSON.stringify(this._githubAuth));
+                    this._updateGitHubBar();
+                } catch (err) {
+                    const e = err as Error;
+                    if (e.message !== 'OAuth flow cancelled') this._appendSystemMsg(`GitHub auth failed: ${e.message}`);
+                    btn.textContent = 'Connect GitHub';
+                    btn.disabled = false;
+                }
+            });
+            this._ghBarEl.appendChild(btn);
+        }
+        const note = document.createElement('span');
+        note.className = 'chat-github-note';
+        note.textContent = 'Tool calls may be less reliable than Claude.';
+        this._ghBarEl.appendChild(note);
     }
 
     // ── API ───────────────────────────────────────────────────────────────────
 
     private async _callAPI(): Promise<ReadableStream<Uint8Array>> {
+        return this._provider === 'github' ? this._callAPIGitHub() : this._callAPIClaude();
+    }
+
+    private async _callAPIClaude(): Promise<ReadableStream<Uint8Array>> {
         const body = {
             model: MODEL, max_tokens: 4096,
             system:   this._buildSystem(),
@@ -903,7 +1190,7 @@ Use tools to modify the robot. Prefer direct tool calls over lengthy explanation
             stream:   true,
         };
 
-        // Try local proxy first
+        // Try local proxy first (silent fallback if not running)
         try {
             const r = await fetch(LOCAL_PROXY, {
                 method: 'POST', signal: this._abortCtrl!.signal,
@@ -915,7 +1202,7 @@ Use tools to modify the robot. Prefer direct tool calls over lengthy explanation
 
         // Fallback: direct Anthropic API
         const key = localStorage.getItem('urdf-api-key');
-        if (!key) { this._showApiKeyPrompt(); throw new Error('no-api-key'); }
+        if (!key) { this._appendSystemMsg('Enter your Anthropic API key in the bar above.'); throw new Error('no-api-key'); }
 
         const r = await fetch('https://api.anthropic.com/v1/messages', {
             method: 'POST', signal: this._abortCtrl!.signal,
@@ -934,32 +1221,135 @@ Use tools to modify the robot. Prefer direct tool calls over lengthy explanation
         return r.body!;
     }
 
-    private _showApiKeyPrompt(): void {
-        const wrap = document.createElement('div');
-        wrap.className = 'chat-msg-system';
-        wrap.innerHTML = `
-            <div style="margin-bottom:6px;font-size:0.8125rem;color:var(--text-2)">
-                Enter your Anthropic API key to use the build AI:
-            </div>
-            <div style="display:flex;gap:6px">
-                <input type="password" placeholder="sk-ant-…"
-                    style="flex:1;padding:4px 8px;border-radius:6px;border:1px solid var(--border);
-                           background:var(--bg);color:var(--text-1);font-size:0.8125rem"/>
-                <button type="button" style="padding:4px 10px;border-radius:6px;border:none;
-                    background:var(--blue);color:#fff;font-size:0.8125rem;cursor:pointer">Save</button>
-            </div>`;
-        const inp = wrap.querySelector('input')!;
-        const btn = wrap.querySelector('button')!;
-        btn.addEventListener('click', () => {
-            const val = inp.value.trim();
-            if (!val) return;
-            localStorage.setItem('urdf-api-key', val);
-            wrap.remove();
-            void this._runConversation(this._history[this._history.length - 1]?.role === 'user'
-                ? (this._history.pop() as { role: 'user'; content: string }).content
-                : '');
+    private async _callAPIGitHub(): Promise<ReadableStream<Uint8Array>> {
+        if (!this._githubAuth) {
+            this._appendSystemMsg('Connect your GitHub account above to use GitHub Models.');
+            throw new Error('github-no-auth');
+        }
+        const oaiTools = (this._buildTools() as Array<Record<string, unknown>>).map(t => ({
+            type: 'function',
+            function: { name: t['name'], description: t['description'], parameters: t['input_schema'] },
+        }));
+        const r = await fetch('https://models.github.ai/inference/chat/completions', {
+            method: 'POST', signal: this._abortCtrl!.signal,
+            headers: { 'Content-Type': 'application/json', 'authorization': `Bearer ${this._githubAuth.token}` },
+            body: JSON.stringify({
+                model: this._model,
+                messages: [{ role: 'system', content: this._buildSystem() }, ...this._historyToOpenAI()],
+                tools: oaiTools, tool_choice: 'auto', max_completion_tokens: 4096, stream: true,
+            }),
         });
-        this._appendChat(wrap);
+        if (!r.ok) {
+            const msg = await r.text().catch(() => r.statusText);
+            if (r.status === 429) throw new Error('GitHub Models rate limit reached. Try again later.');
+            throw new Error(`GitHub API ${r.status}: ${msg.slice(0, 200)}`);
+        }
+        return r.body!;
+    }
+
+    private _historyToOpenAI(): Array<Record<string, unknown>> {
+        const out: Array<Record<string, unknown>> = [];
+        for (const msg of this._history) {
+            if (msg.role === 'user') {
+                if (typeof msg.content === 'string') {
+                    out.push({ role: 'user', content: msg.content });
+                } else {
+                    for (const tr of msg.content as ToolResBlock[]) {
+                        out.push({ role: 'tool', tool_call_id: tr.tool_use_id, content: tr.content });
+                    }
+                }
+            } else {
+                const blocks = msg.content as ContentBlock[];
+                const text   = blocks.filter(b => b.type === 'text').map(b => (b as TextBlock).text).join('');
+                const tcs    = blocks.filter(b => b.type === 'tool_use').map(b => {
+                    const tu = b as ToolUseBlock;
+                    return { id: tu.id, type: 'function', function: { name: tu.name, arguments: JSON.stringify(tu.input) } };
+                });
+                const m: Record<string, unknown> = { role: 'assistant', content: text || null };
+                if (tcs.length) m['tool_calls'] = tcs;
+                out.push(m);
+            }
+        }
+        return out;
+    }
+
+
+    // ── OpenAI SSE parser + stream processor ──────────────────────────────────
+
+    private async *_parseDataSSE(body: ReadableStream<Uint8Array>): AsyncGenerator<unknown> {
+        const reader  = body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines.pop()!;
+            for (const line of lines) {
+                if (!line.startsWith('data: ')) continue;
+                const raw = line.slice(6).trim();
+                if (raw === '[DONE]') return;
+                try { yield JSON.parse(raw); } catch { /**/ }
+            }
+        }
+    }
+
+    private async _processStreamOpenAI(
+        body: ReadableStream<Uint8Array>,
+        spinnerEl: HTMLElement,
+    ): Promise<{ content: ContentBlock[]; toolCalls: ToolUseBlock[]; toolCards: Map<string, ToolCardHandle> }> {
+        const toolCards = new Map<string, ToolCardHandle>();
+        const tcMap     = new Map<number, { id: string; name: string; args: string; shown: boolean }>();
+        let curMsgEl: HTMLElement | null = null;
+        let curText  = '';
+        let rafPending   = false;
+        let spinnerDone  = false;
+        const removeSpinner = () => { if (!spinnerDone) { spinnerDone = true; spinnerEl.remove(); } };
+
+        type OAIChunk = { choices?: Array<{ delta: { content?: string; tool_calls?: Array<{ index: number; id?: string; function?: { name?: string; arguments?: string } }> } }> };
+        for await (const chunk of this._parseDataSSE(body)) {
+            const delta = (chunk as OAIChunk).choices?.[0]?.delta;
+            if (!delta) continue;
+
+            if (delta.content) {
+                removeSpinner();
+                if (!curMsgEl) { curMsgEl = this._appendAssistantBubble(''); curText = ''; }
+                curText += delta.content;
+                if (!rafPending) {
+                    rafPending = true;
+                    requestAnimationFrame(() => {
+                        rafPending = false;
+                        if (curMsgEl) { curMsgEl.innerHTML = renderMd(curText); this._messagesEl.scrollTop = this._messagesEl.scrollHeight; }
+                    });
+                }
+            }
+            if (delta.tool_calls) {
+                removeSpinner();
+                for (const tc of delta.tool_calls) {
+                    if (!tcMap.has(tc.index)) tcMap.set(tc.index, { id: '', name: '', args: '', shown: false });
+                    const e = tcMap.get(tc.index)!;
+                    if (tc.id) e.id = tc.id;
+                    if (tc.function?.name) e.name = tc.function.name;
+                    if (tc.function?.arguments) e.args += tc.function.arguments;
+                    if (!e.shown && e.id && e.name) { e.shown = true; toolCards.set(e.id, this._appendToolCard(e.name)); }
+                }
+            }
+        }
+
+        if (curMsgEl && curText) curMsgEl.innerHTML = renderMd(curText);
+        removeSpinner();
+        const content: ContentBlock[] = [];
+        if (curText) content.push({ type: 'text', text: curText });
+        const toolCalls: ToolUseBlock[] = [];
+        for (const [, e] of tcMap) {
+            let input: Record<string, unknown> = {};
+            try { input = JSON.parse(e.args || '{}'); } catch { /**/ }
+            const tc: ToolUseBlock = { type: 'tool_use', id: e.id, name: e.name, input };
+            content.push(tc);
+            toolCalls.push(tc);
+        }
+        return { content, toolCalls, toolCards };
     }
 
     // ── SSE parsing (identical to editor.ts) ─────────────────────────────────
@@ -993,10 +1383,10 @@ Use tools to modify the robot. Prefer direct tool calls over lengthy explanation
     private async _processStream(
         body: ReadableStream<Uint8Array>,
         spinnerEl: HTMLElement,
-    ): Promise<{ content: ContentBlock[]; toolCalls: ToolUseBlock[]; toolCards: Map<string, { setResult(ok: boolean): void }> }> {
+    ): Promise<{ content: ContentBlock[]; toolCalls: ToolUseBlock[]; toolCards: Map<string, ToolCardHandle> }> {
         const content: ContentBlock[] = [];
         const toolCalls: ToolUseBlock[] = [];
-        const toolCards = new Map<string, { setResult(ok: boolean): void }>();
+        const toolCards = new Map<string, ToolCardHandle>();
         let curMsgEl: HTMLElement | null = null;
         let curText = '';
         let curTool: { id: string; name: string; idx: number } | null = null;
@@ -1066,6 +1456,7 @@ Use tools to modify the robot. Prefer direct tool calls over lengthy explanation
     private _clearChat(): void {
         this._history = [];
         this._messagesEl.innerHTML = '';
+        localStorage.removeItem('urdf-chat-history');
         this._updateEmptyState();
     }
 
@@ -1104,21 +1495,86 @@ Use tools to modify the robot. Prefer direct tool calls over lengthy explanation
         return div;
     }
 
-    private _appendToolCard(name: string): { setResult(ok: boolean): void } {
-        const card     = document.createElement('div');
-        card.className = 'chat-tool-card';
-        const nameEl   = document.createElement('span');
-        nameEl.className   = 'chat-tool-card-name';
-        nameEl.textContent = name;
+    private _appendToolCard(name: string): ToolCardHandle {
+        const el = document.createElement('details');
+        el.className = 'chat-tool-card';
+        const summary = document.createElement('summary');
         const statusEl = document.createElement('span');
         statusEl.className = 'chat-tool-card-status';
-        card.append(statusEl, nameEl);
-        this._appendChat(card);
+        const nameEl = document.createElement('span');
+        nameEl.className = 'chat-tool-card-name';
+        nameEl.textContent = name;
+        const subtitleEl = document.createElement('span');
+        subtitleEl.className = 'chat-tool-card-subtitle';
+        summary.append(statusEl, nameEl, subtitleEl);
+        el.appendChild(summary);
+        this._appendChat(el);
         return {
-            setResult(ok: boolean) {
+            setResult(ok: boolean, input?: Record<string, unknown>, result?: unknown) {
                 statusEl.textContent = ok ? '✓' : '✕';
                 statusEl.classList.add(ok ? 'ok' : 'err');
+                if (input && Object.keys(input).length) {
+                    subtitleEl.textContent = Object.entries(input)
+                        .slice(0, 3)
+                        .map(([k, v]) => `${k}=${typeof v === 'number' ? +Number(v).toFixed(3) : v}`)
+                        .join(' ');
+                }
+                const body = document.createElement('div');
+                body.className = 'chat-tool-card-body';
+                const htmlLines: string[] = [];
+                if (input && Object.keys(input).length)
+                    htmlLines.push(`<span class="j-dir">in</span>  ${highlightJson(JSON.stringify(input))}`);
+                htmlLines.push(`<span class="j-dir">out</span> ${highlightJson(JSON.stringify(result))}`);
+                body.innerHTML = htmlLines.join('\n');
+                el.appendChild(body);
             },
         };
+    }
+
+    appendRecapCard(title: string, changes: Array<{ label: string; from: number; to: number; unit: string }>): void {
+        if (!changes.length) return;
+        const card = document.createElement('div');
+        card.className = 'chat-recap-card';
+        const titleEl = document.createElement('div');
+        titleEl.className = 'chat-recap-card-title';
+        titleEl.textContent = `${title} adjusted`;
+        card.appendChild(titleEl);
+        for (const c of changes) {
+            const row = document.createElement('div');
+            row.className = 'chat-recap-card-row';
+            const lbl = document.createElement('span');
+            lbl.textContent = c.label;
+            const val = document.createElement('span');
+            val.textContent = `${+c.from.toFixed(1)} → ${+c.to.toFixed(1)} ${c.unit}`;
+            row.append(lbl, val);
+            card.appendChild(row);
+        }
+        this._appendChat(card);
+    }
+
+    private _appendActionCard(section: string, message: string): void {
+        const card = document.createElement('div');
+        card.className = 'chat-action-card';
+        const titleEl = document.createElement('div');
+        titleEl.className = 'chat-action-card-title';
+        titleEl.textContent = SECTION_TITLES[section] ?? section;
+        const msgEl = document.createElement('div');
+        msgEl.className = 'chat-action-card-msg';
+        msgEl.textContent = message;
+        const footer = document.createElement('div');
+        footer.className = 'chat-action-card-footer';
+        const openBtn = document.createElement('button');
+        openBtn.type = 'button';
+        openBtn.className = 'chat-action-btn primary';
+        openBtn.textContent = 'Open Panel';
+        openBtn.addEventListener('click', () => { this._cb.openPanel(section); card.remove(); });
+        const dismissBtn = document.createElement('button');
+        dismissBtn.type = 'button';
+        dismissBtn.className = 'chat-action-btn';
+        dismissBtn.textContent = 'Dismiss';
+        dismissBtn.addEventListener('click', () => card.remove());
+        footer.append(openBtn, dismissBtn);
+        card.append(titleEl, msgEl, footer);
+        this._appendChat(card);
     }
 }
