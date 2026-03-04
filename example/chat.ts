@@ -167,10 +167,8 @@ export class URDFChatController {
             this._briefBtn.classList.add('active');
             this._briefBtn.setAttribute('aria-pressed', 'true');
             this._cb.onBriefToggle(false);
-            const hasRobot2  = this._cb.getJointNames().length > 0;
             const hasCatalog = this._buildCtrl.isCatalogActive;
-            const starter = hasRobot2  ? 'Please walk me through this robot\'s assembly step by step.'
-                          : hasCatalog ? 'Please guide me through building this robot step by step.'
+            const starter = hasCatalog ? 'Please guide me through building this robot step by step.'
                           :              'Let\'s build a robot together.';
             this._runConversation(starter);
         });
@@ -799,16 +797,13 @@ export class URDFChatController {
 
         const catalogActive = this._buildCtrl.isCatalogActive;
         const jointNames    = this._cb.getJointNames();
-        const hasRobot      = jointNames.length > 0;   // robot visible in 3D viewer (synchronous)
-        const noRobot       = !catalogActive && !hasRobot;
+        const noRobot       = !catalogActive && parts.length === 0;
 
         const guideContext = noRobot
             ? `The workspace is empty. Ask the user what they want to build, then call init_robot with their choice:
-• "robot-car" — Robot Car (TT motors, L298N controller, ESP32-CAM, 4-wheel chassis). After init_robot, call pause to let it load, then tour the existing assembly.
-• "custom" — blank chassis to build anything. After init_robot, guide the user through adding components one by one.`
-            : hasRobot
-                ? `The robot is loaded in the 3D viewer. Tour it joint by joint using the list below — highlight_part each one, explain what it is and why it's there. Do NOT call add_component; the robot is already built.${parts.length > 0 ? ' Use read_part to examine URDF files for details.' : ''}`
-                : `The robot has no parts yet. Guide the user through building from scratch — add one component at a time and explain what it is and why it goes there before placing it.`;
+• "robot-car" — Robot Car (TT motors, L298N controller, ESP32-CAM, 4-wheel chassis).
+• "custom" — blank chassis to build anything.`
+            : `Guide the user through building the robot from scratch, one component at a time. Start by calling init_robot("robot-car") to reset to a clean state, then add components in logical order: chassis dimensions → wheels → caster → TT motors (×2) → L298N driver → battery box → power bank → HC-SR04 sensor → ESP32-CAM. Use only these library components: tt_motor, l298n, esp32_cam, hcsr04. Do NOT add arduino_nano, mpu6050, or sg90 — they are not part of this robot.`;
 
         const guideBlock = this._guide ? `GUIDE MODE: You are an interactive assembly guide. Rules:
 • Write your explanation text FIRST, then call tools. Never call pause as your opening action.
@@ -816,7 +811,7 @@ export class URDFChatController {
 • Call highlight_part (before pause) to show the relevant part in the 3D viewer.
 • Be educational — assume the user is learning.
 • ${guideContext}
-${jointNames.length > 0 ? `Available joints to highlight: ${jointNames.join(', ')}` : ''}
+${jointNames.length > 0 ? `Current joints in viewer: ${jointNames.join(', ')}` : ''}
 
 ` : '';
 
