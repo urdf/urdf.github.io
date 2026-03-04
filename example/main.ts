@@ -125,10 +125,16 @@ let _partsBlobUrl: string | null = null;
 
 async function loadViaBrowserAssembly(robot: RobotConfig): Promise<void> {
     const base     = robot.parts!;
-    const manifest = await fetch(`${base}.parts.json`).then(r => r.json()) as { robot: string; parts: string[] };
+    const manifest = await fetch(`${base}.parts.json`).then(r => r.json()) as {
+        robot: string; parts: string[]; contents?: Record<string, string>;
+    };
     const dir      = base.replace(/\/[^/]+$/, '');
-    const texts    = await Promise.all(manifest.parts.map(f => fetch(`${dir}/parts/${f}`).then(r => r.text())));
-    const partMap  = new Map(manifest.parts.map((f, i) => [f, texts[i]] as [string, string]));
+    // Use inlined contents (single fetch) if available, otherwise fetch individually.
+    const partMap  = manifest.contents
+        ? new Map(manifest.parts.map(f => [f, manifest.contents![f]] as [string, string]))
+        : new Map(await Promise.all(manifest.parts.map(async f =>
+              [f, await fetch(`${dir}/parts/${f}`).then(r => r.text())] as [string, string]
+          )));
     buildCtrl.init(manifest.robot, dir, partMap);
     // Rewrite relative mesh filenames to absolute paths — blob URLs have no usable base
     const xml      = assembleURDF(manifest.robot, partMap)
@@ -212,7 +218,7 @@ let _hoverTimer: ReturnType<typeof setTimeout> | null = null;
 let _gestureHoverBtn: HTMLButtonElement | null = null;
 
 function buildRobotButtons(robots: RobotConfig[]): void {
-    robotsPanel.innerHTML = '';
+    robotsPanel.querySelectorAll('.robot-btn').forEach(b => b.remove());
     for (let i = 0; i < robots.length; i++) {
         const robot = robots[i];
         const btn = document.createElement('button');
