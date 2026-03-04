@@ -126,6 +126,7 @@ MediaPipe `@mediapipe/tasks-vision` (CDN). Lazy-loaded on first button click.
 | Closed Fist | `Closed_Fist` | Orbit camera (wrist lm[0] delta) |
 | Pointing Up | `Pointing_Up` **or landmark check** | Hover highlight + dwell select (fingertip lm[8]). Dual detection: ML label for upward, landmark geometry for other angles. |
 | Open Palm | `Open_Palm` | Reset all joints (hold 1 s) |
+| Thumbs Up | `Thumb_Up` | Confirm / Continue — resolves guide-mode pause. Fires `onThumbsUp` callback once per occurrence (resets on any other gesture). |
 | Any + joint selected | any | Wrist roll drives joint angle |
 | Two hands | any | Pinch/spread zoom |
 
@@ -166,7 +167,7 @@ to speed. Chosen over EMA because it avoids the latency/smoothing tradeoff.
 
 ## Gesture design constraints
 
-Max 5 gestures (IJHCI 2024). Do not add more without removing one.
+Max 5 general-purpose gestures (IJHCI 2024). `Thumb_Up` is a 6th, contextual-only gesture (guide mode pause) — it does not participate in the main dispatch except when the pause promise is pending. Do not add more general-purpose gestures without removing one.
 Prefer iconic gestures (fist=grab, palm=release) over cultural emblems.
 
 Dwell selection: 800ms (700-900ms range). 30px movement resets the timer.

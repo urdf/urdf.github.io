@@ -10,11 +10,13 @@ Visualize, interact with, and build URDF robots in the browser.
 
 A full robot development environment that runs entirely in the browser.
 
-**AI robot builder** — describe what you want and the AI assembles the URDF for you, using tool calls to add components, set joint types, adjust positions, and configure limits. No XML required.
+**AI robot builder** — describe what you want and the AI assembles the URDF for you using tool calls: add components, set joint types, adjust positions, configure limits. No XML required. Includes a step-by-step **Guided Assembly** mode that walks you through building the Robot Car from scratch. Supports Claude Sonnet 4.6 (via local proxy or Anthropic API) and GitHub Models (GPT-4.1, GPT-5, and variants).
 
 **URDF editor** — edit raw URDF XML with an AI pair programmer. Ask it to move a joint, add a link, or explain what a part does. Changes reflect live in the viewer.
 
-**Gesture control** — control the viewer with your hands via MediaPipe: closed fist to orbit, point to select a joint, open palm to reset all joints, two hands to zoom.
+**Floating control panels** — detachable parameter panels float over the 3D viewer so you can adjust chassis, wheels, caster, battery, and power bank dimensions while watching the model update live. Opened by the AI, by a ⊡ button in the sidebar, or via chat.
+
+**Gesture control** — control the viewer with your hands via MediaPipe: closed fist to orbit, point to select a joint, open palm to reset all joints, two hands to zoom, thumbs up to confirm/continue in guided assembly.
 
 **Component library** — drag in pre-built components: HC-SR04 ultrasonic sensor, L298N motor driver, ESP32-CAM, TT Motor, SG90 servo, Arduino Nano, MPU-6050 IMU.
 
