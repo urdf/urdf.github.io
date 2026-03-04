@@ -172,6 +172,22 @@ Adds mouse/touch drag to rotate or slide joints in the viewport.
 
 ---
 
+## Robots
+
+Robot definitions, STL meshes, and URDF files live in a separate repo served at [`urdf.github.io/robots/`](https://urdf.github.io/robots/).
+
+**→ [github.com/urdf/robots](https://github.com/urdf/robots)**
+
+The app loads `catalog.json` from that origin at startup — add a robot there and it appears in the viewer automatically. The robots repo is mounted as a git submodule at `example/public/robots/`.
+
+```sh
+# Update to latest robots
+git submodule update --remote example/public/robots
+make build-site
+```
+
+---
+
 ## Development
 
 ```sh
