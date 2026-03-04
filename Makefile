@@ -2,7 +2,7 @@
 
 ROBOTS_DIR := example/public/robots
 
-.PHONY: dev build build-site preview lint clean robots-update robots-validate deploy help
+.PHONY: dev build build-site preview lint clean robots-update robots-validate deploy hooks help
 
 help:
 	@echo ""
@@ -22,6 +22,9 @@ help:
 	@echo "  \033[36mrobots-update\033[0m   Pull latest from urdf/robots submodule"
 	@echo "  \033[36mrobots-validate\033[0m Validate robots catalog and paths"
 	@echo "  \033[36mdeploy\033[0m          robots-update → robots-validate → lint → build-site"
+	@echo ""
+	@echo "\033[2m# Setup\033[0m"
+	@echo "  \033[36mhooks\033[0m           Install git hooks (pre-commit lint, post-merge submodule sync)"
 	@echo ""
 
 dev:
@@ -54,3 +57,7 @@ robots-validate:
 	$(MAKE) -C $(ROBOTS_DIR) validate
 
 deploy: robots-update robots-validate lint build-site
+
+hooks:
+	git config core.hooksPath .githooks
+	@echo "Git hooks configured."

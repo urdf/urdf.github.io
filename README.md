@@ -185,6 +185,8 @@ The app loads `catalog.json` from that origin at startup — add a robot there a
 ## Commands
 
 ```sh
+make hooks            # install git hooks (run once after cloning)
+
 make dev              # start dev server (localhost:5173)
 make build            # build the npm library → dist/
 make build-site       # build the demo site → docs/
@@ -195,6 +197,8 @@ make robots-update    # pull latest from urdf/robots submodule
 make robots-validate  # validate robots catalog and paths
 make deploy           # robots-update → robots-validate → lint → build-site
 ```
+
+Hooks installed by `make hooks`: `pre-commit` runs `lint`; `post-merge`, `post-checkout`, and `post-rewrite` run `git submodule update --init` to keep the robots submodule in sync automatically.
 
 ---
 
