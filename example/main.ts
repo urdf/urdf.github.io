@@ -1943,6 +1943,8 @@ async function handleLibraryAdd(entry: LibraryEntry, btn: HTMLButtonElement): Pr
 
 libSearchEl.addEventListener('input', buildLibraryGrid);
 
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
+
 for (const pill of libPillsEl.querySelectorAll<HTMLButtonElement>('.lib-pill')) {
     pill.addEventListener('click', () => {
         for (const p of libPillsEl.querySelectorAll<HTMLButtonElement>('.lib-pill'))
