@@ -167,10 +167,10 @@ export class URDFChatController {
             this._briefBtn.classList.add('active');
             this._briefBtn.setAttribute('aria-pressed', 'true');
             this._cb.onBriefToggle(false);
-            const hasCatalog = this._buildCtrl.isCatalogActive;
-            const starter = hasCatalog ? 'Please guide me through building this robot step by step.'
-                          :              'Let\'s build a robot together.';
-            this._runConversation(starter);
+            // Always reset to a blank Build canvas before the guide starts —
+            // don't leave this to Claude, it's too easy to skip.
+            this._cb.initRobot('robot-car');
+            this._runConversation('Please guide me through building this robot step by step.');
         });
 
         // Global keydown — double-Escape to clear, single key to focus chat
@@ -803,7 +803,7 @@ export class URDFChatController {
             ? `The workspace is empty. Ask the user what they want to build, then call init_robot with their choice:
 • "robot-car" — Robot Car (TT motors, L298N controller, ESP32-CAM, 4-wheel chassis).
 • "custom" — blank chassis to build anything.`
-            : `Guide the user through building the robot from scratch, one component at a time. Start by calling init_robot("robot-car") to reset to a clean state, then add components in logical order: chassis dimensions → wheels → caster → TT motors (×2) → L298N driver → battery box → power bank → HC-SR04 sensor → ESP32-CAM. Use only these library components: tt_motor, l298n, esp32_cam, hcsr04. Do NOT add arduino_nano, mpu6050, or sg90 — they are not part of this robot.`;
+            : `The Build canvas is blank and ready. Guide the user through assembling the Robot Car from scratch, one step at a time. Logical order: chassis dimensions → wheels → caster → TT motors (×2) → L298N driver → battery box → power bank → HC-SR04 sensor → ESP32-CAM. Library components to use: tt_motor, l298n, esp32_cam, hcsr04. Do NOT add arduino_nano, mpu6050, or sg90.`;
 
         const guideBlock = this._guide ? `GUIDE MODE: You are an interactive assembly guide. Rules:
 • Write your explanation text FIRST, then call tools. Never call pause as your opening action.

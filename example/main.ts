@@ -1307,16 +1307,12 @@ function removeComponentItem(id: string): void {
         highlightPart:            (jointName) => selectPart(jointName),
         getJointNames:            () => Object.keys(viewer.robot?.joints ?? {}),
         initRobot: (type, name) => {
-            if (type === 'robot-car') {
-                loadRobot(ROBOTS[0], 0);
-            } else {
-                clearBuildUI();
-                buildCtrl.initFromScratch(name ?? 'My Robot');
-                buildCtrl.open();
-                refreshSavedList();
-                refreshBuildHeader();
-                refreshPaletteCounts();
-            }
+            clearBuildUI();
+            buildCtrl.initFromScratch(type === 'robot-car' ? 'Robot Car' : (name ?? 'My Robot'));
+            buildCtrl.open();
+            refreshSavedList();
+            refreshBuildHeader();
+            refreshPaletteCounts();
             $<HTMLButtonElement>('tab-build').click();
             chatCtrl?.syncToolCount();
         },
