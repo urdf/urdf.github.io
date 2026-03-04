@@ -162,6 +162,7 @@ export class PointerURDFDragControls extends URDFDragControls {
         };
 
         this._onDown = e => {
+            if (e.button !== 0) return; // left mouse only — right-click is reserved for orbit
             this._downX = e.clientX;
             this._downY = e.clientY;
             this._dragCommitted = false;
@@ -172,14 +173,15 @@ export class PointerURDFDragControls extends URDFDragControls {
         };
 
         this._onMove = e => {
-            // Commit the grab once the pointer moves more than 4px from the down position.
-            if (!this._dragCommitted && this.manipulating === null) {
+            // Commit the grab once the pointer moves more than 4px — only for left-button drags.
+            if (!this._dragCommitted && this.manipulating === null && (e.buttons & 1)) {
                 const dist = Math.hypot(e.clientX - this._downX, e.clientY - this._downY);
                 if (dist > 4) {
                     this._dragCommitted = true;
                     this.setGrabbed(true);
                 }
             }
+            // Hover highlight update runs for all pointer moves regardless of button.
             this._pendingMove = e;
             if (!this._moveRaf) {
                 this._moveRaf = requestAnimationFrame(() => {
@@ -194,6 +196,7 @@ export class PointerURDFDragControls extends URDFDragControls {
         };
 
         this._onUp = e => {
+            if (e.button !== 0) return; // only left-button release ends a grab
             cancelAnimationFrame(this._moveRaf);
             this._moveRaf = 0;
             this._pendingMove = null;

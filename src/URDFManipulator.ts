@@ -34,6 +34,14 @@ export class URDFManipulator extends URDFViewer {
             this.renderer.domElement,
         );
 
+        // Right-click drag always orbits — essential for dense robots where every
+        // pixel is over a joint mesh and left-click would always grab a joint.
+        this.controls.mouseButtons = {
+            LEFT:   THREE.MOUSE.ROTATE,
+            MIDDLE: THREE.MOUSE.DOLLY,
+            RIGHT:  THREE.MOUSE.ROTATE,
+        };
+
         this._dragControls.updateJoint = (joint, angle) => {
             this.setJointValue(joint.name, angle);
         };
