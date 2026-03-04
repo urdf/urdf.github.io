@@ -814,21 +814,24 @@ export class URDFChatController {
                 const cur = { radius: this._buildCtrl.casterRadius, width: this._buildCtrl.casterWidth };
                 this._buildCtrl.updateCaster(radius ?? cur.radius, width ?? cur.width);
                 this._cb.syncSlidersFromController();
-                return { ok: true };
+                const casterPos = this._buildCtrl.getJointXYZ('caster_wheel_joint');
+                return { ok: true, ...(casterPos ? { joint_xyz_m: casterPos, where: casterPos.z < 0 ? 'under chassis' : 'above chassis' } : {}) };
             }
             case 'update_battery_box': {
                 const { l, w, h } = args as { l?: number; w?: number; h?: number };
                 const cur = this._buildCtrl.batteryBox;
                 this._buildCtrl.updateBatteryBox(l ?? cur.l, w ?? cur.w, h ?? cur.h);
                 this._cb.syncSlidersFromController();
-                return { ok: true };
+                const battPos = this._buildCtrl.getJointXYZ('battery_box_joint');
+                return { ok: true, ...(battPos ? { joint_xyz_m: battPos, where: battPos.z < 0 ? 'under chassis' : 'above chassis' } : {}) };
             }
             case 'update_powerbank': {
                 const { radius, length } = args as { radius?: number; length?: number };
                 const cur = this._buildCtrl.powerbank;
                 this._buildCtrl.updatePowerbank(radius ?? cur.radius, length ?? cur.length);
                 this._cb.syncSlidersFromController();
-                return { ok: true };
+                const pbPos = this._buildCtrl.getJointXYZ('powerbank_joint');
+                return { ok: true, ...(pbPos ? { joint_xyz_m: pbPos, where: pbPos.z < 0 ? 'under chassis' : 'above chassis' } : {}) };
             }
             case 'open_panel': {
                 this._cb.openPanel(args.section as string);
@@ -955,6 +958,7 @@ export class URDFChatController {
 • Call highlight_part (before pause) to show the relevant part in the 3D viewer.
 • Be educational — assume the user is learning.
 • After pause resolves, the tool result includes state_mm with the current dimensions. If the user changed something noteworthy (physically implausible, mechanically interesting, or very different from the real part), make a brief educational observation before continuing. Otherwise say nothing about the values.
+• SPATIAL GROUND TRUTH: placement tools (update_caster, update_battery_box, update_powerbank) return a \`where\` field ("under chassis" or "above chassis") derived from the actual joint Z coordinate. Always use this field when describing where a part sits — never infer position from prior knowledge. Coordinate convention: z < 0 = under chassis plate, z > 0 = above.
 • ${guideContext}
 ${jointNames.length > 0 ? `Current joints in viewer: ${jointNames.join(', ')}` : ''}
 

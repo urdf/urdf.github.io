@@ -743,14 +743,21 @@ export class URDFBuildController {
         return xml.replace('</robot>', `${parts.join('\n')}\n</robot>`);
     }
 
-    private _parseJointZ(joint: string): number | null {
+    getJointXYZ(joint: string): { x: number; y: number; z: number } | null {
         for (const xml of this._partMap.values()) {
             const m = xml.match(
                 new RegExp(`<joint[^>]*name="${joint}"[\\s\\S]*?<origin[^>]*\\bxyz="([^"]+)"`)
             );
-            if (m) return parseFloat(m[1].trim().split(/\s+/)[2]);
+            if (m) {
+                const [x, y, z] = m[1].trim().split(/\s+/).map(parseFloat);
+                return { x, y, z };
+            }
         }
         return null;
+    }
+
+    private _parseJointZ(joint: string): number | null {
+        return this.getJointXYZ(joint)?.z ?? null;
     }
 
     private _snapshot(): Snapshot {
