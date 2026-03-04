@@ -1306,6 +1306,20 @@ function removeComponentItem(id: string): void {
         updatePart:               (filename, xml) => editorCtrl.writePart(filename, xml),
         highlightPart:            (jointName) => selectPart(jointName),
         getJointNames:            () => Object.keys(viewer.robot?.joints ?? {}),
+        initRobot: (type, name) => {
+            if (type === 'robot-car') {
+                loadRobot(ROBOTS[0], 0);
+            } else {
+                clearBuildUI();
+                buildCtrl.initFromScratch(name ?? 'My Robot');
+                buildCtrl.open();
+                refreshSavedList();
+                refreshBuildHeader();
+                refreshPaletteCounts();
+            }
+            $<HTMLButtonElement>('tab-build').click();
+            chatCtrl?.syncToolCount();
+        },
         getFocusedComponent: () => {
             if (_buildSelCompId) {
                 const entry = buildCtrl.getComponentEntries().find(e => e.id === _buildSelCompId);

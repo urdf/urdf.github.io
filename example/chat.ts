@@ -43,6 +43,7 @@ export interface ChatCallbacks {
     updatePart:               (filename: string, xml: string) => Promise<boolean>;
     highlightPart:            (jointName: string | null) => void;
     getJointNames:            () => string[];
+    initRobot:                (type: 'robot-car' | 'custom', name?: string) => void;
 }
 
 // ── Slash-command action maps ─────────────────────────────────────────────────
@@ -81,6 +82,7 @@ export class URDFChatController {
     // DOM refs set in init()
     private _messagesEl!:   HTMLElement;
     private _emptyStateEl!: HTMLElement;
+    private _chatPaneEl!:   HTMLElement;
     private _inputEl!:      HTMLTextAreaElement;
     private _sendBtn!:     HTMLButtonElement;
     private _abortBtn!:    HTMLButtonElement;
@@ -97,6 +99,7 @@ export class URDFChatController {
     init(): void {
         this._messagesEl   = document.getElementById('chat-messages')!;
         this._emptyStateEl = document.getElementById('chat-empty-state')!;
+        this._chatPaneEl   = this._messagesEl.closest('.chat-pane') as HTMLElement;
         this._inputEl      = document.getElementById('chat-input') as HTMLTextAreaElement;
         this._sendBtn     = document.getElementById('chat-send') as HTMLButtonElement;
         this._abortBtn    = document.getElementById('chat-abort') as HTMLButtonElement;
@@ -164,10 +167,11 @@ export class URDFChatController {
             this._briefBtn.classList.add('active');
             this._briefBtn.setAttribute('aria-pressed', 'true');
             this._cb.onBriefToggle(false);
-            const hasParts = this._cb.getPartsList().length > 0;
-            const starter = hasParts
-                ? 'Please walk me through this robot\'s assembly step by step.'
-                : 'Please guide me through building this robot step by step.';
+            const hasParts    = this._cb.getPartsList().length > 0;
+            const hasCatalog  = this._buildCtrl.isCatalogActive;
+            const starter = hasParts   ? 'Please walk me through this robot\'s assembly step by step.'
+                          : hasCatalog ? 'Please guide me through building this robot step by step.'
+                          :              'Let\'s build a robot together.';
             this._runConversation(starter);
         });
 
@@ -202,9 +206,9 @@ export class URDFChatController {
 
     syncToolCount(): void {
         if (this._toolCountBtn) {
-            const n = this._buildTools().length;
-            this._toolCountBtn.textContent = `${n} tools`;
-            this._toolCountBtn.hidden = n === 0;
+            const active = this._buildCtrl.isCatalogActive;
+            this._toolCountBtn.hidden = !active;
+            if (active) this._toolCountBtn.textContent = `${this._buildTools().length} tools`;
         }
     }
 
@@ -225,7 +229,7 @@ export class URDFChatController {
         const empty = this._history.length === 0;
         this._emptyStateEl.style.display = empty ? 'flex' : 'none';
         this._emptyStateEl.setAttribute('aria-hidden', String(!empty));
-        this._messagesEl.closest('.chat-pane')?.classList.toggle('chat-empty', empty);
+        this._chatPaneEl.classList.toggle('chat-empty', empty);
     }
 
 
@@ -580,29 +584,42 @@ export class URDFChatController {
             );
         }
 
-        tools.push({
-            name: 'highlight_part',
-            description: 'Select and highlight a robot part in the 3D viewer. Call whenever you refer to a specific part.',
-            input_schema: {
-                type: 'object',
-                properties: {
-                    joint: { type: 'string', description: 'Joint name (e.g. "wheel_left_joint"), or empty string to clear.' },
-                },
-                required: ['joint'],
-            },
-        });
-
         if (this._guide) {
-            tools.push({
-                name: 'pause',
-                description: 'Pause and wait for the user to click Continue before the next step. Required between every assembly step in guide mode.',
-                input_schema: {
-                    type: 'object',
-                    properties: {
-                        message: { type: 'string', description: 'Optional context for the user.' },
+            tools.push(
+                {
+                    name: 'init_robot',
+                    description: 'Load a robot to work with. Call this before starting the guided tour/build when the workspace is empty.',
+                    input_schema: {
+                        type: 'object',
+                        properties: {
+                            type: { type: 'string', enum: ['robot-car', 'custom'], description: '"robot-car" loads the Robot Car; "custom" starts a blank chassis' },
+                            name: { type: 'string', description: 'Name for a custom robot (only used when type is "custom")' },
+                        },
+                        required: ['type'],
                     },
                 },
-            });
+                {
+                    name: 'highlight_part',
+                    description: 'Select and highlight a robot part in the 3D viewer.',
+                    input_schema: {
+                        type: 'object',
+                        properties: {
+                            joint: { type: 'string', description: 'Joint name (e.g. "wheel_left_joint"), or empty string to clear.' },
+                        },
+                        required: ['joint'],
+                    },
+                },
+                {
+                    name: 'pause',
+                    description: 'Call at the END of each step (after your text explanation and highlight_part) to wait for the user to click Continue. Never call this before writing your step explanation.',
+                    input_schema: {
+                        type: 'object',
+                        properties: {
+                            message: { type: 'string', description: 'Optional context for the user.' },
+                        },
+                    },
+                },
+            );
         }
 
         void allTypes; // suppress unused warning — types used in descriptions above
@@ -725,6 +742,12 @@ export class URDFChatController {
                 if (!ok) return { error: 'invalid filename or no source URL' };
                 return { ok: true };
             }
+            case 'init_robot': {
+                const type = args.type as 'robot-car' | 'custom';
+                const name = (args.name as string | undefined);
+                this._cb.initRobot(type, name);
+                return { ok: true, note: type === 'robot-car' ? 'Robot Car is loading — call pause next to let it finish.' : 'Custom robot initialized.' };
+            }
             case 'highlight_part': {
                 const joint = (args.joint as string) || null;
                 this._cb.highlightPart(joint);
@@ -774,14 +797,24 @@ export class URDFChatController {
             ? '\nBRIEF MODE: Answer in fewer than 4 lines. No preamble. Direct answers only. Emoji allowed as semantic shorthand when it replaces a word more efficiently than text.'
             : '';
 
+        const catalogActive = this._buildCtrl.isCatalogActive;
+        const noRobot       = !catalogActive && parts.length === 0;
+
+        const guideContext = noRobot
+            ? `The workspace is empty. Ask the user what they want to build, then call init_robot with their choice:
+• "robot-car" — Robot Car (TT motors, L298N controller, ESP32-CAM, 4-wheel chassis). After init_robot, call pause to let it load, then tour the existing assembly.
+• "custom" — blank chassis to build anything. After init_robot, guide the user through adding components one by one.`
+            : parts.length > 0
+                ? `The robot is already assembled. Tour the EXISTING parts one by one — use read_part to examine each file, explain what the component is and why it sits where it does. Do NOT call add_component for parts that already exist as URDF files.`
+                : `The robot has no parts yet. Guide the user through building from scratch — add one component at a time and explain what it is and why it goes there before placing it.`;
+
         const guideBlock = this._guide ? `GUIDE MODE: You are an interactive assembly guide. Rules:
-• One step per message. Always call pause between steps.
-• Call highlight_part after each step to show the part in the 3D viewer.
+• Write your explanation text FIRST, then call tools. Never call pause as your opening action.
+• One step per message. Call pause at the END of each step, after your text and any other tools.
+• Call highlight_part (before pause) to show the relevant part in the 3D viewer.
 • Be educational — assume the user is learning.
-${parts.length > 0
-    ? '• The robot is already assembled. Tour the EXISTING parts one by one — use read_part to examine each file, explain what the component is and why it sits where it does. Do NOT call add_component for parts that already exist as URDF files.'
-    : '• The robot has no parts yet. Guide the user through building from scratch — add one component at a time and explain what it is and why it goes there before placing it.'}
-Available joints to highlight: ${this._cb.getJointNames().join(', ')}
+• ${guideContext}
+${this._cb.getJointNames().length > 0 ? `Available joints to highlight: ${this._cb.getJointNames().join(', ')}` : ''}
 
 ` : '';
 
