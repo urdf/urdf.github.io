@@ -1604,7 +1604,7 @@ document.querySelectorAll<HTMLButtonElement>('.build-section-detach').forEach(bt
             buildCtrl.initFromScratch(type === 'robot-car' ? 'Robot Car' : (name ?? 'My Robot'));
             if (type === 'robot-car') {
                 ['03-wheels.xml', '04-caster.xml', '06-power.xml'].forEach(f => {
-                    fetch(`robots/robot-car/parts/${f}`)
+                    fetch(`/robots/robot-car/parts/${f}`)
                         .then(r => r.ok ? r.text() : null)
                         .then(text => { if (text) buildCtrl.setPartTemplate(f, text); })
                         .catch(() => {});
