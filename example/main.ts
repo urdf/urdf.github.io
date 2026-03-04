@@ -88,6 +88,30 @@ interface RobotConfig {
     parts?: string;  // base path for browser-assembled robots, e.g. '/robots/robot-car/robot-car'
     up: string;
     package?: string;
+    id?: string;
+}
+
+interface CatalogEntry {
+    id: string;
+    name: string;
+    label: string;
+    tags: string[];
+    up: string;
+    urdf?: string;
+    parts?: string;
+    package?: string;
+}
+
+function catalogToConfig(e: CatalogEntry): RobotConfig {
+    return {
+        id:      e.id,
+        name:    e.name,
+        label:   e.label,
+        up:      e.up,
+        ...(e.parts   ? { parts:   `/robots/${e.parts}`   } : {}),
+        ...(e.urdf    ? { urdf:    `/robots/${e.urdf}`    } : {}),
+        ...(e.package ? { package: `${e.package}: /robots/${e.id}` } : {}),
+    };
 }
 
 function assembleURDF(robotName: string, partMap: Map<string, string>): string {
@@ -133,29 +157,7 @@ async function loadViaBrowserAssembly(robot: RobotConfig): Promise<void> {
     refreshBuildHeader();
 }
 
-const ROBOTS: RobotConfig[] = [
-    { name: 'Robot Car',          label: 'Car',      parts: '/robots/robot-car/robot-car',                     up: '+Z' },
-    { name: 'T12',                label: 'T12',      urdf: '/robots/T12/urdf/T12.URDF',                       up: '-Z' },
-    { name: 'TriATHLETE',         label: 'Tri',      urdf: '/robots/TriATHLETE/urdf/TriATHLETE.URDF',         up: '-Z' },
-    { name: 'Laikago',            label: 'Laikago',  urdf: '/robots/laikago/urdf/laikago.urdf',               up: '+Z' },
-    {
-        name: 'Open Manipulator X',
-        label: 'OM-X',
-        urdf: '/robots/open_manipulator_x/open_manipulator_x.urdf',
-        package: 'open_manipulator_description: /robots/open_manipulator_x',
-        up: '+Z',
-    },
-    { name: 'SO-ARM100',          label: 'SO-100',   urdf: '/robots/so_arm100/so100.urdf',                    up: '+Z' },
-    { name: 'Simple Humanoid',    label: 'Humanoid', urdf: '/robots/simple_humanoid/simple_humanoid.urdf',    up: '+Z' },
-    {
-        name: 'Spryped',
-        label: 'Spryped',
-        urdf: '/robots/spryped/urdf/spryped.urdf',
-        package: 'spryped_urdf_rev06: /robots/spryped',
-        up: '+Z',
-    },
-];
-
+let ROBOTS: RobotConfig[] = [];
 let currentRobotIndex = 0;
 
 const robotTrackSlider = $('robot-track-slider');
@@ -209,22 +211,25 @@ function loadRobot(robot: RobotConfig, index: number): void {
 let _hoverTimer: ReturnType<typeof setTimeout> | null = null;
 let _gestureHoverBtn: HTMLButtonElement | null = null;
 
-for (let i = 0; i < ROBOTS.length; i++) {
-    const robot = ROBOTS[i];
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = 'robot-btn';
-    btn.textContent = robot.label;
-    btn.title = robot.name;
-    btn.dataset.name  = robot.name;
-    btn.dataset.index = String(i);
-    btn.addEventListener('click', () => loadRobot(robot, i));
-    btn.addEventListener('mouseenter', () => {
-        moveSliderTo(btn);
-        if (_hoverTimer) clearTimeout(_hoverTimer);
-        _hoverTimer = setTimeout(() => loadRobot(robot, i), 150);
-    });
-    robotsPanel.appendChild(btn);
+function buildRobotButtons(robots: RobotConfig[]): void {
+    robotsPanel.innerHTML = '';
+    for (let i = 0; i < robots.length; i++) {
+        const robot = robots[i];
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'robot-btn';
+        btn.textContent = robot.label;
+        btn.title = robot.name;
+        btn.dataset.name  = robot.name;
+        btn.dataset.index = String(i);
+        btn.addEventListener('click', () => loadRobot(robot, i));
+        btn.addEventListener('mouseenter', () => {
+            moveSliderTo(btn);
+            if (_hoverTimer) clearTimeout(_hoverTimer);
+            _hoverTimer = setTimeout(() => loadRobot(robot, i), 150);
+        });
+        robotsPanel.appendChild(btn);
+    }
 }
 
 robotsPanel.closest('.robot-shell')!.addEventListener('mouseleave', () => {
@@ -234,11 +239,33 @@ robotsPanel.closest('.robot-shell')!.addEventListener('mouseleave', () => {
 
 new ResizeObserver(moveSliderToActive).observe(robotsPanel);
 
+// Load catalog then render buttons and apply ?robot= deep-link
 robotTrackSlider.style.transition = 'none';
-loadRobot(ROBOTS[0], 0);
-requestAnimationFrame(() => requestAnimationFrame(() => {
-    robotTrackSlider.style.transition = '';
-}));
+fetch('/robots/catalog.json')
+    .then(r => r.ok ? r.json() as Promise<{ version: number; robots: CatalogEntry[] }> : Promise.reject())
+    .then(catalog => { ROBOTS = catalog.robots.map(catalogToConfig); })
+    .catch(() => {
+        // Fallback: hardcoded list so the app still works if catalog is unreachable
+        ROBOTS = [
+            { id: 'robot-car',         name: 'Robot Car',          label: 'Car',      parts: '/robots/robot-car/robot-car',                                         up: '+Z' },
+            { id: 'T12',               name: 'T12',                label: 'T12',      urdf: '/robots/T12/urdf/T12.URDF',                                            up: '-Z' },
+            { id: 'TriATHLETE',        name: 'TriATHLETE',         label: 'Tri',      urdf: '/robots/TriATHLETE/urdf/TriATHLETE.URDF',                              up: '-Z' },
+            { id: 'laikago',           name: 'Laikago',            label: 'Laikago',  urdf: '/robots/laikago/urdf/laikago.urdf',                                    up: '+Z' },
+            { id: 'open_manipulator_x',name: 'Open Manipulator X', label: 'OM-X',     urdf: '/robots/open_manipulator_x/open_manipulator_x.urdf', package: 'open_manipulator_description: /robots/open_manipulator_x', up: '+Z' },
+            { id: 'so_arm100',         name: 'SO-ARM100',          label: 'SO-100',   urdf: '/robots/so_arm100/so100.urdf',                                         up: '+Z' },
+            { id: 'simple_humanoid',   name: 'Simple Humanoid',    label: 'Humanoid', urdf: '/robots/simple_humanoid/simple_humanoid.urdf',                         up: '+Z' },
+            { id: 'spryped',           name: 'Spryped',            label: 'Spryped',  urdf: '/robots/spryped/urdf/spryped.urdf', package: 'spryped_urdf_rev06: /robots/spryped', up: '+Z' },
+        ];
+    })
+    .finally(() => {
+        buildRobotButtons(ROBOTS);
+        const paramId = new URLSearchParams(location.search).get('robot');
+        const startIdx = paramId ? Math.max(0, ROBOTS.findIndex(r => r.id === paramId)) : 0;
+        loadRobot(ROBOTS[startIdx], startIdx);
+        requestAnimationFrame(() => requestAnimationFrame(() => {
+            robotTrackSlider.style.transition = '';
+        }));
+    });
 
 document.addEventListener('keydown', (e) => {
     if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
