@@ -142,6 +142,9 @@ export class PointerURDFDragControls extends URDFDragControls {
     private _mouse = new Vector2();
     private _pendingMove: PointerEvent | null = null;
     private _moveRaf = 0;
+    private _downX = 0;
+    private _downY = 0;
+    private _dragCommitted = false;
 
     private _onDown: (e: PointerEvent) => void;
     private _onMove: (e: PointerEvent) => void;
@@ -159,13 +162,24 @@ export class PointerURDFDragControls extends URDFDragControls {
         };
 
         this._onDown = e => {
+            this._downX = e.clientX;
+            this._downY = e.clientY;
+            this._dragCommitted = false;
             updateMouse(e);
             this._raycaster.setFromCamera(this._mouse, camera);
             this.moveRay(this._raycaster.ray);
-            this.setGrabbed(true);
+            // Do not grab yet — wait for movement threshold in _onMove.
         };
 
         this._onMove = e => {
+            // Commit the grab once the pointer moves more than 4px from the down position.
+            if (!this._dragCommitted && this.manipulating === null) {
+                const dist = Math.hypot(e.clientX - this._downX, e.clientY - this._downY);
+                if (dist > 4) {
+                    this._dragCommitted = true;
+                    this.setGrabbed(true);
+                }
+            }
             this._pendingMove = e;
             if (!this._moveRaf) {
                 this._moveRaf = requestAnimationFrame(() => {
@@ -183,6 +197,7 @@ export class PointerURDFDragControls extends URDFDragControls {
             cancelAnimationFrame(this._moveRaf);
             this._moveRaf = 0;
             this._pendingMove = null;
+            this._dragCommitted = false;
             updateMouse(e);
             this._raycaster.setFromCamera(this._mouse, camera);
             this.moveRay(this._raycaster.ray);
