@@ -167,9 +167,9 @@ export class URDFChatController {
             this._briefBtn.classList.add('active');
             this._briefBtn.setAttribute('aria-pressed', 'true');
             this._cb.onBriefToggle(false);
-            const hasParts    = this._cb.getPartsList().length > 0;
-            const hasCatalog  = this._buildCtrl.isCatalogActive;
-            const starter = hasParts   ? 'Please walk me through this robot\'s assembly step by step.'
+            const hasRobot2  = this._cb.getJointNames().length > 0;
+            const hasCatalog = this._buildCtrl.isCatalogActive;
+            const starter = hasRobot2  ? 'Please walk me through this robot\'s assembly step by step.'
                           : hasCatalog ? 'Please guide me through building this robot step by step.'
                           :              'Let\'s build a robot together.';
             this._runConversation(starter);
@@ -798,14 +798,16 @@ export class URDFChatController {
             : '';
 
         const catalogActive = this._buildCtrl.isCatalogActive;
-        const noRobot       = !catalogActive && parts.length === 0;
+        const jointNames    = this._cb.getJointNames();
+        const hasRobot      = jointNames.length > 0;   // robot visible in 3D viewer (synchronous)
+        const noRobot       = !catalogActive && !hasRobot;
 
         const guideContext = noRobot
             ? `The workspace is empty. Ask the user what they want to build, then call init_robot with their choice:
 • "robot-car" — Robot Car (TT motors, L298N controller, ESP32-CAM, 4-wheel chassis). After init_robot, call pause to let it load, then tour the existing assembly.
 • "custom" — blank chassis to build anything. After init_robot, guide the user through adding components one by one.`
-            : parts.length > 0
-                ? `The robot is already assembled. Tour the EXISTING parts one by one — use read_part to examine each file, explain what the component is and why it sits where it does. Do NOT call add_component for parts that already exist as URDF files.`
+            : hasRobot
+                ? `The robot is loaded in the 3D viewer. Tour it joint by joint using the list below — highlight_part each one, explain what it is and why it's there. Do NOT call add_component; the robot is already built.${parts.length > 0 ? ' Use read_part to examine URDF files for details.' : ''}`
                 : `The robot has no parts yet. Guide the user through building from scratch — add one component at a time and explain what it is and why it goes there before placing it.`;
 
         const guideBlock = this._guide ? `GUIDE MODE: You are an interactive assembly guide. Rules:
@@ -814,7 +816,7 @@ export class URDFChatController {
 • Call highlight_part (before pause) to show the relevant part in the 3D viewer.
 • Be educational — assume the user is learning.
 • ${guideContext}
-${this._cb.getJointNames().length > 0 ? `Available joints to highlight: ${this._cb.getJointNames().join(', ')}` : ''}
+${jointNames.length > 0 ? `Available joints to highlight: ${jointNames.join(', ')}` : ''}
 
 ` : '';
 
