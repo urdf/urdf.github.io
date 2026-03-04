@@ -180,22 +180,20 @@ Robot definitions, STL meshes, and URDF files live in a separate repo served at 
 
 The app loads `catalog.json` from that origin at startup — add a robot there and it appears in the viewer automatically. The robots repo is mounted as a git submodule at `example/public/robots/`.
 
-```sh
-# Update to latest robots
-git submodule update --remote example/public/robots
-make build-site
-```
-
 ---
 
-## Development
+## Commands
 
 ```sh
-make dev          # start dev server (localhost:5173)
-make build        # build the npm library → dist/
-make build-site   # build the demo site → docs/
-make lint         # type-check
-make clean        # remove dist/, docs/, node_modules/
+make dev              # start dev server (localhost:5173)
+make build            # build the npm library → dist/
+make build-site       # build the demo site → docs/
+make lint             # type-check
+make clean            # remove dist/, docs/, node_modules/
+
+make robots-update    # pull latest from urdf/robots submodule
+make robots-validate  # validate robots catalog and paths
+make deploy           # robots-update → robots-validate → lint → build-site
 ```
 
 ---
