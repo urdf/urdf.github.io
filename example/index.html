@@ -10,22 +10,22 @@
     /* ── Design tokens ───────────────────────────────────────────────────── */
 
     :root {
-      --bg:            #0f1117;
-      --surface:       #13151c;
-      --surface-hi:    #1e2130;
-      --surface-hover: #252840;
-      --border:        #2a2d3a;
-      --text-1:        #e5e7eb;
-      --text-2:        #9ca3af;
-      --text-3:        #8b93a0;
-      --blue:          #007aff;
-      --blue-hover:    #0066cc;
-      --blue-bg:       rgba(0, 122, 255, 0.15);
-      --blue-text:     #4da3ff;
-      --shadow:        rgba(0, 0, 0, 0.5);
-      --toggle-bg:     rgba(19, 21, 28, 0.85);
-      --loading-bg:    rgba(15, 17, 23, 0.6);
-      --tooltip-bg:    rgba(13, 15, 20, 0.90);
+      --bg:            #0f172a;
+      --surface:       #1e293b;
+      --surface-hi:    #0f172a;
+      --surface-hover: #2d3f55;
+      --border:        #334155;
+      --text-1:        #e2e8f0;
+      --text-2:        #94a3b8;
+      --text-3:        #64748b;
+      --blue:          #3b82f6;
+      --blue-hover:    #2563eb;
+      --blue-bg:       rgba(59, 130, 246, 0.15);
+      --blue-text:     #60a5fa;
+      --shadow:        rgba(0, 0, 0, 0.6);
+      --toggle-bg:     rgba(30, 41, 59, 0.88);
+      --loading-bg:    rgba(15, 23, 42, 0.65);
+      --tooltip-bg:    rgba(15, 23, 42, 0.95);
     }
 
     @media (prefers-color-scheme: light) {
@@ -38,8 +38,8 @@
         --text-1:        #1c1c1e;
         --text-2:        #3c3c43;
         --text-3:        #8e8e93;
-        --blue-bg:       rgba(0, 122, 255, 0.1);
-        --blue-text:     #007aff;
+        --blue-bg:       rgba(59, 130, 246, 0.1);
+        --blue-text:     #2563eb;
         --shadow:        rgba(0, 0, 0, 0.12);
         --toggle-bg:     rgba(255, 255, 255, 0.85);
         --loading-bg:    rgba(242, 242, 247, 0.6);
@@ -85,12 +85,12 @@
 
     #control-panel {
       position: fixed; left: 0; top: 0; height: 100dvh;
-      width: var(--panel-w, 380px); z-index: 200;
+      width: var(--panel-w, 320px); z-index: 200;
       background: var(--surface); border-right: 1px solid var(--border);
       display: flex; flex-direction: column; overflow: hidden;
       transform: translateX(-100%);
-      transition: transform 0.25s ease;
-      box-shadow: 4px 0 24px var(--shadow);
+      transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: 4px 0 32px var(--shadow);
     }
     #control-panel.open { transform: translateX(0); }
 
@@ -98,12 +98,12 @@
 
     #chat-panel {
       position: fixed; right: 0; top: 0; height: 100dvh;
-      width: var(--chat-w, 360px); z-index: 200;
+      width: var(--chat-w, 320px); z-index: 200;
       background: var(--surface); border-left: 1px solid var(--border);
       display: flex; flex-direction: column; overflow: hidden;
       transform: translateX(100%);
-      transition: transform 0.25s ease;
-      box-shadow: -4px 0 24px var(--shadow);
+      transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: -4px 0 32px var(--shadow);
     }
     #chat-panel.open { transform: translateX(0); }
 
@@ -141,42 +141,44 @@
 
     .panel-header {
       display: flex;
-      align-items: stretch;
+      align-items: center;
       border-bottom: 1px solid var(--border);
       flex-shrink: 0;
-      height: 52px;
+      height: 56px;
+      padding: 0 6px;
+      gap: 2px;
     }
 
-    .panel-tabs { display: flex; flex: 1; }
+    .panel-tabs { display: flex; flex: 1; align-items: center; gap: 2px; }
 
     .tab-btn {
       flex: 1;
       background: none;
       border: none;
-      border-bottom: 2px solid transparent;
-      padding: 0 4px;
-      height: 100%;
+      border-radius: 8px;
+      padding: 6px 4px;
+      height: auto;
       color: var(--text-3);
       cursor: pointer;
-      transition: color 0.12s, border-color 0.12s;
+      transition: color 0.12s, background 0.12s;
       display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
     }
 
-    .tab-btn:hover { color: var(--text-2); }
-    .tab-btn:focus-visible { outline: 2px solid var(--blue); outline-offset: -2px; }
+    .tab-btn:hover { color: var(--text-2); background: var(--surface-hover); }
+    .tab-btn:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
 
     .tab-label {
       font-size: 0.5625rem;
-      font-weight: 500;
-      letter-spacing: 0.03em;
+      font-weight: 600;
+      letter-spacing: 0.04em;
       line-height: 1;
     }
 
-    .tab-btn[data-tab="robot"] { color: var(--blue-text); border-bottom-color: var(--blue); }
-    body.editor-open .tab-btn[data-tab="robot"]  { color: var(--text-3); border-bottom-color: transparent; }
-    body.editor-open .tab-btn[data-tab="editor"] { color: var(--blue-text); border-bottom-color: var(--blue); }
-    body.build-open  .tab-btn[data-tab="robot"]  { color: var(--text-3);   border-bottom-color: transparent; }
-    body.build-open  .tab-btn[data-tab="build"]  { color: var(--blue-text); border-bottom-color: var(--blue); }
+    .tab-btn[data-tab="robot"] { color: var(--blue-text); background: var(--blue-bg); }
+    body.editor-open .tab-btn[data-tab="robot"]  { color: var(--text-3); background: none; }
+    body.editor-open .tab-btn[data-tab="editor"] { color: var(--blue-text); background: var(--blue-bg); }
+    body.build-open  .tab-btn[data-tab="robot"]  { color: var(--text-3);   background: none; }
+    body.build-open  .tab-btn[data-tab="build"]  { color: var(--blue-text); background: var(--blue-bg); }
     body.build-open  .tab-body[data-tab="robot"] { display: none; }
     body.build-open  .tab-body[data-tab="build"] { display: flex; }
 
@@ -357,12 +359,12 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 8px 12px;
-      font-size: 0.6875rem;
-      font-weight: 500;
-      color: var(--text-2);
+      padding: 9px 12px;
+      font-size: 0.625rem;
+      font-weight: 700;
+      color: var(--text-3);
       text-transform: uppercase;
-      letter-spacing: 0.06em;
+      letter-spacing: 0.08em;
       cursor: pointer;
       user-select: none;
       list-style: none;
@@ -556,7 +558,7 @@
     /* ── Section blocks ──────────────────────────────────────────────────── */
 
     .section {
-      padding: 8px 12px;
+      padding: 9px 12px;
       border-bottom: 1px solid var(--border);
       display: flex;
       flex-direction: column;
@@ -564,11 +566,12 @@
     }
 
     .section-label {
-      font-size: 0.6875rem;
-      font-weight: 600;
-      color: var(--text-2);
-      letter-spacing: 0.02em;
-      padding: 12px 12px 4px;
+      font-size: 0.625rem;
+      font-weight: 700;
+      color: var(--text-3);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 10px 12px 4px;
     }
 
     /* ── Robot picker (mode-selector style) ─────────────────────────────── */
@@ -580,8 +583,8 @@
       transform: translateX(-50%);
       z-index: 100;
       background: var(--toggle-bg);
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
+      backdrop-filter: blur(16px) saturate(160%);
+      -webkit-backdrop-filter: blur(16px) saturate(160%);
       border: 1px solid var(--border);
       border-radius: 14px;
       box-shadow: 0 8px 32px var(--shadow);
@@ -611,8 +614,8 @@
     .robot-track-slider {
       position: absolute;
       border-radius: 7px;
-      background: linear-gradient(135deg, rgba(0, 122, 255, 0.4), rgba(100, 60, 255, 0.4));
-      box-shadow: 0 2px 10px rgba(0, 122, 255, 0.2);
+      background: linear-gradient(135deg, rgba(59, 130, 246, 0.4), rgba(100, 60, 255, 0.35));
+      box-shadow: 0 2px 10px rgba(59, 130, 246, 0.25);
       border: 1px solid rgba(255, 255, 255, 0.08);
       pointer-events: none;
       will-change: left, width;
@@ -625,7 +628,7 @@
       flex: 0 0 auto;
       background: none;
       border: none;
-      padding: 6px 16px;
+      padding: 5px 14px;
       font-size: 0.75rem;
       font-weight: 500;
       color: var(--text-2);
@@ -638,7 +641,7 @@
 
     .robot-btn:hover { color: var(--text-1); }
     .robot-btn:active { transform: scale(0.94); }
-    .robot-btn.active { color: #fff; }
+    .robot-btn.active { color: #fff; font-weight: 600; }
     .robot-btn:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
 
     /* ── Checkboxes ──────────────────────────────────────────────────────── */
@@ -657,8 +660,8 @@
       flex-direction: row;
       flex-wrap: wrap;
       align-items: center;
-      gap: 4px 16px;
-      padding: 7px 12px;
+      gap: 6px 14px;
+      padding: 8px 12px;
     }
 
     .options-bar select {
@@ -723,42 +726,43 @@
 
     /* ── Physics mode toggle (Inspect tab) ─────────────────────────────── */
     #physics-mode-bar {
-      padding: 10px 12px 8px;
+      padding: 10px 12px 10px;
       border-bottom: 1px solid var(--border);
       display: flex;
       flex-direction: column;
-      gap: 6px;
+      gap: 8px;
     }
 
     .physics-mode-toggle {
       display: flex;
       background: var(--bg);
-      border-radius: 8px;
-      padding: 2px;
-      gap: 2px;
+      border-radius: 10px;
+      padding: 3px;
+      gap: 3px;
     }
 
     .physics-mode-btn {
-      flex: 1; border: 1px solid transparent; border-radius: 6px;
-      padding: 6px 10px; font-size: 0.75rem; font-weight: 500;
+      flex: 1; border: 1px solid transparent; border-radius: 7px;
+      padding: 7px 10px; font-size: 0.75rem; font-weight: 500;
       cursor: pointer; background: transparent; color: var(--text-2);
       transition: background 0.15s, color 0.15s, border-color 0.15s;
     }
     .physics-mode-btn:hover { color: var(--text-1); }
 
     #btn-kinematic {
-      background: var(--surface-hi); color: var(--text-1);
-      box-shadow: 0 1px 3px rgba(0,0,0,0.25);
+      background: var(--surface); color: var(--text-1);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+      border-color: var(--border);
     }
     body.simulating #btn-kinematic {
-      background: transparent; color: var(--text-2); box-shadow: none;
+      background: transparent; color: var(--text-2); box-shadow: none; border-color: transparent;
     }
     body.simulating #btn-dynamic {
-      background: linear-gradient(135deg, rgba(0,122,255,0.2), rgba(100,60,255,0.2));
+      background: linear-gradient(135deg, rgba(59,130,246,0.25), rgba(100,60,255,0.2));
       color: var(--blue-text);
-      border-color: rgba(0,122,255,0.25);
+      border-color: rgba(59,130,246,0.3);
     }
-    #btn-dynamic:disabled { opacity: 0.5; cursor: default; }
+    #btn-dynamic:disabled { opacity: 0.45; cursor: default; }
 
     #physics-mode-options {
       display: flex; align-items: center; gap: 8px;
@@ -776,27 +780,30 @@
     /* ── Gesture tiles ──────────────────────────────────────────────────── */
     .gesture-grid {
       display: grid;
-      grid-template-columns: repeat(5, 1fr);
-      gap: 4px;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 6px;
       padding: 8px 12px 10px;
     }
 
     .gesture-tile {
       display: flex; flex-direction: column; align-items: center;
-      gap: 3px; padding: 6px 4px;
-      background: var(--surface-hi); border: 1px solid var(--border);
-      border-radius: 6px; font-size: 9px; line-height: 1.2;
+      gap: 4px; padding: 8px 4px 6px;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 8px; font-size: 9px; line-height: 1.2;
       color: var(--text-3); text-align: center;
+      transition: border-color 0.12s, background 0.12s;
     }
 
-    .gesture-tile-icon { font-size: 1.125rem; line-height: 1; }
+    .gesture-tile:hover { border-color: var(--text-3); background: var(--surface-hover); }
+
+    .gesture-tile-icon { font-size: 1.25rem; line-height: 1; }
 
     /* ── Joint range ticks ──────────────────────────────────────────────── */
     .joint-ticks {
       display: flex;
       justify-content: space-between;
       padding-right: 66px; /* align with slider end, accounting for number input width */
-      margin-top: 1px;
+      margin-top: 3px;
       font-size: 0.5625rem;
       color: var(--text-3);
       font-variant-numeric: tabular-nums;
@@ -831,20 +838,23 @@
 
     .joint {
       padding: 7px 8px;
-      border-radius: 6px;
-      margin-bottom: 2px;
+      border-radius: 8px;
+      margin-bottom: 3px;
       transition: background 0.12s;
     }
 
-    .joint[data-hovered] { background: var(--surface-hi); }
+    .joint[data-hovered] { background: var(--surface); }
 
     .joint-name {
       font-size: 0.6875rem;
       color: var(--text-2);
-      margin-bottom: 4px;
+      margin-bottom: 5px;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
+      display: flex;
+      align-items: center;
+      gap: 4px;
     }
 
     .joint-row {
@@ -857,15 +867,16 @@
       flex: 1;
       accent-color: var(--blue);
       height: 4px;
+      cursor: pointer;
     }
 
     .joint-row input[type=number] {
       width: 58px;
-      background: var(--surface-hi);
+      background: var(--surface);
       border: 1px solid var(--border);
-      border-radius: 4px;
+      border-radius: 5px;
       color: var(--text-1);
-      padding: 2px 4px;
+      padding: 3px 5px;
       font-size: 0.6875rem;
       text-align: right;
     }
@@ -880,13 +891,16 @@
     .fab {
       position: fixed; z-index: 100;
       display: flex; align-items: center; justify-content: center;
-      width: 42px; height: 42px; border-radius: 50%;
+      width: 40px; height: 40px; border-radius: 10px;
       background: var(--toggle-bg); border: 1px solid var(--border);
       color: var(--text-2); cursor: pointer;
-      backdrop-filter: blur(4px); transition: color 0.12s;
+      backdrop-filter: blur(12px) saturate(160%);
+      -webkit-backdrop-filter: blur(12px) saturate(160%);
+      transition: color 0.12s, background 0.12s, border-color 0.12s;
+      box-shadow: 0 4px 12px var(--shadow);
     }
 
-    .fab:hover { background: var(--surface-hi); color: var(--text-1); }
+    .fab:hover { background: var(--surface); color: var(--text-1); border-color: var(--text-3); }
     .fab:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
 
     #control-panel-toggle { top: 10px; left: 10px; }
@@ -911,8 +925,28 @@
       transition: left 0.25s ease, right 0.25s ease;
     }
 
-    #control-panel.open.pinned ~ main { left: var(--panel-w, 380px); }
-    #chat-panel.open.pinned ~ main    { right: var(--chat-w, 360px); }
+    main::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background-image:
+        linear-gradient(to right, #334155 1px, transparent 1px),
+        linear-gradient(to bottom, #334155 1px, transparent 1px);
+      background-size: 50px 50px;
+      background-position: center center;
+      opacity: 0.18;
+      pointer-events: none;
+      z-index: -1;
+    }
+
+    @media (prefers-color-scheme: light) {
+      main::before { opacity: 0.07; background-image:
+        linear-gradient(to right, #9ca3af 1px, transparent 1px),
+        linear-gradient(to bottom, #9ca3af 1px, transparent 1px); }
+    }
+
+    #control-panel.open.pinned ~ main { left: var(--panel-w, 320px); }
+    #chat-panel.open.pinned ~ main    { right: var(--chat-w, 320px); }
 
     #chat-panel .panel-resize-handle { left: 0; right: auto; }
 
@@ -1175,7 +1209,7 @@
     }
 
     #control-panel.open.pinned ~ main #gesture-toggle {
-      left: calc(var(--panel-w, 380px) + 10px);
+      left: calc(var(--panel-w, 320px) + 10px);
     }
 
     #gesture-toggle.active {
@@ -1188,8 +1222,8 @@
     #gesture-toggle:active { transform: scale(0.95); }
 
     @keyframes gesture-pulse {
-      0%, 100% { box-shadow: 0 0 0 0 rgba(0, 122, 255, 0.35); }
-      50%       { box-shadow: 0 0 0 8px rgba(0, 122, 255, 0); }
+      0%, 100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.35); }
+      50%       { box-shadow: 0 0 0 8px rgba(59, 130, 246, 0); }
     }
 
     /* ── Credit link ─────────────────────────────────────────────────────── */
@@ -1214,8 +1248,8 @@
     #gesture-section-header:hover { background: var(--surface-hover); }
 
     #gesture-section-label {
-      font-size: 0.6875rem; font-weight: 500; color: var(--text-3);
-      text-transform: uppercase; letter-spacing: 0.06em; flex: 1;
+      font-size: 0.625rem; font-weight: 700; color: var(--text-3);
+      text-transform: uppercase; letter-spacing: 0.08em; flex: 1;
     }
 
     #gesture-section-chevron {
@@ -1724,7 +1758,7 @@
       position: relative;
       border: 1px solid var(--border);
       border-radius: 12px;
-      background: var(--surface-hi);
+      background: var(--surface);
       transition: border-color 0.15s, box-shadow 0.15s;
     }
 
@@ -1805,17 +1839,17 @@
     /* ── Chat section header ─────────────────────────────────────────────── */
 
     .chat-header {
-      padding: 0 4px 0 12px;
-      height: 32px;
+      padding: 0 6px 0 14px;
+      height: 44px;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      font-size: 0.6875rem;
+      font-size: 0.75rem;
       font-weight: 600;
-      letter-spacing: 0.06em;
-      text-transform: uppercase;
-      color: var(--text-3);
+      letter-spacing: 0.01em;
+      color: var(--text-1);
       flex-shrink: 0;
+      border-bottom: 1px solid var(--border);
     }
 
     .chat-model-wrap {
@@ -1830,10 +1864,10 @@
       width: 100%;
       background: none;
       border: none;
-      color: var(--text-2);
+      color: var(--text-1);
       font-size: 0.75rem;
       font-weight: 600;
-      letter-spacing: 0.02em;
+      letter-spacing: 0.01em;
       cursor: pointer;
       padding: 0 18px 0 0;
       appearance: none;
@@ -1841,7 +1875,7 @@
       outline: none;
     }
     .chat-model-select:hover,
-    .chat-model-select:focus { color: var(--text-1); }
+    .chat-model-select:focus { color: var(--blue-text); }
     .chat-model-select option { background: var(--surface); color: var(--text-1); }
     .chat-model-arrow {
       position: absolute;
@@ -2104,7 +2138,7 @@
       border-radius: 4px; color: var(--text-1); font-size: 0.6875rem;
     }
     .float-panel-row.fp-gesture-active {
-      border-left: 2px solid #007aff;
+      border-left: 2px solid #3b82f6;
       border-radius: 3px;
       background: rgba(0,122,255,0.07);
       padding-left: 5px;
@@ -2130,7 +2164,7 @@
       role="separator"
       aria-label="Resize panel"
       aria-orientation="vertical"
-      aria-valuenow="380"
+      aria-valuenow="320"
       aria-valuemin="260"
       aria-valuemax="700"
       tabindex="0"
@@ -2471,7 +2505,7 @@
 
   <aside id="chat-panel" aria-label="AI Chat">
     <div class="panel-resize-handle" role="separator" aria-label="Resize chat panel"
-         aria-orientation="vertical" aria-valuenow="360" aria-valuemin="260"
+         aria-orientation="vertical" aria-valuenow="320" aria-valuemin="260"
          aria-valuemax="600" tabindex="0"></div>
     <div class="chat-header">
       <div class="chat-model-wrap">
@@ -2575,9 +2609,9 @@
       <svg class="spinner" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
         <defs>
           <linearGradient id="spinGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%"   stop-color="#007aff" stop-opacity="1" />
-            <stop offset="70%"  stop-color="#007aff" stop-opacity="0.4" />
-            <stop offset="100%" stop-color="#007aff" stop-opacity="0" />
+            <stop offset="0%"   stop-color="#3b82f6" stop-opacity="1" />
+            <stop offset="70%"  stop-color="#3b82f6" stop-opacity="0.4" />
+            <stop offset="100%" stop-color="#3b82f6" stop-opacity="0" />
           </linearGradient>
         </defs>
         <circle cx="18" cy="18" r="15" stroke="url(#spinGrad)" stroke-width="3"
@@ -2635,7 +2669,7 @@
     // ── Left panel resize (right-edge drag, desktop only) ────────────────────
 
     const PANEL_W_KEY     = 'urdf-panel-w';
-    const PANEL_W_DEFAULT = 380;
+    const PANEL_W_DEFAULT = 320;
     const MIN_W           = 260;
     const SNAP_RADIUS     = 10;
 
@@ -2658,7 +2692,6 @@
 
     if (isDesktop()) {
       openPanel(ctrlPanel);
-      openPanel(chatPanel);
       const saved = parseInt(localStorage.getItem(PANEL_W_KEY), 10);
       if (saved >= MIN_W) applyWidth(saved);
     }
@@ -2721,7 +2754,7 @@
     // ── Chat panel resize (left-edge drag, desktop only) ─────────────────────
 
     const CHAT_W_KEY     = 'urdf-chat-w';
-    const CHAT_W_DEFAULT = 360;
+    const CHAT_W_DEFAULT = 320;
     const MIN_CHAT_W     = 260;
 
     const chatResizeHandle = chatPanel.querySelector('.panel-resize-handle');
