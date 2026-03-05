@@ -86,7 +86,6 @@ export class URDFViewer extends HTMLElement {
     private _loadId = 0;
     private _introAnim: { start: THREE.Vector3; t0: number; dur: number } | null = null;
     private _outgoing: { obj: THREE.Object3D; from: THREE.Vector3; to: THREE.Vector3; t0: number; dur: number } | null = null;
-    private _pendingShow: (() => void) | null = null;
     private _exitRotation = new THREE.Euler();
     private _lastLoadKey = '';
     private _resizeObserver: ResizeObserver;
@@ -271,8 +270,17 @@ export class URDFViewer extends HTMLElement {
                     this.scene.remove(out.obj);
                     disposeTree(out.obj);
                     this._outgoing = null;
-                    if (this._pendingShow) { this._pendingShow(); this._pendingShow = null; }
                 }
+            }
+
+            // Show the incoming robot as soon as both conditions are met:
+            // (a) the exit animation is done, and (b) the robot is loaded into world.
+            // Checking here avoids all timing races between mgr.onLoad and .then().
+            if (!this.world.visible && this.robot && !this._outgoing) {
+                this.fitCamera();
+                this._exitRotation.copy(this.world.rotation);
+                this._startIntro();
+                this._dirty = true;
             }
 
             this.controls.update();
@@ -301,7 +309,6 @@ export class URDFViewer extends HTMLElement {
         this._lastLoadKey = key;
 
         this._introAnim = null;
-        this._pendingShow = null;
         this._startExit();
         this._disposeRobot(); // no-op if _startExit transferred the robot
         this.world.position.setScalar(0);
@@ -312,43 +319,11 @@ export class URDFViewer extends HTMLElement {
 
         const id = ++this._loadId;
 
-        // Delay camera fit + intro until the exit animation has finished to
-        // prevent an apparent size-flash caused by the camera jumping while
-        // the outgoing robot is still animating away.
-        //
-        // mgr.onLoad fires synchronously inside LoadingManager.itemEnd(), which is
-        // a macro-task callback. The loader.load() promise continuation is a
-        // microtask that runs AFTER — meaning mgr.onLoad fires before
-        // this.robot/this.world.add(robot) in .then(). We track whether showRobot
-        // was attempted while robot was still null, and retry from .then().
-        let _showCalledEarly = false;
-        const showRobot = () => {
-            if (id !== this._loadId) return;
-            if (!this.robot) { _showCalledEarly = true; return; } // retry from .then()
-            this.fitCamera();
-            this._exitRotation.copy(this.world.rotation);
-            this._startIntro();
-        };
-        const scheduleShow = () => {
-            if (id !== this._loadId) return;
-            if (this._outgoing) {
-                // Let the render loop call showRobot the same frame it clears _outgoing.
-                this._pendingShow = showRobot;
-            } else {
-                showRobot();
-            }
-        };
-
         const loader = new URDFLoader();
         loader.packages = this._resolvePackages(this.package);
         loader.parseCollision = true;
         const baseMeshLoader = (this.loadMesh ?? loader.loadMesh).bind(loader);
-        let meshManagerHooked = false;
         loader.loadMesh = (path, mgr) => {
-            if (!meshManagerHooked) {
-                meshManagerHooked = true;
-                mgr.onLoad = () => { if (id === this._loadId) scheduleShow(); };
-            }
             return baseMeshLoader(path, mgr).then(obj => { this.redraw(); return obj; });
         };
 
@@ -363,12 +338,7 @@ export class URDFViewer extends HTMLElement {
             this._prepareMeshes(robot);
             this._applyIgnoreLimits(this.ignoreLimits);
             this._updateCollision();
-            if (!meshManagerHooked) {
-                scheduleShow();
-            } else if (_showCalledEarly) {
-                // mgr.onLoad fired before robot was in world; retry now.
-                showRobot();
-            }
+            this.redraw(); // wake the render loop to check show conditions
 
             this.dispatchEvent(new CustomEvent('urdf-processed', { bubbles: true }));
         }).catch(err => {
