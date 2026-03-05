@@ -146,6 +146,14 @@ export class PointerURDFDragControls extends URDFDragControls {
     private _downY = 0;
     private _dragCommitted = false;
 
+    // Dwell-to-grab: cursor must be stationary for 300 ms before a joint grab is allowed.
+    // Quick left-drags (orbit intent) never accumulate enough dwell, so OrbitControls handles them.
+    private _readyToGrab = false;
+    private _readyToGrabAtDown = false;
+    private _dwellTimer = 0;
+    private _lastHoverX = 0;
+    private _lastHoverY = 0;
+
     private _onDown: (e: PointerEvent) => void;
     private _onMove: (e: PointerEvent) => void;
     private _onUp: (e: PointerEvent) => void;
@@ -166,21 +174,47 @@ export class PointerURDFDragControls extends URDFDragControls {
             this._downX = e.clientX;
             this._downY = e.clientY;
             this._dragCommitted = false;
+            // Snapshot readiness at click time; reset dwell so post-click hover starts fresh.
+            this._readyToGrabAtDown = this._readyToGrab;
+            clearTimeout(this._dwellTimer);
+            this._dwellTimer = 0;
+            this._readyToGrab = false;
+            this._lastHoverX = e.clientX;
+            this._lastHoverY = e.clientY;
             updateMouse(e);
             this._raycaster.setFromCamera(this._mouse, camera);
             this.moveRay(this._raycaster.ray);
-            // Do not grab yet — wait for movement threshold in _onMove.
         };
 
         this._onMove = e => {
-            // Commit the grab once the pointer moves more than 4px — only for left-button drags.
-            if (!this._dragCommitted && this.manipulating === null && (e.buttons & 1)) {
+            // Dwell tracking — only when no button is held (pure hover).
+            // Moving more than 3px resets the timer so quick sweeps never become ready.
+            if (e.buttons === 0) {
+                const moved = Math.hypot(e.clientX - this._lastHoverX, e.clientY - this._lastHoverY);
+                this._lastHoverX = e.clientX;
+                this._lastHoverY = e.clientY;
+                if (moved > 3) {
+                    clearTimeout(this._dwellTimer);
+                    this._dwellTimer = 0;
+                    this._readyToGrab = false;
+                } else if (!this._dwellTimer) {
+                    this._dwellTimer = window.setTimeout(() => {
+                        this._dwellTimer = 0;
+                        this._readyToGrab = true;
+                    }, 300);
+                }
+            }
+
+            // Commit the grab once the pointer moves more than 4px — only for left-button drags
+            // that were already hovering a joint (dwell satisfied) at click time.
+            if (!this._dragCommitted && this.manipulating === null && (e.buttons & 1) && this._readyToGrabAtDown) {
                 const dist = Math.hypot(e.clientX - this._downX, e.clientY - this._downY);
                 if (dist > 4) {
                     this._dragCommitted = true;
                     this.setGrabbed(true);
                 }
             }
+
             // Hover highlight update runs for all pointer moves regardless of button.
             this._pendingMove = e;
             if (!this._moveRaf) {
@@ -201,6 +235,12 @@ export class PointerURDFDragControls extends URDFDragControls {
             this._moveRaf = 0;
             this._pendingMove = null;
             this._dragCommitted = false;
+            // Reset dwell so the next hover starts fresh.
+            clearTimeout(this._dwellTimer);
+            this._dwellTimer = 0;
+            this._readyToGrab = false;
+            this._lastHoverX = e.clientX;
+            this._lastHoverY = e.clientY;
             updateMouse(e);
             this._raycaster.setFromCamera(this._mouse, camera);
             this.moveRay(this._raycaster.ray);
@@ -232,6 +272,7 @@ export class PointerURDFDragControls extends URDFDragControls {
 
     dispose(): void {
         cancelAnimationFrame(this._moveRaf);
+        clearTimeout(this._dwellTimer);
         this.domElement.removeEventListener('pointerdown', this._onDown);
         this.domElement.removeEventListener('pointermove', this._onMove);
         this.domElement.removeEventListener('pointerup', this._onUp);
