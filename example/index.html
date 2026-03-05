@@ -719,6 +719,24 @@
 
     select:focus-visible { outline: none; border-color: var(--blue); }
 
+    /* ── Simulate bar (Robot tab) ──────────────────────────────────────── */
+    #simulate-bar {
+      display: flex; align-items: center; gap: 8px;
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--border);
+    }
+    #btn-simulate {
+      flex: 1; padding: 6px 10px;
+      background: var(--blue); color: #fff;
+      border: none; border-radius: 6px;
+      font-size: 0.6875rem; font-weight: 600; cursor: pointer;
+    }
+    #btn-simulate:hover { background: var(--blue-hover); }
+    #btn-simulate:disabled { opacity: 0.5; cursor: default; }
+    #simulate-status { font-size: 0.625rem; color: var(--text-3); white-space: nowrap; }
+    body.simulating #btn-simulate { background: #c0392b; }
+    body.simulating #btn-simulate:hover { background: #a93226; }
+
     /* ── Joints ──────────────────────────────────────────────────────────── */
 
     .sidebar-scroll {
@@ -2122,6 +2140,11 @@
             <span class="gesture-desc"><strong>Two hands, pinch/spread</strong> zoom</span>
           </div>
         </div>
+      </div>
+
+      <div id="simulate-bar" hidden>
+        <button type="button" id="btn-simulate">Simulate</button>
+        <span id="simulate-status"></span>
       </div>
 
       <div class="sidebar-scroll">

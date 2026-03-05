@@ -8,6 +8,7 @@ import type { GestureController } from './gesture.js';
 import { LIBRARY } from '../src/generators/components/index.js';
 import type { LibraryEntry } from '../src/generators/components/index.js';
 import { Raycaster, Vector2, Vector3, Plane, GridHelper } from 'three';
+import { MuJoCoSimulator } from './simulator.js';
 
 /** Typed shorthand for getElementById with a cast. */
 function $<T extends HTMLElement = HTMLElement>(id: string): T {
@@ -15,6 +16,10 @@ function $<T extends HTMLElement = HTMLElement>(id: string): T {
 }
 
 customElements.define('urdf-viewer', URDFManipulator);
+
+const simulator = new MuJoCoSimulator();
+let _simUrdfUrl = '';
+let _simPkgStr  = '';
 
 const viewer           = $<URDFManipulator>('viewer');
 const jointsPanel      = $('joints');
@@ -80,6 +85,8 @@ const ignoreLimitsEl  = $<HTMLInputElement>('ignore-limits');
 const showCollisionEl = $<HTMLInputElement>('show-collision');
 const displayShadowEl = $<HTMLInputElement>('display-shadow');
 const upAxisEl        = $<HTMLSelectElement>('up-axis');
+const simBtn          = $<HTMLButtonElement>('btn-simulate');
+const simStatus       = $('simulate-status');
 
 interface RobotConfig {
     name: string;
@@ -194,6 +201,17 @@ function loadRobot(robot: RobotConfig, index: number): void {
     upAxisEl.value = robot.up;
     viewer.package = robot.package ?? '';
 
+    // Reset simulation
+    simulator.stop();
+    document.body.classList.remove('simulating');
+    simBtn.textContent = 'Simulate';
+    simStatus.textContent = '';
+
+    // Show simulate bar only for static URDF robots (not parts-assembled)
+    _simUrdfUrl = robot.urdf ?? '';
+    _simPkgStr  = robot.package ?? '';
+    $('simulate-bar').hidden = !robot.urdf;
+
     const sourceUrl = robot.parts ? `${robot.parts}.urdf` : robot.urdf!;
 
     if (robot.parts) {
@@ -286,6 +304,30 @@ ignoreLimitsEl.addEventListener('change', () => { viewer.ignoreLimits = ignoreLi
 showCollisionEl.addEventListener('change', () => { viewer.showCollision = showCollisionEl.checked; });
 displayShadowEl.addEventListener('change', () => { viewer.displayShadow = displayShadowEl.checked; });
 upAxisEl.addEventListener('change', () => { viewer.up = upAxisEl.value; });
+
+simBtn.addEventListener('click', async () => {
+    if (document.body.classList.contains('simulating')) {
+        simulator.stop();
+        document.body.classList.remove('simulating');
+        simBtn.textContent = 'Simulate';
+        simStatus.textContent = '';
+        return;
+    }
+    simBtn.disabled = true;
+    simStatus.textContent = 'Loading physics…';
+    try {
+        await simulator.load(_simUrdfUrl, _simPkgStr);
+        simulator.start(viewer.robot!, () => viewer.redraw());
+        document.body.classList.add('simulating');
+        simBtn.textContent = 'Stop';
+        simStatus.textContent = '';
+    } catch (err) {
+        simStatus.textContent = 'Failed';
+        console.error('[simulator]', err);
+    } finally {
+        simBtn.disabled = false;
+    }
+});
 
 displayShadowEl.checked = viewer.displayShadow;
 upAxisEl.value = viewer.up;
