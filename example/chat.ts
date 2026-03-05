@@ -127,6 +127,8 @@ export class URDFChatController {
     private _modelSelectEl!: HTMLSelectElement;
     private _ghBarEl!:       HTMLElement;
     private _apikeyBarEl!:   HTMLElement;
+    private _proxyBarEl!:    HTMLElement;
+    private _proxyAvailable  = false;
 
     constructor(buildCtrl: URDFBuildController, cb: ChatCallbacks) {
         this._buildCtrl = buildCtrl;
@@ -147,6 +149,10 @@ export class URDFChatController {
         this._modelSelectEl = document.getElementById('chat-model-select') as HTMLSelectElement;
         this._ghBarEl       = document.getElementById('chat-github-bar') as HTMLElement;
         this._apikeyBarEl   = document.getElementById('chat-apikey-bar') as HTMLElement;
+        this._proxyBarEl    = document.getElementById('chat-proxy-bar') as HTMLElement;
+
+        // Probe local proxy once on init
+        this._probeProxy();
 
         // Restore persisted GitHub auth before applying model (so auth bar renders correctly)
         const savedAuth = localStorage.getItem('urdf-gh-auth');
@@ -1086,18 +1092,41 @@ Use tools to modify the robot. Prefer direct tool calls over lengthy explanation
 
     // ── Model / provider management ───────────────────────────────────────────
 
+    private async _probeProxy(): Promise<void> {
+        try {
+            const ctrl = new AbortController();
+            setTimeout(() => ctrl.abort(), 1500);
+            await fetch(LOCAL_PROXY, {
+                method: 'POST', signal: ctrl.signal,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ probe: true }),
+            });
+            this._proxyAvailable = true;
+        } catch {
+            this._proxyAvailable = false;
+        }
+        this._updateApiKeyBar();
+        this._updateProxyBar();
+    }
+
+    private _updateProxyBar(): void {
+        this._proxyBarEl.hidden = !(this._proxyAvailable && this._provider === 'anthropic');
+    }
+
     private _applyModel(value: string): void {
         const colon = value.indexOf(':');
         this._provider = value.slice(0, colon) as Provider;
         this._model    = this._provider === 'github' ? value.slice(colon + 1) : MODEL;
         this._ghBarEl.hidden     = (this._provider !== 'github');
-        this._apikeyBarEl.hidden = (this._provider !== 'anthropic');
+        this._apikeyBarEl.hidden = (this._provider !== 'anthropic') || this._proxyAvailable;
         localStorage.setItem('urdf-chat-model', value);
         this._updateGitHubBar();
         this._updateApiKeyBar();
+        this._updateProxyBar();
     }
 
     private _updateApiKeyBar(): void {
+        if (this._proxyAvailable) { this._apikeyBarEl.hidden = true; return; }
         this._apikeyBarEl.innerHTML = '';
         const key = localStorage.getItem('urdf-api-key');
         if (key) {

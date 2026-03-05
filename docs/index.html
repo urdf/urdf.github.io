@@ -1960,8 +1960,20 @@
       cursor: pointer;
       flex-shrink: 0;
     }
-    .chat-apikey-save:hover { background: var(--blue-bg); color: var(--blue-text); border-color: rgba(0,122,255,0.3); }
+    .chat-apikey-save:hover { background: var(--blue-bg); color: var(--blue-text); border-color: rgba(59,130,246,0.3); }
     .chat-apikey-remove:hover { background: var(--surface-hover); color: var(--text-1); }
+
+    .chat-proxy-bar {
+      padding: 5px 12px;
+      border-bottom: 1px solid rgba(59, 130, 246, 0.2);
+      background: var(--blue-bg);
+      font-size: 0.5625rem;
+      color: var(--blue-text);
+      flex-shrink: 0;
+    }
+    @media (prefers-color-scheme: light) {
+      .chat-proxy-bar { color: #1d4ed8; background: rgba(59,130,246,0.08); }
+    }
 
     .panel-edge-tab {
       position: fixed;
@@ -2543,6 +2555,7 @@
       </div>
     </div>
     <div id="chat-github-bar" class="chat-github-bar" hidden></div>
+    <div id="chat-proxy-bar" class="chat-proxy-bar" hidden>Local proxy active · no API key needed</div>
     <div id="chat-apikey-bar" class="chat-apikey-bar" hidden></div>
     <div id="chat-context-bar" hidden></div>
     <div class="chat-pane">
