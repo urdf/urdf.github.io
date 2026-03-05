@@ -736,6 +736,13 @@
     #simulate-status { font-size: 0.625rem; color: var(--text-3); white-space: nowrap; }
     body.simulating #btn-simulate { background: #c0392b; }
     body.simulating #btn-simulate:hover { background: #a93226; }
+    #sim-float-label {
+      font-size: 0.6875rem; color: var(--text-2);
+      display: flex; align-items: center; gap: 4px;
+      white-space: nowrap; cursor: pointer;
+    }
+    /* Dim joint sliders while physics is running */
+    body.simulating .joints input { pointer-events: none; opacity: 0.4; }
 
     /* ── Joints ──────────────────────────────────────────────────────────── */
 
@@ -2058,7 +2065,7 @@
     .build-section > summary:focus-within .build-section-detach { opacity: 1; }
     .build-section-detach:hover { color: var(--text-1); background: var(--surface-hover); }
   </style>
-  <script type="module" crossorigin src="/assets/index-Di0XzbGN.js"></script>
+  <script type="module" crossorigin src="/assets/index-BzcSuPbd.js"></script>
 </head>
 <body>
   <aside id="control-panel" aria-label="Controls">
@@ -2145,6 +2152,7 @@
 
       <div id="simulate-bar" hidden>
         <button type="button" id="btn-simulate">Simulate</button>
+        <label id="sim-float-label"><input type="checkbox" id="sim-float-base"> Float base</label>
         <span id="simulate-status"></span>
       </div>
 

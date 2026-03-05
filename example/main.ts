@@ -18,8 +18,11 @@ function $<T extends HTMLElement = HTMLElement>(id: string): T {
 customElements.define('urdf-viewer', URDFManipulator);
 
 const simulator = new MuJoCoSimulator();
-let _simUrdfUrl = '';
-let _simPkgStr  = '';
+let _simUrdfUrl  = '';
+let _simPkgStr   = '';
+let _simPartsXml = '';   // assembled XML for parts robots (robot-car)
+let _simPartsBase = '';  // base dir for resolving collision meshes in parts robots
+let _simIsParts  = false;
 
 const viewer           = $<URDFManipulator>('viewer');
 const jointsPanel      = $('joints');
@@ -87,6 +90,7 @@ const displayShadowEl = $<HTMLInputElement>('display-shadow');
 const upAxisEl        = $<HTMLSelectElement>('up-axis');
 const simBtn          = $<HTMLButtonElement>('btn-simulate');
 const simStatus       = $('simulate-status');
+const simFloatBase    = $<HTMLInputElement>('sim-float-base');
 
 interface RobotConfig {
     name: string;
@@ -150,6 +154,13 @@ async function loadViaBrowserAssembly(robot: RobotConfig): Promise<void> {
     _partsBlobUrl  = URL.createObjectURL(new Blob([xml], { type: 'application/xml' }));
     viewer.urdf    = _partsBlobUrl;
 
+    // Expose assembled XML for simulation (filenames already absolute)
+    _simPartsXml  = xml;
+    _simPartsBase = dir + '/';
+    _simIsParts          = true;
+    simFloatBase.checked = true; // mobile base: float so gravity is visible
+    $('simulate-bar').hidden = false;
+
     clearBuildUI();
     const restored = buildCtrl.restore();
     for (const { id, type } of restored) {
@@ -204,12 +215,18 @@ function loadRobot(robot: RobotConfig, index: number): void {
     // Reset simulation
     simulator.stop();
     document.body.classList.remove('simulating');
+    viewer.disableDragging = false;
     simBtn.textContent = 'Simulate';
     simStatus.textContent = '';
 
-    // Show simulate bar only for static URDF robots (not parts-assembled)
-    _simUrdfUrl = robot.urdf ?? '';
-    _simPkgStr  = robot.package ?? '';
+    // For static URDF robots: show bar immediately.
+    // For parts robots: loadViaBrowserAssembly() reveals it after assembly.
+    _simUrdfUrl  = robot.urdf ?? '';
+    _simPkgStr   = robot.package ?? '';
+    _simIsParts  = false;
+    // Mobile bases (parts-assembled) default to float base so gravity is visible.
+    // Arm robots default to fixed base so they droop without flying off-screen.
+    simFloatBase.checked = !!robot.parts;
     $('simulate-bar').hidden = !robot.urdf;
 
     const sourceUrl = robot.parts ? `${robot.parts}.urdf` : robot.urdf!;
@@ -309,6 +326,7 @@ simBtn.addEventListener('click', async () => {
     if (document.body.classList.contains('simulating')) {
         simulator.stop();
         document.body.classList.remove('simulating');
+        viewer.disableDragging = false;
         simBtn.textContent = 'Simulate';
         simStatus.textContent = '';
         return;
@@ -316,8 +334,14 @@ simBtn.addEventListener('click', async () => {
     simBtn.disabled = true;
     simStatus.textContent = 'Loading physics…';
     try {
-        await simulator.load(_simUrdfUrl, _simPkgStr);
+        const floatBase = simFloatBase.checked;
+        if (_simIsParts) {
+            await simulator.loadFromXML(_simPartsXml, _simPartsBase, '', floatBase);
+        } else {
+            await simulator.load(_simUrdfUrl, _simPkgStr, floatBase);
+        }
         simulator.start(viewer.robot!, () => viewer.redraw());
+        viewer.disableDragging = true;
         document.body.classList.add('simulating');
         simBtn.textContent = 'Stop';
         simStatus.textContent = '';
