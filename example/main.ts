@@ -57,29 +57,20 @@ const chatInput = $<HTMLTextAreaElement>('chat-input');
 $('tab-robot').addEventListener('click', () => {
     editorCtrl.close();
     buildCtrl.close();
-    document.body.classList.remove('library-open');
     _buildGrid.visible = false;
 });
 $('tab-editor').addEventListener('click', () => {
     buildCtrl.close();
-    document.body.classList.remove('library-open');
     editorCtrl.open();
     _buildGrid.visible = false;
     chatInput.placeholder = 'Ask AI to edit this URDF…';
 });
 $('tab-build').addEventListener('click', () => {
     editorCtrl.close();
-    document.body.classList.remove('library-open');
     buildCtrl.open();
     _buildGrid.visible = true;
     _buildGrid.position.y = viewer.shadowPlane.position.y;
     chatInput.placeholder = 'Ask AI to add or modify components…';
-});
-$('tab-library').addEventListener('click', () => {
-    editorCtrl.close();
-    buildCtrl.close();
-    _buildGrid.visible = false;
-    document.body.classList.add('library-open');
     buildLibraryGrid();
 });
 
@@ -87,9 +78,11 @@ const ignoreLimitsEl  = $<HTMLInputElement>('ignore-limits');
 const showCollisionEl = $<HTMLInputElement>('show-collision');
 const displayShadowEl = $<HTMLInputElement>('display-shadow');
 const upAxisEl        = $<HTMLSelectElement>('up-axis');
-const simBtn          = $<HTMLButtonElement>('btn-simulate');
+const btnKinematic    = $<HTMLButtonElement>('btn-kinematic');
+const btnDynamic      = $<HTMLButtonElement>('btn-dynamic');
 const simStatus       = $('simulate-status');
 const simFloatBase    = $<HTMLInputElement>('sim-float-base');
+const physicsModeOptions = $('physics-mode-options');
 
 interface RobotConfig {
     name: string;
@@ -152,7 +145,7 @@ async function loadViaBrowserAssembly(robot: RobotConfig): Promise<void> {
 
     // Expose assembled XML for simulation (filenames already absolute)
     _simSource = { kind: 'xml', xml, base: dir + '/' };
-    $('simulate-bar').hidden = false;
+    $('physics-mode-bar').hidden = false;
 
     clearBuildUI();
     const restored = buildCtrl.restore();
@@ -209,14 +202,14 @@ function loadRobot(robot: RobotConfig, index: number): void {
     simulator.stop();
     document.body.classList.remove('simulating');
     viewer.disableDragging = false;
-    simBtn.textContent = 'Simulate';
     simStatus.textContent = '';
+    physicsModeOptions.hidden = true;
 
     // Parts robots: loadViaBrowserAssembly() sets _simSource and reveals bar after assembly.
     // Mobile bases default to float base so gravity is visible; arms use fixed base.
     _simSource = robot.urdf ? { kind: 'url', urdfUrl: robot.urdf, pkgStr: robot.package ?? '' } : null;
     simFloatBase.checked = !!robot.parts;
-    $('simulate-bar').hidden = !robot.urdf;
+    $('physics-mode-bar').hidden = !robot.urdf;
 
     const sourceUrl = robot.parts ? `${robot.parts}.urdf` : robot.urdf!;
 
@@ -311,16 +304,20 @@ showCollisionEl.addEventListener('change', () => { viewer.showCollision = showCo
 displayShadowEl.addEventListener('change', () => { viewer.displayShadow = displayShadowEl.checked; });
 upAxisEl.addEventListener('change', () => { viewer.up = upAxisEl.value; });
 
-simBtn.addEventListener('click', async () => {
-    if (document.body.classList.contains('simulating')) {
-        simulator.stop();
-        document.body.classList.remove('simulating');
-        viewer.disableDragging = false;
-        simBtn.textContent = 'Simulate';
-        simStatus.textContent = '';
-        return;
-    }
-    simBtn.disabled = true;
+function stopSimulation(): void {
+    simulator.stop();
+    document.body.classList.remove('simulating');
+    viewer.disableDragging = false;
+    simStatus.textContent = '';
+    physicsModeOptions.hidden = true;
+}
+
+btnKinematic.addEventListener('click', stopSimulation);
+
+btnDynamic.addEventListener('click', async () => {
+    if (document.body.classList.contains('simulating')) return;
+    btnDynamic.disabled = true;
+    physicsModeOptions.hidden = false;
     simStatus.textContent = 'Loading physics…';
     try {
         const src = _simSource!;
@@ -333,13 +330,13 @@ simBtn.addEventListener('click', async () => {
         simulator.start(viewer.robot!, () => viewer.redraw());
         viewer.disableDragging = true;
         document.body.classList.add('simulating');
-        simBtn.textContent = 'Stop';
         simStatus.textContent = '';
     } catch (err) {
         simStatus.textContent = 'Failed';
         console.error('[simulator]', err);
+        physicsModeOptions.hidden = true;
     } finally {
-        simBtn.disabled = false;
+        btnDynamic.disabled = false;
     }
 });
 
@@ -578,6 +575,12 @@ function buildJointPanel(): void {
         number.type = 'number';
         number.step = '0.001';
 
+        const ticks = document.createElement('div');
+        ticks.className = 'joint-ticks';
+        const tickLo = document.createElement('span');
+        const tickHi = document.createElement('span');
+        ticks.append(tickLo, tickHi);
+
         const isPrismatic = joint.jointType === 'prismatic';
         const displayScale = isPrismatic ? 1 : 1 / DEG; // show degrees for rotary joints
 
@@ -591,6 +594,10 @@ function buildJointPanel(): void {
             number.min = String(+(lo * displayScale).toFixed(3));
             number.max = String(+(hi * displayScale).toFixed(3));
             number.value = String(+(joint.angle * displayScale).toPrecision(4));
+            const loD = +(lo * displayScale).toFixed(1);
+            const hiD = +(hi * displayScale).toFixed(1);
+            tickLo.textContent = isPrismatic ? `${loD} m` : `${loD}°`;
+            tickHi.textContent = isPrismatic ? `${hiD} m` : `${hiD}°`;
         };
 
         slider.addEventListener('input', () => {
@@ -603,7 +610,7 @@ function buildJointPanel(): void {
         }, { signal });
 
         row.append(slider, number);
-        el.append(nameEl, row);
+        el.append(nameEl, row, ticks);
         jointsPanel.appendChild(el);
         el.update();
     }
@@ -834,7 +841,6 @@ const buildShortcutsEl      = $('build-shortcuts');
 const libSearchEl           = $<HTMLInputElement>('lib-search');
 const libPillsEl            = $('lib-pills');
 const libGridEl             = $('lib-grid');
-const libNoBuildEl          = $('lib-no-build');
 const libEmptyEl            = $('lib-empty');
 const buildCompCountEl      = $('build-comp-count');
 const buildCompEmptyEl      = $('build-comp-empty');
@@ -1919,8 +1925,6 @@ let _libActiveCat = '';
 function buildLibraryGrid(): void {
     const hasBuild = buildCtrl.isCatalogActive;
     const query    = libSearchEl.value.trim().toLowerCase();
-
-    libNoBuildEl.hidden = hasBuild;
 
     const entries = LIBRARY.filter(e => {
         if (_libActiveCat && e.category !== _libActiveCat) return false;

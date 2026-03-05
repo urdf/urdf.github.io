@@ -144,7 +144,7 @@
       align-items: stretch;
       border-bottom: 1px solid var(--border);
       flex-shrink: 0;
-      height: 40px;
+      height: 52px;
     }
 
     .panel-tabs { display: flex; flex: 1; }
@@ -154,28 +154,31 @@
       background: none;
       border: none;
       border-bottom: 2px solid transparent;
-      padding: 0;
+      padding: 0 4px;
       height: 100%;
-      color: var(--text-2);
+      color: var(--text-3);
       cursor: pointer;
       transition: color 0.12s, border-color 0.12s;
-      display: flex; align-items: center; justify-content: center;
+      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
     }
 
-    .tab-btn:hover { color: var(--text-1); }
+    .tab-btn:hover { color: var(--text-2); }
     .tab-btn:focus-visible { outline: 2px solid var(--blue); outline-offset: -2px; }
 
+    .tab-label {
+      font-size: 0.5625rem;
+      font-weight: 500;
+      letter-spacing: 0.03em;
+      line-height: 1;
+    }
+
     .tab-btn[data-tab="robot"] { color: var(--blue-text); border-bottom-color: var(--blue); }
-    body.editor-open .tab-btn[data-tab="robot"] { color: var(--text-2); border-bottom-color: transparent; }
+    body.editor-open .tab-btn[data-tab="robot"]  { color: var(--text-3); border-bottom-color: transparent; }
     body.editor-open .tab-btn[data-tab="editor"] { color: var(--blue-text); border-bottom-color: var(--blue); }
-    body.build-open  .tab-btn[data-tab="robot"]  { color: var(--text-2);   border-bottom-color: transparent; }
+    body.build-open  .tab-btn[data-tab="robot"]  { color: var(--text-3);   border-bottom-color: transparent; }
     body.build-open  .tab-btn[data-tab="build"]  { color: var(--blue-text); border-bottom-color: var(--blue); }
     body.build-open  .tab-body[data-tab="robot"] { display: none; }
     body.build-open  .tab-body[data-tab="build"] { display: flex; }
-    body.library-open .tab-btn[data-tab="robot"]   { color: var(--text-2);   border-bottom-color: transparent; }
-    body.library-open .tab-btn[data-tab="library"] { color: var(--blue-text); border-bottom-color: var(--blue); }
-    body.library-open .tab-body[data-tab="robot"]  { display: none; }
-    body.library-open .tab-body[data-tab="library"] { display: flex; }
 
     /* ── Build panel ─────────────────────────────────────────────────────────── */
     .build-notice {
@@ -562,11 +565,10 @@
 
     .section-label {
       font-size: 0.6875rem;
-      font-weight: 500;
-      color: var(--text-3);
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-      padding: 10px 12px 4px;
+      font-weight: 600;
+      color: var(--text-2);
+      letter-spacing: 0.02em;
+      padding: 12px 12px 4px;
     }
 
     /* ── Robot picker (mode-selector style) ─────────────────────────────── */
@@ -719,30 +721,86 @@
 
     select:focus-visible { outline: none; border-color: var(--blue); }
 
-    /* ── Simulate bar (Robot tab) ──────────────────────────────────────── */
-    #simulate-bar {
-      display: flex; align-items: center; gap: 8px;
-      padding: 8px 12px;
+    /* ── Physics mode toggle (Inspect tab) ─────────────────────────────── */
+    #physics-mode-bar {
+      padding: 10px 12px 8px;
       border-bottom: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
     }
-    #btn-simulate {
-      flex: 1; padding: 6px 10px;
-      background: var(--blue); color: #fff;
-      border: none; border-radius: 6px;
-      font-size: 0.6875rem; font-weight: 600; cursor: pointer;
+
+    .physics-mode-toggle {
+      display: flex;
+      background: var(--bg);
+      border-radius: 8px;
+      padding: 2px;
+      gap: 2px;
     }
-    #btn-simulate:hover { background: var(--blue-hover); }
-    #btn-simulate:disabled { opacity: 0.5; cursor: default; }
+
+    .physics-mode-btn {
+      flex: 1; border: 1px solid transparent; border-radius: 6px;
+      padding: 6px 10px; font-size: 0.75rem; font-weight: 500;
+      cursor: pointer; background: transparent; color: var(--text-2);
+      transition: background 0.15s, color 0.15s, border-color 0.15s;
+    }
+    .physics-mode-btn:hover { color: var(--text-1); }
+
+    #btn-kinematic {
+      background: var(--surface-hi); color: var(--text-1);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.25);
+    }
+    body.simulating #btn-kinematic {
+      background: transparent; color: var(--text-2); box-shadow: none;
+    }
+    body.simulating #btn-dynamic {
+      background: linear-gradient(135deg, rgba(0,122,255,0.2), rgba(100,60,255,0.2));
+      color: var(--blue-text);
+      border-color: rgba(0,122,255,0.25);
+    }
+    #btn-dynamic:disabled { opacity: 0.5; cursor: default; }
+
+    #physics-mode-options {
+      display: flex; align-items: center; gap: 8px;
+    }
     #simulate-status { font-size: 0.625rem; color: var(--text-3); white-space: nowrap; }
-    body.simulating #btn-simulate { background: #c0392b; }
-    body.simulating #btn-simulate:hover { background: #a93226; }
     #sim-float-label {
       font-size: 0.6875rem; color: var(--text-2);
       display: flex; align-items: center; gap: 4px;
       white-space: nowrap; cursor: pointer;
     }
+
     /* Dim joint sliders while physics is running */
     body.simulating .joints input { pointer-events: none; opacity: 0.4; }
+
+    /* ── Gesture tiles ──────────────────────────────────────────────────── */
+    .gesture-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 4px;
+      padding: 8px 12px 10px;
+    }
+
+    .gesture-tile {
+      display: flex; flex-direction: column; align-items: center;
+      gap: 3px; padding: 6px 4px;
+      background: var(--surface-hi); border: 1px solid var(--border);
+      border-radius: 6px; font-size: 9px; line-height: 1.2;
+      color: var(--text-3); text-align: center;
+    }
+
+    .gesture-tile-icon { font-size: 1.125rem; line-height: 1; }
+
+    /* ── Joint range ticks ──────────────────────────────────────────────── */
+    .joint-ticks {
+      display: flex;
+      justify-content: space-between;
+      padding-right: 66px; /* align with slider end, accounting for number input width */
+      margin-top: 1px;
+      font-size: 0.5625rem;
+      color: var(--text-3);
+      font-variant-numeric: tabular-nums;
+    }
 
     /* ── Joints ──────────────────────────────────────────────────────────── */
 
@@ -2065,7 +2123,7 @@
     .build-section > summary:focus-within .build-section-detach { opacity: 1; }
     .build-section-detach:hover { color: var(--text-1); background: var(--surface-hover); }
   </style>
-  <script type="module" crossorigin src="/assets/index-nm7Wf-uy.js"></script>
+  <script type="module" crossorigin src="/assets/index-CeehBH4x.js"></script>
 </head>
 <body>
   <aside id="control-panel" aria-label="Controls">
@@ -2080,27 +2138,25 @@
     ></div>
     <div class="panel-header">
       <div class="panel-tabs">
-        <button type="button" class="tab-btn" data-tab="robot" id="tab-robot" aria-label="Robot" title="Robot">
+        <button type="button" class="tab-btn" data-tab="robot" id="tab-robot" aria-label="Inspect" title="Inspect">
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/>
             <path d="M2 14h2"/><path d="M20 14h2"/>
             <path d="M15 13v2"/><path d="M9 13v2"/>
           </svg>
-        </button>
-        <button type="button" class="tab-btn" data-tab="editor" id="tab-editor" aria-label="Editor" title="Editor">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="m18 16 4-4-4-4"/><path d="m6 8-4 4 4 4"/><path d="m14.5 4-5 16"/>
-          </svg>
+          <span class="tab-label">Inspect</span>
         </button>
         <button type="button" class="tab-btn" data-tab="build" id="tab-build" aria-label="Build" title="Build">
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
           </svg>
+          <span class="tab-label">Build</span>
         </button>
-        <button type="button" class="tab-btn" data-tab="library" id="tab-library" aria-label="Library" title="Library">
+        <button type="button" class="tab-btn" data-tab="editor" id="tab-editor" aria-label="Edit" title="Edit">
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <rect width="7" height="18" x="3" y="3" rx="1"/><rect width="7" height="18" x="14" y="3" rx="1"/>
+            <path d="m18 16 4-4-4-4"/><path d="m6 8-4 4 4 4"/><path d="m14.5 4-5 16"/>
           </svg>
+          <span class="tab-label">Edit</span>
         </button>
       </div>
       <button type="button" class="chat-header-close" id="control-panel-close" aria-label="Close panel">✕</button>
@@ -2127,33 +2183,25 @@
           <span id="gesture-section-chevron" aria-hidden="true">›</span>
         </div>
         <div id="gesture-cheatsheet" role="region">
-          <div class="gesture-row">
-            <span class="gesture-icon">✊</span>
-            <span class="gesture-desc"><strong>Fist + move</strong> orbit camera</span>
-          </div>
-          <div class="gesture-row">
-            <span class="gesture-icon">☝️</span>
-            <span class="gesture-desc"><strong>Point + hold 1.2 s over joint</strong> select joint</span>
-          </div>
-          <div class="gesture-row">
-            <span class="gesture-icon">🤚</span>
-            <span class="gesture-desc"><strong>Tilt wrist</strong> (joint selected) rotate joint</span>
-          </div>
-          <div class="gesture-row">
-            <span class="gesture-icon">🖐️</span>
-            <span class="gesture-desc"><strong>Open palm, hold 1 s</strong> reset all joints</span>
-          </div>
-          <div class="gesture-row">
-            <span class="gesture-icon">🤲</span>
-            <span class="gesture-desc"><strong>Two hands, pinch/spread</strong> zoom</span>
+          <div class="gesture-grid">
+            <div class="gesture-tile"><span class="gesture-tile-icon">✊</span><span>Orbit</span></div>
+            <div class="gesture-tile"><span class="gesture-tile-icon">☝️</span><span>Select</span></div>
+            <div class="gesture-tile"><span class="gesture-tile-icon">🤚</span><span>Rotate</span></div>
+            <div class="gesture-tile"><span class="gesture-tile-icon">🖐️</span><span>Reset</span></div>
+            <div class="gesture-tile"><span class="gesture-tile-icon">🤲</span><span>Zoom</span></div>
           </div>
         </div>
       </div>
 
-      <div id="simulate-bar" hidden>
-        <button type="button" id="btn-simulate">Simulate</button>
-        <label id="sim-float-label"><input type="checkbox" id="sim-float-base"> Float base</label>
-        <span id="simulate-status"></span>
+      <div id="physics-mode-bar" hidden>
+        <div class="physics-mode-toggle">
+          <button type="button" class="physics-mode-btn" id="btn-kinematic">Kinematic</button>
+          <button type="button" class="physics-mode-btn" id="btn-dynamic">Dynamic</button>
+        </div>
+        <div id="physics-mode-options" hidden>
+          <label id="sim-float-label"><input type="checkbox" id="sim-float-base"> Float base</label>
+          <span id="simulate-status"></span>
+        </div>
       </div>
 
       <div class="sidebar-scroll">
@@ -2382,6 +2430,28 @@
           <p id="build-comp-empty" class="build-comp-empty" hidden>No components yet. Click a type above to add one.</p>
         </div>
 
+        <details class="build-section" id="library-section">
+          <summary>Library</summary>
+          <div class="build-section-body">
+            <div style="padding: 4px 12px 6px;">
+              <input type="search" id="lib-search" class="lib-search-input"
+                     placeholder="Search components…" autocomplete="off" aria-label="Search components">
+            </div>
+            <div class="lib-pills" id="lib-pills" role="group" aria-label="Category filter">
+              <button type="button" class="lib-pill lib-pill--active" data-cat="">All</button>
+              <button type="button" class="lib-pill" data-cat="Sensor">Sensor</button>
+              <button type="button" class="lib-pill" data-cat="Actuator">Actuator</button>
+              <button type="button" class="lib-pill" data-cat="MCU">MCU</button>
+              <button type="button" class="lib-pill" data-cat="Power">Power</button>
+              <button type="button" class="lib-pill" data-cat="Structural">Structural</button>
+            </div>
+            <div style="padding: 4px 12px 8px;">
+              <div class="lib-grid" id="lib-grid"></div>
+              <p class="lib-empty" id="lib-empty" hidden>No components match.</p>
+            </div>
+          </div>
+        </details>
+
       </div><!-- .sidebar-scroll -->
 
       <!-- Sticky footer: always visible, never scrolls away -->
@@ -2395,28 +2465,6 @@
           <button id="build-export" class="build-export-btn">Download .zip</button>
           <button id="build-copy-urdf" class="build-export-btn" title="Copy URDF XML to clipboard">Copy URDF</button>
         </div>
-      </div>
-    </div>
-
-    <div class="tab-body" data-tab="library" id="library-panel">
-      <div class="library-toolbar">
-        <input type="search" id="lib-search" class="lib-search-input"
-               placeholder="Search components…" autocomplete="off" aria-label="Search components">
-      </div>
-      <div class="lib-pills" id="lib-pills" role="group" aria-label="Category filter">
-        <button type="button" class="lib-pill lib-pill--active" data-cat="">All</button>
-        <button type="button" class="lib-pill" data-cat="Sensor">Sensor</button>
-        <button type="button" class="lib-pill" data-cat="Actuator">Actuator</button>
-        <button type="button" class="lib-pill" data-cat="MCU">MCU</button>
-        <button type="button" class="lib-pill" data-cat="Power">Power</button>
-        <button type="button" class="lib-pill" data-cat="Structural">Structural</button>
-      </div>
-      <div class="sidebar-scroll lib-scroll">
-        <p id="lib-no-build" class="lib-no-build" hidden>
-          Create or load a robot in the Build tab first.
-        </p>
-        <div class="lib-grid" id="lib-grid"></div>
-        <p class="lib-empty" id="lib-empty" hidden>No components match.</p>
       </div>
     </div>
 
@@ -2609,6 +2657,8 @@
     }
 
     if (isDesktop()) {
+      openPanel(ctrlPanel);
+      openPanel(chatPanel);
       const saved = parseInt(localStorage.getItem(PANEL_W_KEY), 10);
       if (saved >= MIN_W) applyWidth(saved);
     }
