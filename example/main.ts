@@ -18,11 +18,10 @@ function $<T extends HTMLElement = HTMLElement>(id: string): T {
 customElements.define('urdf-viewer', URDFManipulator);
 
 const simulator = new MuJoCoSimulator();
-let _simUrdfUrl  = '';
-let _simPkgStr   = '';
-let _simPartsXml = '';   // assembled XML for parts robots (robot-car)
-let _simPartsBase = '';  // base dir for resolving collision meshes in parts robots
-let _simIsParts  = false;
+type SimSource =
+    | { kind: 'url'; urdfUrl: string; pkgStr: string }
+    | { kind: 'xml'; xml: string; base: string };
+let _simSource: SimSource | null = null;
 
 const viewer           = $<URDFManipulator>('viewer');
 const jointsPanel      = $('joints');
@@ -137,15 +136,12 @@ let _partsBlobUrl: string | null = null;
 async function loadViaBrowserAssembly(robot: RobotConfig): Promise<void> {
     const base     = robot.parts!;
     const manifest = await fetch(`${base}.parts.json`).then(r => r.json()) as {
-        robot: string; parts: string[]; contents?: Record<string, string>;
+        robot: string; parts: string[];
     };
     const dir      = base.replace(/\/[^/]+$/, '');
-    // Use inlined contents (single fetch) if available, otherwise fetch individually.
-    const partMap  = manifest.contents
-        ? new Map(manifest.parts.map(f => [f, manifest.contents![f]] as [string, string]))
-        : new Map(await Promise.all(manifest.parts.map(async f =>
-              [f, await fetch(`${dir}/parts/${f}`).then(r => r.text())] as [string, string]
-          )));
+    const partMap  = new Map(await Promise.all(manifest.parts.map(async f =>
+        [f, await fetch(`${dir}/parts/${f}`).then(r => r.text())] as [string, string]
+    )));
     buildCtrl.init(manifest.robot, dir, partMap);
     // Rewrite relative mesh filenames to absolute paths — blob URLs have no usable base
     const xml      = assembleURDF(manifest.robot, partMap)
@@ -155,10 +151,7 @@ async function loadViaBrowserAssembly(robot: RobotConfig): Promise<void> {
     viewer.urdf    = _partsBlobUrl;
 
     // Expose assembled XML for simulation (filenames already absolute)
-    _simPartsXml  = xml;
-    _simPartsBase = dir + '/';
-    _simIsParts          = true;
-    simFloatBase.checked = true; // mobile base: float so gravity is visible
+    _simSource = { kind: 'xml', xml, base: dir + '/' };
     $('simulate-bar').hidden = false;
 
     clearBuildUI();
@@ -219,13 +212,9 @@ function loadRobot(robot: RobotConfig, index: number): void {
     simBtn.textContent = 'Simulate';
     simStatus.textContent = '';
 
-    // For static URDF robots: show bar immediately.
-    // For parts robots: loadViaBrowserAssembly() reveals it after assembly.
-    _simUrdfUrl  = robot.urdf ?? '';
-    _simPkgStr   = robot.package ?? '';
-    _simIsParts  = false;
-    // Mobile bases (parts-assembled) default to float base so gravity is visible.
-    // Arm robots default to fixed base so they droop without flying off-screen.
+    // Parts robots: loadViaBrowserAssembly() sets _simSource and reveals bar after assembly.
+    // Mobile bases default to float base so gravity is visible; arms use fixed base.
+    _simSource = robot.urdf ? { kind: 'url', urdfUrl: robot.urdf, pkgStr: robot.package ?? '' } : null;
     simFloatBase.checked = !!robot.parts;
     $('simulate-bar').hidden = !robot.urdf;
 
@@ -334,11 +323,12 @@ simBtn.addEventListener('click', async () => {
     simBtn.disabled = true;
     simStatus.textContent = 'Loading physics…';
     try {
+        const src = _simSource!;
         const floatBase = simFloatBase.checked;
-        if (_simIsParts) {
-            await simulator.loadFromXML(_simPartsXml, _simPartsBase, '', floatBase);
+        if (src.kind === 'xml') {
+            await simulator.loadFromXML(src.xml, src.base, '', floatBase);
         } else {
-            await simulator.load(_simUrdfUrl, _simPkgStr, floatBase);
+            await simulator.load(src.urdfUrl, src.pkgStr, floatBase);
         }
         simulator.start(viewer.robot!, () => viewer.redraw());
         viewer.disableDragging = true;
@@ -1436,7 +1426,7 @@ function _selectCompCard(id: string): void {
     });
 }
 
-function renderComponentItem(id: string, type: string, _saved?: BuildComponent | null): void {
+function renderComponentItem(id: string, type: string): void {
     const def  = COMPONENT_CATALOG[type];
     const item = document.createElement('div');
     item.className = 'build-component';

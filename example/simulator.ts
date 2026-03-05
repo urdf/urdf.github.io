@@ -46,7 +46,6 @@ export class MuJoCoSimulator {
     private _model: any = null;
     private _data:  any = null;
     private _raf = 0;
-    private _mj: MuJoCo | null = null;
 
     /** Resolve package:// URIs using the viewer's colon-separated package string. */
     private _resolve(path: string, pkgStr: string, urdfBase: string): string | null {
@@ -163,26 +162,22 @@ export class MuJoCoSimulator {
     private _floatBase = false;
 
     async load(urdfUrl: string, pkgStr: string, floatBase = false): Promise<void> {
-        this.stop();
-        this._floatBase = floatBase;
-        const mj = await loadMuJoCo();
-        this._mj = mj;
         const xml     = await fetch(urdfUrl).then(r => r.text());
         const baseUrl = urdfUrl.replace(/[^/]+$/, '');
-        await this._processAndLoad(mj, xml, baseUrl, pkgStr, floatBase);
+        return this.loadFromXML(xml, baseUrl, pkgStr, floatBase);
     }
 
     async loadFromXML(xml: string, baseUrl: string, pkgStr: string, floatBase = false): Promise<void> {
         this.stop();
         this._floatBase = floatBase;
         const mj = await loadMuJoCo();
-        this._mj = mj;
         await this._processAndLoad(mj, xml, baseUrl, pkgStr, floatBase);
     }
 
     start(robot: URDFRobot, redraw: () => void): void {
-        if (!this._model || !this._data || !this._mj) return;
-        const { _mj: mj, _model: model, _data: data, _floatBase } = this;
+        if (!this._model || !this._data || !_mujoco) return;
+        const mj = _mujoco;
+        const { _model: model, _data: data, _floatBase } = this;
 
         const loop = () => {
             this._raf = requestAnimationFrame(loop);
