@@ -7,7 +7,7 @@ import { URDFRobot, URDFVisual, URDFCollider } from './URDFClasses.js';
 const STYLE = `
 :host {
     display: block;
-    background: linear-gradient(160deg, #0f1117 0%, #1a1f2e 100%);
+    background: transparent;
 }
 canvas { width: 100%; height: 100%; display: block; }
 `;
