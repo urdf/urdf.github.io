@@ -1963,22 +1963,44 @@
     .chat-apikey-save:hover { background: var(--blue-bg); color: var(--blue-text); border-color: rgba(0,122,255,0.3); }
     .chat-apikey-remove:hover { background: var(--surface-hover); color: var(--text-1); }
 
-    .chat-header-close {
-      background: none;
-      border: none;
+    .panel-edge-tab {
+      position: fixed;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 16px;
+      height: 44px;
+      background: var(--surface);
+      border: 1px solid var(--border);
       color: var(--text-3);
       cursor: pointer;
-      width: 28px;
-      height: 28px;
       display: flex;
       align-items: center;
       justify-content: center;
-      border-radius: 4px;
-      font-size: 0.75rem;
-      flex-shrink: 0;
+      font-size: 1rem;
+      line-height: 1;
+      z-index: 201;
+      opacity: 0;
+      pointer-events: none;
+      transition: color 0.12s, background 0.12s, opacity 0.25s;
     }
-    .chat-header-close:hover { color: var(--text-1); background: var(--surface-hover); }
-    .chat-header-close:focus-visible { outline: 2px solid var(--blue); outline-offset: 1px; }
+    .panel-edge-tab:hover { color: var(--text-1); background: var(--surface-hover); }
+    .panel-edge-tab:focus-visible { outline: 2px solid var(--blue); outline-offset: 1px; }
+
+    #control-panel-close {
+      left: var(--panel-w, 320px);
+      border-left: none;
+      border-radius: 0 6px 6px 0;
+    }
+    #control-panel.open ~ #control-panel-close { opacity: 1; pointer-events: auto; }
+
+    #chat-panel-close {
+      right: var(--chat-w, 320px);
+      border-right: none;
+      border-radius: 6px 0 0 6px;
+    }
+    #chat-panel.open ~ #chat-panel-close { opacity: 1; pointer-events: auto; }
+
+    @media (max-width: 768px) { .panel-edge-tab { display: none !important; } }
 
     .chat-compose-toolbar {
       display: flex;
@@ -2157,7 +2179,6 @@
     .build-section > summary:focus-within .build-section-detach { opacity: 1; }
     .build-section-detach:hover { color: var(--text-1); background: var(--surface-hover); }
   </style>
-  <script type="module" crossorigin src="/assets/index-CeehBH4x.js"></script>
 </head>
 <body>
   <aside id="control-panel" aria-label="Controls">
@@ -2193,7 +2214,6 @@
           <span class="tab-label">Edit</span>
         </button>
       </div>
-      <button type="button" class="chat-header-close" id="control-panel-close" aria-label="Close panel">✕</button>
     </div>
 
     <div class="tab-body" data-tab="robot">
@@ -2503,6 +2523,7 @@
     </div>
 
   </aside>
+  <button type="button" class="panel-edge-tab" id="control-panel-close" aria-label="Collapse panel">‹</button>
 
   <aside id="chat-panel" aria-label="AI Chat">
     <div class="panel-resize-handle" role="separator" aria-label="Resize chat panel"
@@ -2520,7 +2541,6 @@
         </select>
         <span class="chat-model-arrow" aria-hidden="true">▾</span>
       </div>
-      <button type="button" class="chat-header-close" id="chat-panel-close" aria-label="Close chat">✕</button>
     </div>
     <div id="chat-github-bar" class="chat-github-bar" hidden></div>
     <div id="chat-apikey-bar" class="chat-apikey-bar" hidden></div>
@@ -2573,6 +2593,7 @@
       </div>
     </div>
   </aside>
+  <button type="button" class="panel-edge-tab" id="chat-panel-close" aria-label="Collapse chat">›</button>
 
   <main>
     <div id="float-panels" aria-live="polite"></div>
@@ -2634,6 +2655,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/marked@15/marked.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js"></script>
+  <script type="module" crossorigin src="/assets/index-CeehBH4x.js"></script>
   <script>
     const ctrlPanel  = document.getElementById('control-panel');
     const chatPanel  = document.getElementById('chat-panel');
