@@ -86,6 +86,7 @@ export class URDFViewer extends HTMLElement {
     private _loadId = 0;
     private _introAnim: { start: THREE.Vector3; t0: number; dur: number } | null = null;
     private _outgoing: { obj: THREE.Object3D; from: THREE.Vector3; to: THREE.Vector3; t0: number; dur: number } | null = null;
+    private _robotReady = false;
     private _exitRotation = new THREE.Euler();
     private _lastLoadKey = '';
     private _resizeObserver: ResizeObserver;
@@ -276,7 +277,7 @@ export class URDFViewer extends HTMLElement {
             // Show the incoming robot as soon as both conditions are met:
             // (a) the exit animation is done, and (b) the robot is loaded into world.
             // Checking here avoids all timing races between mgr.onLoad and .then().
-            if (!this.world.visible && this.robot && !this._outgoing) {
+            if (!this.world.visible && this._robotReady && !this._outgoing) {
                 this.fitCamera();
                 this._exitRotation.copy(this.world.rotation);
                 this._startIntro();
@@ -318,12 +319,23 @@ export class URDFViewer extends HTMLElement {
         if (!this.urdf) return;
 
         const id = ++this._loadId;
+        this._robotReady = false;
 
         const loader = new URDFLoader();
         loader.packages = this._resolvePackages(this.package);
         loader.parseCollision = true;
         const baseMeshLoader = (this.loadMesh ?? loader.loadMesh).bind(loader);
+        let meshManagerHooked = false;
         loader.loadMesh = (path, mgr) => {
+            if (!meshManagerHooked) {
+                meshManagerHooked = true;
+                mgr.onLoad = () => {
+                    if (id === this._loadId) {
+                        this._robotReady = true;
+                        this.redraw();
+                    }
+                };
+            }
             return baseMeshLoader(path, mgr).then(obj => { this.redraw(); return obj; });
         };
 
@@ -338,8 +350,14 @@ export class URDFViewer extends HTMLElement {
             this._prepareMeshes(robot);
             this._applyIgnoreLimits(this.ignoreLimits);
             this._updateCollision();
-            this.redraw(); // wake the render loop to check show conditions
 
+            // If the robot has no mesh files (primitives only), loadMesh was never
+            // called so meshManagerHooked is false — mark ready immediately.
+            if (!meshManagerHooked) {
+                this._robotReady = true;
+            }
+
+            this.redraw();
             this.dispatchEvent(new CustomEvent('urdf-processed', { bubbles: true }));
         }).catch(err => {
             console.error('URDFViewer: load error', err);
