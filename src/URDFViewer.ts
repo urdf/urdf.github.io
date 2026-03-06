@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { URDFLoader, PackageMap } from './URDFLoader.js';
 import { URDFRobot, URDFVisual, URDFCollider } from './URDFClasses.js';
 
@@ -108,7 +109,7 @@ export class URDFViewer extends HTMLElement {
 
         this.scene = new THREE.Scene();
 
-        this.ambientLight = new THREE.HemisphereLight('#8ea0a8', '#000', 0.5);
+        this.ambientLight = new THREE.HemisphereLight('#8ea0a8', '#000', 0.2);
         this.ambientLight.groundColor.lerp(this.ambientLight.color, 0.5 * Math.PI);
         this.ambientLight.position.set(0, 1, 0);
         this.scene.add(this.ambientLight);
@@ -140,6 +141,16 @@ export class URDFViewer extends HTMLElement {
         this.renderer.outputColorSpace = THREE.SRGBColorSpace;
         this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
         this.renderer.toneMappingExposure = 1.0;
+
+        // IBL via RoomEnvironment — provides diffuse + specular response for MeshStandardMaterial.
+        // PMREMGenerator must run after renderer is created; texture is set on scene.environment.
+        const pmrem = new THREE.PMREMGenerator(this.renderer);
+        this.scene.environment = pmrem.fromScene(new RoomEnvironment()).texture;
+        pmrem.dispose();
+
+        // Background matches the app's CSS --bg token (dark/light mode aware).
+        const appBg = getComputedStyle(document.documentElement).getPropertyValue('--bg').trim();
+        if (appBg) this.scene.background = new THREE.Color(appBg);
 
         this.camera = new THREE.PerspectiveCamera(75, 1, 0.1, 100);
         this.camera.position.set(-5.5, 3.5, 5.5);
@@ -432,17 +443,19 @@ export class URDFViewer extends HTMLElement {
                 const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
                 for (const m of mats) {
                     if (m instanceof THREE.MeshBasicMaterial) {
-                        // Copy only properties shared between MeshBasicMaterial and MeshPhongMaterial.
-                        // The unsafe phong.copy(m) cast silently skips Phong-specific fields.
-                        const phong = new THREE.MeshPhongMaterial();
-                        phong.color.copy(m.color);
-                        phong.map         = m.map;
-                        phong.alphaMap    = m.alphaMap;
-                        phong.opacity     = m.opacity;
-                        phong.transparent = m.transparent;
-                        phong.side        = m.side;
-                        phong.name        = m.name;
-                        mesh.material = phong;
+                        // Convert to MeshStandardMaterial so it responds to IBL (scene.environment).
+                        // std.copy(m) is unsafe — only copy the properties that transfer cleanly.
+                        const std = new THREE.MeshStandardMaterial();
+                        std.color.copy(m.color);
+                        std.map         = m.map;
+                        std.alphaMap    = m.alphaMap;
+                        std.opacity     = m.opacity;
+                        std.transparent = m.transparent;
+                        std.side        = m.side;
+                        std.name        = m.name;
+                        std.roughness   = 0.7;
+                        std.metalness   = 0.05;
+                        mesh.material = std;
                         m.dispose();
                     }
                     if ((m as THREE.MeshStandardMaterial).map) {

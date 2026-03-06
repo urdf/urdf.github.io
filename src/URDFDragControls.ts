@@ -18,8 +18,8 @@ function findAncestorJoint(object: Object3D, includeFixed: boolean): URDFJoint |
 const _prev = new Vector3();
 const _next = new Vector3();
 const _pivot = new Vector3();
-const _a = new Vector3(); // general scratch (joint axis, cross product, delta)
-const _b = new Vector3(); // general scratch (camera dir, delta)
+const _vecA = new Vector3(); // scratch: reused within each method (axis, cross product, delta)
+const _vecB = new Vector3(); // scratch: reused within each method (camera dir, delta)
 const _projStart = new Vector3();
 const _projEnd = new Vector3();
 const _plane = new Plane();
@@ -104,24 +104,24 @@ export class URDFDragControls {
     }
 
     getRevoluteDelta(joint: URDFJoint, start: Vector3, end: Vector3): number {
-        _a.copy(joint.axis).transformDirection(joint.matrixWorld).normalize();
+        _vecA.copy(joint.axis).transformDirection(joint.matrixWorld).normalize();
         _pivot.set(0, 0, 0).applyMatrix4(joint.matrixWorld);
-        _plane.setFromNormalAndCoplanarPoint(_a, _pivot);
+        _plane.setFromNormalAndCoplanarPoint(_vecA, _pivot);
 
         _plane.projectPoint(start, _projStart).sub(_pivot);
         _plane.projectPoint(end, _projEnd).sub(_pivot);
 
-        _a.crossVectors(_projStart, _projEnd);
-        return Math.sign(_a.dot(_plane.normal)) * _projEnd.angleTo(_projStart);
+        _vecA.crossVectors(_projStart, _projEnd);
+        return Math.sign(_vecA.dot(_plane.normal)) * _projEnd.angleTo(_projStart);
     }
 
     getPrismaticDelta(joint: URDFJoint, start: Vector3, end: Vector3): number {
-        _a.subVectors(end, start);
+        _vecA.subVectors(end, start);
         _plane.normal
             .copy(joint.axis)
             .transformDirection(joint.parent!.matrixWorld)
             .normalize();
-        return _a.dot(_plane.normal);
+        return _vecA.dot(_plane.normal);
     }
 
     updateJoint(joint: URDFJoint, angle: number): void {
@@ -255,23 +255,23 @@ export class PointerURDFDragControls extends URDFDragControls {
     }
 
     override getRevoluteDelta(joint: URDFJoint, start: Vector3, end: Vector3): number {
-        _a.copy(joint.axis).transformDirection(joint.matrixWorld).normalize();
+        _vecA.copy(joint.axis).transformDirection(joint.matrixWorld).normalize();
         _pivot.set(0, 0, 0).applyMatrix4(joint.matrixWorld);
-        _plane.setFromNormalAndCoplanarPoint(_a, _pivot);
+        _plane.setFromNormalAndCoplanarPoint(_vecA, _pivot);
 
-        _b.copy(this.camera.position).sub(this.initialGrabPoint).normalize();
+        _vecB.copy(this.camera.position).sub(this.initialGrabPoint).normalize();
 
         // Switch to parent-class delta when camera is nearly parallel to the joint plane
         // (cos ~17°). Below this angle the projected arc becomes numerically unstable.
-        if (Math.abs(_b.dot(_plane.normal)) > 0.3) {
+        if (Math.abs(_vecB.dot(_plane.normal)) > 0.3) {
             return super.getRevoluteDelta(joint, start, end);
         }
 
         _plane.projectPoint(start, _projStart);
         _plane.projectPoint(end, _projEnd);
-        _a.set(0, 0, -1).transformDirection(this.camera.matrixWorld).cross(_plane.normal);
-        _b.subVectors(end, start);
-        return _a.dot(_b);
+        _vecA.set(0, 0, -1).transformDirection(this.camera.matrixWorld).cross(_plane.normal);
+        _vecB.subVectors(end, start);
+        return _vecA.dot(_vecB);
     }
 
     dispose(): void {

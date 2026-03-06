@@ -181,9 +181,7 @@ export class GestureController {
 
         controls.enabled = false;
 
-        const dc = (this.viewer as unknown as {
-            _dragControls?: { enabled: boolean; raycaster: THREE.Raycaster; update(): void };
-        })._dragControls;
+        const dc = this.viewer.dragControls;
         if (dc) { this._dragCtrl = dc; dc.enabled = false; }
 
         this.running = true;

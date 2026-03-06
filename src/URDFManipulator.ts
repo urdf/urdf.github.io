@@ -18,6 +18,10 @@ export class URDFManipulator extends URDFViewer {
     private _highlightMaterial: THREE.MeshPhongMaterial;
     private _dragControls: PointerURDFDragControls;
 
+    get dragControls(): { enabled: boolean; raycaster: THREE.Raycaster; update(): void } {
+        return this._dragControls;
+    }
+
     constructor() {
         super();
 
@@ -47,12 +51,12 @@ export class URDFManipulator extends URDFViewer {
         };
 
         this._dragControls.onHover = joint => {
-            this._highlightJoint(joint, false);
+            this._highlightJoint(joint);
             this.redraw();
         };
 
         this._dragControls.onUnhover = joint => {
-            this._highlightJoint(joint, true);
+            this._unhighlightJoint(joint);
             this.redraw();
         };
 
@@ -90,37 +94,32 @@ export class URDFManipulator extends URDFViewer {
         }
     }
 
-    private _highlightJoint(joint: URDFJoint, revert: boolean): void {
-        type HighlightMesh = THREE.Mesh & { __orig?: THREE.Material | THREE.Material[] };
+    private static _isMovable(j: THREE.Object3D): boolean {
+        return (j as URDFJoint).isURDFJoint && (j as URDFJoint).jointType !== 'fixed';
+    }
 
-        function isMovable(j: THREE.Object3D): boolean {
-            return (j as URDFJoint).isURDFJoint && (j as URDFJoint).jointType !== 'fixed';
-        }
+    private _highlightJoint(joint: URDFJoint): void {
+        type H = THREE.Mesh & { __orig?: THREE.Material | THREE.Material[] };
+        const mat = this._highlightMaterial;
+        const visit = (node: THREE.Object3D): void => {
+            const m = node as H;
+            if (m.isMesh) { m.__orig = m.material; m.material = mat; }
+            if (node !== joint && URDFManipulator._isMovable(node)) return;
+            for (const c of node.children)
+                if (!(c as { isURDFCollider?: boolean }).isURDFCollider) visit(c);
+        };
+        visit(joint);
+    }
 
-        const highlightMat = this._highlightMaterial;
-
-        function walk(node: THREE.Object3D): void {
-            const mesh = node as HighlightMesh;
-            if (mesh.isMesh) {
-                if (revert) {
-                    if (mesh.__orig !== undefined) {
-                        mesh.material = mesh.__orig;
-                        delete mesh.__orig;
-                    }
-                } else {
-                    mesh.__orig = mesh.material;
-                    mesh.material = highlightMat;
-                }
-            }
-
-            if (node !== joint && isMovable(node)) return;
-            for (const child of node.children) {
-                if (!(child as { isURDFCollider?: boolean }).isURDFCollider) {
-                    walk(child);
-                }
-            }
-        }
-
-        walk(joint);
+    private _unhighlightJoint(joint: URDFJoint): void {
+        type H = THREE.Mesh & { __orig?: THREE.Material | THREE.Material[] };
+        const visit = (node: THREE.Object3D): void => {
+            const m = node as H;
+            if (m.isMesh && m.__orig !== undefined) { m.material = m.__orig; delete m.__orig; }
+            if (node !== joint && URDFManipulator._isMovable(node)) return;
+            for (const c of node.children)
+                if (!(c as { isURDFCollider?: boolean }).isURDFCollider) visit(c);
+        };
+        visit(joint);
     }
 }

@@ -806,25 +806,31 @@ function onPowerbankChange(): void {
     );
 }
 
-// Each entry: [slider, numId, defaultMm, get (→ current mm from controller), onChange]
-// syncSlidersFromController() uses the same array — no parallel mapping needed.
-const buildSliderPairs: Array<[HTMLInputElement, string, number, () => number, () => void]> = [
-    [buildChassisThicknessEl, 'build-chassis-thickness-num', CHASSIS_DEFAULTS.thickness     * 1000, () => buildCtrl.chassisParams.thickness     * 1000, onChassisChange],
-    [buildChassisBodyHWEl,    'build-chassis-body-hw-num',   CHASSIS_DEFAULTS.bodyHalfWidth * 1000, () => buildCtrl.chassisParams.bodyHalfWidth * 1000, onChassisChange],
-    [buildChassisRearHWEl,    'build-chassis-rear-hw-num',   CHASSIS_DEFAULTS.rearHalfWidth * 1000, () => buildCtrl.chassisParams.rearHalfWidth * 1000, onChassisChange],
-    [buildWheelRadiusEl,      'build-wheel-radius-num',      WHEEL_DEFAULTS.radius          * 1000, () => buildCtrl.wheelParams.radius          * 1000, onWheelChange],
-    [buildWheelWidthEl,       'build-wheel-width-num',       WHEEL_DEFAULTS.width           * 1000, () => buildCtrl.wheelParams.width           * 1000, onWheelChange],
-    [buildCasterRadiusEl,     'build-caster-radius-num',     0, () => buildCtrl.casterRadius * 1000, onCasterChange],
-    [buildCasterWidthEl,      'build-caster-width-num',      0, () => buildCtrl.casterWidth  * 1000, onCasterChange],
-    [buildBatteryLEl,         'build-battery-l-num',         0, () => buildCtrl.batteryBox.l * 1000, onBatteryChange],
-    [buildBatteryWEl,         'build-battery-w-num',         0, () => buildCtrl.batteryBox.w * 1000, onBatteryChange],
-    [buildBatteryHEl,         'build-battery-h-num',         0, () => buildCtrl.batteryBox.h * 1000, onBatteryChange],
-    [buildPowerbankREl,       'build-powerbank-r-num',       0, () => buildCtrl.powerbank.radius * 1000, onPowerbankChange],
-    [buildPowerbankLEl,       'build-powerbank-l-num',       0, () => buildCtrl.powerbank.length * 1000, onPowerbankChange],
+interface SliderPair {
+    slider:    HTMLInputElement;
+    numId:     string;
+    defaultMm: number;
+    get:       () => number;
+    onChange:  () => void;
+}
+
+const buildSliderPairs: SliderPair[] = [
+    { slider: buildChassisThicknessEl, numId: 'build-chassis-thickness-num', defaultMm: CHASSIS_DEFAULTS.thickness     * 1000, get: () => buildCtrl.chassisParams.thickness     * 1000, onChange: onChassisChange },
+    { slider: buildChassisBodyHWEl,    numId: 'build-chassis-body-hw-num',   defaultMm: CHASSIS_DEFAULTS.bodyHalfWidth * 1000, get: () => buildCtrl.chassisParams.bodyHalfWidth * 1000, onChange: onChassisChange },
+    { slider: buildChassisRearHWEl,    numId: 'build-chassis-rear-hw-num',   defaultMm: CHASSIS_DEFAULTS.rearHalfWidth * 1000, get: () => buildCtrl.chassisParams.rearHalfWidth * 1000, onChange: onChassisChange },
+    { slider: buildWheelRadiusEl,      numId: 'build-wheel-radius-num',      defaultMm: WHEEL_DEFAULTS.radius          * 1000, get: () => buildCtrl.wheelParams.radius          * 1000, onChange: onWheelChange },
+    { slider: buildWheelWidthEl,       numId: 'build-wheel-width-num',       defaultMm: WHEEL_DEFAULTS.width           * 1000, get: () => buildCtrl.wheelParams.width           * 1000, onChange: onWheelChange },
+    { slider: buildCasterRadiusEl,     numId: 'build-caster-radius-num',     defaultMm: 0, get: () => buildCtrl.casterRadius    * 1000, onChange: onCasterChange },
+    { slider: buildCasterWidthEl,      numId: 'build-caster-width-num',      defaultMm: 0, get: () => buildCtrl.casterWidth     * 1000, onChange: onCasterChange },
+    { slider: buildBatteryLEl,         numId: 'build-battery-l-num',         defaultMm: 0, get: () => buildCtrl.batteryBox.l    * 1000, onChange: onBatteryChange },
+    { slider: buildBatteryWEl,         numId: 'build-battery-w-num',         defaultMm: 0, get: () => buildCtrl.batteryBox.w    * 1000, onChange: onBatteryChange },
+    { slider: buildBatteryHEl,         numId: 'build-battery-h-num',         defaultMm: 0, get: () => buildCtrl.batteryBox.h    * 1000, onChange: onBatteryChange },
+    { slider: buildPowerbankREl,       numId: 'build-powerbank-r-num',       defaultMm: 0, get: () => buildCtrl.powerbank.radius * 1000, onChange: onPowerbankChange },
+    { slider: buildPowerbankLEl,       numId: 'build-powerbank-l-num',       defaultMm: 0, get: () => buildCtrl.powerbank.length * 1000, onChange: onPowerbankChange },
 ];
 
-for (const [slider, numId, defaultVal, , onChange] of buildSliderPairs) {
-    if (defaultVal > 0) slider.value = String(defaultVal);
+for (const { slider, numId, defaultMm, onChange } of buildSliderPairs) {
+    if (defaultMm > 0) slider.value = String(defaultMm);
     const num = $<HTMLInputElement>(numId);
     num.value = slider.value;
     syncPair(slider, num, onChange);
@@ -859,9 +865,9 @@ const buildInspBody         = document.getElementById('build-inspector-body')!;
 const buildInspClose        = document.getElementById('build-inspector-close') as HTMLButtonElement;
 
 function syncSlidersFromController(): void {
-    for (const [el, numId, , get] of buildSliderPairs) {
+    for (const { slider, numId, get } of buildSliderPairs) {
         const v = String(get());
-        el.value = v;
+        slider.value = v;
         $<HTMLInputElement>(numId).value = v;
     }
     // Re-render inspector to sync values after AI tool call or undo/redo
@@ -1728,28 +1734,25 @@ document.querySelectorAll<HTMLButtonElement>('.build-section-detach').forEach(bt
 // Click a catalog component in the viewer and drag to reposition it (XY plane).
 // Only works for fixed-joint components (non-fixed joints use the joint manipulator).
 
-const _compRaycaster  = new Raycaster();
-const _compMouse      = new Vector2();
-const _compDragPlane  = new Plane();   // horizontal — for XY drag
-const _compVertPlane  = new Plane();   // vertical   — for Z drag (Shift)
-const _compInitialHit = new Vector3();
-const _compInitVertHit = new Vector3();
-const _compNewHit     = new Vector3();
-
-let _compDragId:      string | null      = null;
-let _compDragCard:    HTMLElement | null = null;
-let _compInitUrdfX    = 0;
-let _compInitUrdfY    = 0;
-let _compInitUrdfZ    = 0;
-let _compDragUrdfZ    = 0;
-let _compCurX         = 0;
-let _compCurY         = 0;
-let _compDownClientX  = 0;
-let _compDownClientY  = 0;
+// Component 3D drag state — all fields used together across three event handlers.
+const _compDrag = {
+    raycaster: new Raycaster(),
+    mouse:     new Vector2(),
+    hPlane:    new Plane(),    // horizontal — XY drag
+    vPlane:    new Plane(),    // vertical   — Z drag (Shift)
+    initHit:   new Vector3(),
+    initVHit:  new Vector3(),
+    newHit:    new Vector3(),
+    id:        null as string | null,
+    card:      null as HTMLElement | null,
+    initX:     0, initY: 0, initZ: 0,
+    curZ:      0, curX:  0, curY:  0,
+    downX:     0, downY: 0,
+};
 
 function _compUpdateNDC(e: PointerEvent): void {
     const rect = viewer.renderer.domElement.getBoundingClientRect();
-    _compMouse.set(
+    _compDrag.mouse.set(
         ((e.clientX - rect.left) / rect.width)  * 2 - 1,
        -((e.clientY - rect.top)  / rect.height) * 2 + 1,
     );
@@ -1770,8 +1773,8 @@ const _SNAP = 0.001; // 1 mm grid snap for component drag
 viewer.renderer.domElement.addEventListener('pointerdown', (e: PointerEvent) => {
     if (!buildCtrl.isCatalogActive) return;
     _compUpdateNDC(e);
-    _compRaycaster.setFromCamera(_compMouse, viewer.camera);
-    const hits = _compRaycaster.intersectObject(viewer.scene, true);
+    _compDrag.raycaster.setFromCamera(_compDrag.mouse, viewer.camera);
+    const hits = _compDrag.raycaster.intersectObject(viewer.scene, true);
     if (!hits.length) return;
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -1782,32 +1785,32 @@ viewer.renderer.domElement.addEventListener('pointerdown', (e: PointerEvent) => 
     if (!xyz) return;
 
     // Horizontal drag plane at the component's height (Three.js Y = URDF Z)
-    _compDragPlane.set(new Vector3(0, 1, 0), -xyz.z);
-    _compRaycaster.ray.intersectPlane(_compDragPlane, _compInitialHit);
+    _compDrag.hPlane.set(new Vector3(0, 1, 0), -xyz.z);
+    _compDrag.raycaster.ray.intersectPlane(_compDrag.hPlane, _compDrag.initHit);
 
     // Vertical drag plane facing the camera (for Shift+drag Z axis)
     const _camFwd = new Vector3();
     viewer.camera.getWorldDirection(_camFwd);
     _camFwd.y = 0; _camFwd.normalize();
-    _compVertPlane.setFromNormalAndCoplanarPoint(_camFwd, new Vector3(xyz.x, xyz.z, -xyz.y));
-    _compRaycaster.ray.intersectPlane(_compVertPlane, _compInitVertHit);
+    _compDrag.vPlane.setFromNormalAndCoplanarPoint(_camFwd, new Vector3(xyz.x, xyz.z, -xyz.y));
+    _compDrag.raycaster.ray.intersectPlane(_compDrag.vPlane, _compDrag.initVHit);
 
-    _compDragId    = id;
-    _compInitUrdfX = xyz.x;
-    _compInitUrdfY = xyz.y;
-    _compInitUrdfZ = xyz.z;
-    _compDragUrdfZ = xyz.z;
-    _compCurX      = xyz.x;
-    _compCurY      = xyz.y;
+    _compDrag.id    = id;
+    _compDrag.initX = xyz.x;
+    _compDrag.initY = xyz.y;
+    _compDrag.initZ = xyz.z;
+    _compDrag.curZ  = xyz.z;
+    _compDrag.curX  = xyz.x;
+    _compDrag.curY  = xyz.y;
 
     buildCtrl.startComponentDrag(id);
     viewer.controls.enabled = false;
 
-    _compDownClientX = e.clientX;
-    _compDownClientY = e.clientY;
+    _compDrag.downX = e.clientX;
+    _compDrag.downY = e.clientY;
 
-    _compDragCard = buildComponentsListEl.querySelector<HTMLElement>(`[data-id="${id}"]`);
-    _compDragCard?.classList.add('dragging');
+    _compDrag.card = buildComponentsListEl.querySelector<HTMLElement>(`[data-id="${id}"]`);
+    _compDrag.card?.classList.add('dragging');
     _selectCompCard(id);  // ensures inspector inputs exist for drag position updates
 
     viewer.renderer.domElement.setPointerCapture(e.pointerId);
@@ -1815,49 +1818,48 @@ viewer.renderer.domElement.addEventListener('pointerdown', (e: PointerEvent) => 
 });
 
 viewer.renderer.domElement.addEventListener('pointermove', (e: PointerEvent) => {
-    if (!_compDragId) return;
+    if (!_compDrag.id) return;
     _compUpdateNDC(e);
-    _compRaycaster.setFromCamera(_compMouse, viewer.camera);
+    _compDrag.raycaster.setFromCamera(_compDrag.mouse, viewer.camera);
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const joint = (viewer.robot as any)?.joints[`${_compDragId}_joint`];
-    const inp   = componentInputs.get(_compDragId);
-    const _snap = _SNAP;
+    const joint = (viewer.robot as any)?.joints[`${_compDrag.id}_joint`];
+    const inp   = componentInputs.get(_compDrag.id);
 
     viewer.renderer.domElement.style.cursor = e.shiftKey ? 'ns-resize' : 'grabbing';
 
     if (e.shiftKey) {
         // Shift: vertical drag → change URDF Z
-        if (!_compRaycaster.ray.intersectPlane(_compVertPlane, _compNewHit)) return;
-        _compDragUrdfZ = Math.round((_compInitUrdfZ + (_compNewHit.y - _compInitVertHit.y)) / _snap) * _snap;
-        if (joint) joint.position.set(_compCurX, _compCurY, _compDragUrdfZ);
-        if (inp) inp['z'].value = _compDragUrdfZ.toFixed(4);
+        if (!_compDrag.raycaster.ray.intersectPlane(_compDrag.vPlane, _compDrag.newHit)) return;
+        _compDrag.curZ = Math.round((_compDrag.initZ + (_compDrag.newHit.y - _compDrag.initVHit.y)) / _SNAP) * _SNAP;
+        if (joint) joint.position.set(_compDrag.curX, _compDrag.curY, _compDrag.curZ);
+        if (inp) inp['z'].value = _compDrag.curZ.toFixed(4);
     } else {
         // Default: horizontal drag → change URDF X, Y
-        if (!_compRaycaster.ray.intersectPlane(_compDragPlane, _compNewHit)) return;
-        _compCurX = Math.round((_compInitUrdfX + (_compNewHit.x - _compInitialHit.x)) / _snap) * _snap;
-        _compCurY = Math.round((_compInitUrdfY - (_compNewHit.z - _compInitialHit.z)) / _snap) * _snap;
-        if (joint) joint.position.set(_compCurX, _compCurY, _compDragUrdfZ);
-        if (inp) { inp['x'].value = _compCurX.toFixed(4); inp['y'].value = _compCurY.toFixed(4); }
+        if (!_compDrag.raycaster.ray.intersectPlane(_compDrag.hPlane, _compDrag.newHit)) return;
+        _compDrag.curX = Math.round((_compDrag.initX + (_compDrag.newHit.x - _compDrag.initHit.x)) / _SNAP) * _SNAP;
+        _compDrag.curY = Math.round((_compDrag.initY - (_compDrag.newHit.z - _compDrag.initHit.z)) / _SNAP) * _SNAP;
+        if (joint) joint.position.set(_compDrag.curX, _compDrag.curY, _compDrag.curZ);
+        if (inp) { inp['x'].value = _compDrag.curX.toFixed(4); inp['y'].value = _compDrag.curY.toFixed(4); }
     }
 });
 
 viewer.renderer.domElement.addEventListener('pointerup', (e: PointerEvent) => {
-    if (!_compDragId) return;
-    const wasDrag = Math.hypot(e.clientX - _compDownClientX, e.clientY - _compDownClientY) > 8;
-    buildCtrl.finishComponentDrag(_compDragId, _compCurX, _compCurY, _compDragUrdfZ);
+    if (!_compDrag.id) return;
+    const wasDrag = Math.hypot(e.clientX - _compDrag.downX, e.clientY - _compDrag.downY) > 8;
+    buildCtrl.finishComponentDrag(_compDrag.id, _compDrag.curX, _compDrag.curY, _compDrag.curZ);
     viewer.controls.enabled = true;
     viewer.renderer.domElement.style.cursor = '';
-    _compDragCard?.classList.remove('dragging');
+    _compDrag.card?.classList.remove('dragging');
 
-    if (!wasDrag && _compDragCard) {
-        const cardId = _compDragCard.dataset.id;
+    if (!wasDrag && _compDrag.card) {
+        const cardId = _compDrag.card.dataset.id;
         if (cardId) _selectCompCard(cardId);
-        _compDragCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        _compDrag.card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
 
-    _compDragCard = null;
-    _compDragId   = null;
+    _compDrag.card = null;
+    _compDrag.id   = null;
 });
 
 // ── Component hover tooltip ────────────────────────────────────────────────
@@ -1865,12 +1867,12 @@ const _hoverTip = $('build-hover-tip');
 let _hoverTipRaf = 0;
 
 viewer.renderer.domElement.addEventListener('pointermove', (e: PointerEvent) => {
-    if (!buildCtrl.isCatalogActive || _compDragId) { _hoverTip.style.display = 'none'; return; }
+    if (!buildCtrl.isCatalogActive || _compDrag.id) { _hoverTip.style.display = 'none'; return; }
     cancelAnimationFrame(_hoverTipRaf);
     _hoverTipRaf = requestAnimationFrame(() => {
         _compUpdateNDC(e);
-        _compRaycaster.setFromCamera(_compMouse, viewer.camera);
-        const hits = _compRaycaster.intersectObject(viewer.scene, true);
+        _compDrag.raycaster.setFromCamera(_compDrag.mouse, viewer.camera);
+        const hits = _compDrag.raycaster.intersectObject(viewer.scene, true);
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const id = hits.length ? _compFindId(hits[0].object as any) : null;
         if (id) {

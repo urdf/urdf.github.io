@@ -1,4 +1,6 @@
 import type { URDFManipulator } from '../src/index.js';
+import type { TextBlock, ToolUseBlock, ToolResBlock, ContentBlock, Msg } from './ai-types.js';
+import { renderMd } from './ai-types.js';
 
 const LOCAL_PROXY        = 'http://127.0.0.1:7337/claude';
 const MODEL              = 'claude-sonnet-4-6';
@@ -80,14 +82,6 @@ Coordinate conventions:
 • -X = front/bumper, +X = rear, -Y = left, +Y = right, +Z = up
 • rpy = roll(X), pitch(Y), yaw(Z) in radians`;
 
-interface TextBlock    { type: 'text'; text: string; }
-interface ToolUseBlock { type: 'tool_use'; id: string; name: string; input: Record<string, unknown>; }
-interface ToolResBlock { type: 'tool_result'; tool_use_id: string; content: string; }
-type ContentBlock = TextBlock | ToolUseBlock | ToolResBlock;
-type Msg =
-    | { role: 'user';      content: string | ToolResBlock[] }
-    | { role: 'assistant'; content: ContentBlock[] };
-
 type Action = {
     fn?: (args: string[]) => void;
     prompt?: (arg: string) => string;
@@ -95,17 +89,6 @@ type Action = {
     arg?: string;
 };
 
-declare const marked: { parse(s: string): string } | undefined;
-declare const DOMPurify: { sanitize(s: string, o?: object): string } | undefined;
-
-function renderMd(text: string): string {
-    if (typeof marked !== 'undefined' && typeof DOMPurify !== 'undefined') {
-        return DOMPurify.sanitize(marked.parse(text), { ADD_ATTR: ['style'] });
-    }
-    return text
-        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-        .replace(/\n/g, '<br>');
-}
 
 export class URDFEditorController {
     private readonly _viewer:       URDFManipulator;
@@ -580,9 +563,6 @@ export class URDFEditorController {
         }
     }
 
-    // Write tools produce a visible result — no follow-up narration needed.
-    private static readonly _WRITE_TOOLS = new Set(['update_urdf', 'update_part']);
-
     private async _executeTools(
         toolCalls: ToolUseBlock[],
         cardMap?: Map<string, { setResult(ok: boolean): void }>,
@@ -594,7 +574,7 @@ export class URDFEditorController {
             const res  = await this._executeTool(tc.name, tc.input);
             const ok   = !(res as Record<string, unknown>).error;
             card?.setResult(ok);
-            if (ok && URDFEditorController._WRITE_TOOLS.has(tc.name)) noFollowUp = true;
+            if (ok && TOOL_CARDS.has(tc.name)) noFollowUp = true;
             results.push({ type: 'tool_result', tool_use_id: tc.id, content: JSON.stringify(res) });
         }
         this._history.push({ role: 'user', content: results });
@@ -692,24 +672,26 @@ export class URDFEditorController {
         const preview = xml.length > MAX_XML_CHARS
             ? xml.slice(0, MAX_XML_CHARS) + '\n<!-- ... truncated ... -->'
             : xml;
-
-        const robotName    = this._displayRobotName;
-        const robotHeader  = robotName ? `ROBOT: ${robotName}\n\n` : '';
-        const briefNote    = this._brief
+        const robotHeader = this._displayRobotName ? `ROBOT: ${this._displayRobotName}\n\n` : '';
+        const briefNote   = this._brief
             ? '\nBRIEF MODE: Answer in fewer than 4 lines. No preamble, no postamble, no elaboration. Minimize tokens. Direct answers only. Emoji allowed as semantic shorthand when it replaces a word more efficiently than text.'
             : '';
+        return this._partSelEl.value && this._partsList.length
+            ? this._buildSystemParts(nLines, preview, robotHeader, briefNote)
+            : this._buildSystemFull(nLines, preview, robotHeader, briefNote);
+    }
+
+    private _buildSystemParts(nLines: number, preview: string, robotHeader: string, briefNote: string): string {
         const selectedPart = this._partSelEl.value;
         const specsBlock   = this._componentSpecs
             ? `\nHARDWARE SPECS (real dimensions for sizing new components, in mm):\n${this._componentSpecs}\n`
             : '';
-
-        if (selectedPart && this._partsList.length) {
-            const partsDesc = this._partsList.map(p => {
-                const summary = this._summarizePart(this._partCache.get(this._partUrl(p)) ?? '');
-                const tag     = p === selectedPart ? ' ← editing' : '';
-                return summary ? `  ${p}: ${summary}${tag}` : `  ${p}${tag}`;
-            }).join('\n');
-            return `You are an expert URDF robot description assistant embedded in a live 3D robot viewer.
+        const partsDesc = this._partsList.map(p => {
+            const summary = this._summarizePart(this._partCache.get(this._partUrl(p)) ?? '');
+            const tag     = p === selectedPart ? ' ← editing' : '';
+            return summary ? `  ${p}: ${summary}${tag}` : `  ${p}${tag}`;
+        }).join('\n');
+        return `You are an expert URDF robot description assistant embedded in a live 3D robot viewer.
 The robot URDF is split into part files. You are editing one part at a time.
 
 ${robotHeader}PARTS (auto-summarised with joint xyz positions — use this to understand the complete robot topology and occupied space):
@@ -730,8 +712,9 @@ Tool rules:
 • highlight_lines / scroll_to_line — editor navigation
 
 Be concise. Use tools proactively. Before adding a new component, check the part summaries for occupied xyz positions to avoid overlaps; use read_part for full details if needed.${briefNote}`;
-        }
+    }
 
+    private _buildSystemFull(nLines: number, preview: string, robotHeader: string, briefNote: string): string {
         return `You are an expert URDF robot description assistant embedded in a live 3D robot viewer.
 The viewer re-renders in real time when you call update_urdf. The user sees the 3D result instantly.
 

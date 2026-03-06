@@ -1,5 +1,7 @@
 import type { URDFBuildController } from './build.js';
 import { LIBRARY } from '../src/generators/components/index.js';
+import type { TextBlock, ToolUseBlock, ToolResBlock, ContentBlock, Msg } from './ai-types.js';
+import { renderMd } from './ai-types.js';
 
 const LOCAL_PROXY = 'http://127.0.0.1:7337/claude'; // claude-local-proxy (npm i -g claude-local-proxy)
 const MODEL       = 'claude-sonnet-4-6';
@@ -16,19 +18,6 @@ async function loadConnectGitHub(): Promise<(scope: string, appId: string) => Pr
     return _connectGitHubFn!;
 }
 
-// ── Types shared with editor.ts ──────────────────────────────────────────────
-
-interface TextBlock    { type: 'text'; text: string; }
-interface ToolUseBlock { type: 'tool_use'; id: string; name: string; input: Record<string, unknown>; }
-interface ToolResBlock { type: 'tool_result'; tool_use_id: string; content: string; }
-type ContentBlock = TextBlock | ToolUseBlock | ToolResBlock;
-type Msg =
-    | { role: 'user';      content: string | ToolResBlock[] }
-    | { role: 'assistant'; content: ContentBlock[] };
-
-declare const marked: { parse(s: string): string } | undefined;
-declare const DOMPurify: { sanitize(s: string, o?: object): string } | undefined;
-
 function highlightJson(raw: string): string {
     const s = raw.replace(/</g, '&lt;').replace(/>/g, '&gt;');
     return s
@@ -36,15 +25,6 @@ function highlightJson(raw: string): string {
         .replace(/:\s*"([^"\\]*(\\.[^"\\]*)*)"/g, ': <span class="j-str">"$1"</span>')
         .replace(/:\s*(-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)/g, ': <span class="j-num">$1</span>')
         .replace(/:\s*(true|false|null)\b/g, ': <span class="j-kw">$1</span>');
-}
-
-function renderMd(text: string): string {
-    if (typeof marked !== 'undefined' && typeof DOMPurify !== 'undefined') {
-        return DOMPurify.sanitize(marked.parse(text), { ADD_ATTR: ['style'] });
-    }
-    return text
-        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-        .replace(/\n/g, '<br>');
 }
 
 // ── Public interface ─────────────────────────────────────────────────────────
