@@ -47,13 +47,13 @@ print(screen_x(-0.010,  0.090, -0.002))  # wheel_right → positive = screen rig
 | motor_right | +0.040 | +0.057 | −0.011 | same mesh; shaft → +Y (right), left motor rpy="0 0 3.14159" |
 | wheel_left | +0.040 | −0.081 | −0.011 | r=32.5 mm, w=15 mm, continuous, rpy 1.5708 0 0 |
 | wheel_right | +0.040 | +0.081 | −0.011 | r=32.5 mm, w=15 mm, continuous |
-| caster_plate | −0.120 | 0 | −0.004 | 36×36×4 mm |
-| caster_fork | −0.120 | 0 | −0.0149 | 8×16×30 mm |
-| caster_wheel | −0.120 | 0 | −0.0289 | cylinder r=14.6 mm, continuous |
+| caster_plate | −0.120 | 0 | −0.004 | 36×36×4 mm; parent=base_link (fixed) |
+| caster_fork | — | — | −0.006 | U-bracket; parent=caster_plate, continuous Z-swivel, origin xyz="0 0 -0.002" from plate |
+| caster_wheel | — | — | −0.0289 | cylinder r=14.6 mm; parent=caster_fork, continuous roll, origin xyz="0 0 -0.0229" from fork |
 | l298n | +0.050 | 0 | +0.005 | rpy 0 0 -1.5708 |
 | esp32_cam | −0.103 | 0 | +0.0023 | PRIMARY MCU — link name esp32_cam, rpy="0 0 1.5708", camera at X=−0.1305 above caster, file 07-esp32cam.xml |
 | hcsr04 | −0.110 | 0 | +0.009 | 45×20×15 mm, two ø16 mm cylinders, fixed, file 08-hcsr04.xml |
-| powerbank | −0.035 | 0 | −0.011 | rpy 1.5708 0 0, under chassis spanning Y |
+| powerbank | −0.035 | 0 | −0.019 | rpy 1.5708 0 0, ø35×92 mm, under chassis spanning Y |
 | battery_box | +0.046 | 0 | −0.012 | 4×AA holder, 80×44×22 mm, under chassis |
 
 ## robot-car URDF assembly
