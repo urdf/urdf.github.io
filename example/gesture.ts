@@ -24,7 +24,7 @@ const HAND_CONNECTIONS: [number, number][] = [
 
 const WASM_CDN = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.21/wasm';
 
-const CAM_LERP = 0.14;
+const ORBIT_DAMPING = 0.14; // lerp factor per frame — lower = smoother, higher = more responsive
 
 class OneEuroFilter {
     private x_prev = NaN;
@@ -321,9 +321,9 @@ export class GestureController {
     private _applyCamera(): void {
         const { controls, camera } = this.viewer;
 
-        this.sphTheta  += (this.targetTheta  - this.sphTheta)  * CAM_LERP;
-        this.sphPhi    += (this.targetPhi    - this.sphPhi)    * CAM_LERP;
-        this.sphRadius += (this.targetRadius - this.sphRadius) * CAM_LERP;
+        this.sphTheta  += (this.targetTheta  - this.sphTheta)  * ORBIT_DAMPING;
+        this.sphPhi    += (this.targetPhi    - this.sphPhi)    * ORBIT_DAMPING;
+        this.sphRadius += (this.targetRadius - this.sphRadius) * ORBIT_DAMPING;
 
         _sph.set(this.sphRadius, this.sphPhi, this.sphTheta);
         camera.position.setFromSpherical(_sph).add(controls.target);

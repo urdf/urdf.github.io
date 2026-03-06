@@ -133,11 +133,13 @@ export class URDFViewer extends HTMLElement {
         this.shadowPlane.raycast = () => {};
         this.scene.add(this.shadowPlane);
 
-        this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
         this.renderer.setClearAlpha(0);
         this.renderer.shadowMap.enabled = true;
         this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
         this.renderer.outputColorSpace = THREE.SRGBColorSpace;
+        this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        this.renderer.toneMappingExposure = 1.0;
 
         this.camera = new THREE.PerspectiveCamera(75, 1, 0.1, 100);
         this.camera.position.set(-5.5, 3.5, 5.5);
@@ -430,8 +432,16 @@ export class URDFViewer extends HTMLElement {
                 const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
                 for (const m of mats) {
                     if (m instanceof THREE.MeshBasicMaterial) {
+                        // Copy only properties shared between MeshBasicMaterial and MeshPhongMaterial.
+                        // The unsafe phong.copy(m) cast silently skips Phong-specific fields.
                         const phong = new THREE.MeshPhongMaterial();
-                        phong.copy(m as unknown as THREE.MeshPhongMaterial);
+                        phong.color.copy(m.color);
+                        phong.map         = m.map;
+                        phong.alphaMap    = m.alphaMap;
+                        phong.opacity     = m.opacity;
+                        phong.transparent = m.transparent;
+                        phong.side        = m.side;
+                        phong.name        = m.name;
                         mesh.material = phong;
                         m.dispose();
                     }

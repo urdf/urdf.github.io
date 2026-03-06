@@ -137,6 +137,8 @@ export class URDFLoader {
 
         return robot;
 
+        // ── Nested helpers — all share closure over linkMap, jointMap, materialMap ──
+
         function parseLink(el: Element, target: URDFLink): URDFLink {
             target.name = el.getAttribute('name') ?? '';
             target.urdfName = target.name;
@@ -361,7 +363,7 @@ export class URDFLoader {
                 return new Promise((resolve, reject) => {
                     new STLLoader(manager).load(
                         path,
-                        geom => resolve(new THREE.Mesh(geom, new THREE.MeshPhongMaterial())),
+                        geom => resolve(new THREE.Mesh(geom, new THREE.MeshPhongMaterial({ side: THREE.DoubleSide }))),
                         undefined,
                         reject,
                     );

@@ -290,7 +290,6 @@ export class URDFChatController {
         this._chatPaneEl.classList.toggle('chat-empty', empty);
     }
 
-
     // ── Autocomplete ──────────────────────────────────────────────────────────
 
     private _activeCmds(): Record<string, CmdEntry> {

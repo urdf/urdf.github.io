@@ -13,11 +13,13 @@ function findAncestorJoint(object: Object3D, includeFixed: boolean): URDFJoint |
     return null;
 }
 
+// Module-level scratch vectors — allocated once to avoid per-frame heap allocation.
+// Each method uses them for transient calculations; never read across method boundaries.
 const _prev = new Vector3();
 const _next = new Vector3();
 const _pivot = new Vector3();
-const _a = new Vector3();
-const _b = new Vector3();
+const _a = new Vector3(); // general scratch (joint axis, cross product, delta)
+const _b = new Vector3(); // general scratch (camera dir, delta)
 const _projStart = new Vector3();
 const _projEnd = new Vector3();
 const _plane = new Plane();
@@ -259,6 +261,8 @@ export class PointerURDFDragControls extends URDFDragControls {
 
         _b.copy(this.camera.position).sub(this.initialGrabPoint).normalize();
 
+        // Switch to parent-class delta when camera is nearly parallel to the joint plane
+        // (cos ~17°). Below this angle the projected arc becomes numerically unstable.
         if (Math.abs(_b.dot(_plane.normal)) > 0.3) {
             return super.getRevoluteDelta(joint, start, end);
         }

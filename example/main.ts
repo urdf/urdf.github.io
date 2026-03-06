@@ -543,7 +543,7 @@ viewer.addEventListener('urdf-processed', () => {
     requestAnimationFrame(() => { _buildGrid.position.y = viewer.shadowPlane.position.y; });
 });
 
-const DEG = Math.PI / 180;
+const DEG_TO_RAD = Math.PI / 180; // multiply degrees → radians; divide radians → degrees
 
 type JointEl = HTMLElement & { update: () => void };
 
@@ -589,7 +589,7 @@ function buildJointPanel(): void {
         ticks.append(tickLo, tickHi);
 
         const isPrismatic = joint.jointType === 'prismatic';
-        const displayScale = isPrismatic ? 1 : 1 / DEG; // show degrees for rotary joints
+        const displayScale = isPrismatic ? 1 : 1 / DEG_TO_RAD; // show degrees for rotary joints
 
         el.update = () => {
             const continuous = joint.jointType === 'continuous';
@@ -612,7 +612,7 @@ function buildJointPanel(): void {
         }, { signal });
 
         number.addEventListener('change', () => {
-            const scale = isPrismatic ? 1 : DEG;
+            const scale = isPrismatic ? 1 : DEG_TO_RAD;
             viewer.setJointValue(joint.name, parseFloat(number.value) * scale);
         }, { signal });
 
@@ -806,23 +806,24 @@ function onPowerbankChange(): void {
     );
 }
 
-// Set default values (m -> mm) and wire slider/number pairs
-const buildSliderPairs: Array<[HTMLInputElement, string, number, () => void]> = [
-    [buildChassisThicknessEl, 'build-chassis-thickness-num', CHASSIS_DEFAULTS.thickness     * 1000, onChassisChange],
-    [buildChassisBodyHWEl,    'build-chassis-body-hw-num',   CHASSIS_DEFAULTS.bodyHalfWidth * 1000, onChassisChange],
-    [buildChassisRearHWEl,    'build-chassis-rear-hw-num',   CHASSIS_DEFAULTS.rearHalfWidth * 1000, onChassisChange],
-    [buildWheelRadiusEl,      'build-wheel-radius-num',      WHEEL_DEFAULTS.radius          * 1000, onWheelChange],
-    [buildWheelWidthEl,       'build-wheel-width-num',       WHEEL_DEFAULTS.width           * 1000, onWheelChange],
-    [buildCasterRadiusEl,     'build-caster-radius-num',     0, onCasterChange],
-    [buildCasterWidthEl,      'build-caster-width-num',      0, onCasterChange],
-    [buildBatteryLEl,         'build-battery-l-num',         0, onBatteryChange],
-    [buildBatteryWEl,         'build-battery-w-num',         0, onBatteryChange],
-    [buildBatteryHEl,         'build-battery-h-num',         0, onBatteryChange],
-    [buildPowerbankREl,       'build-powerbank-r-num',       0, onPowerbankChange],
-    [buildPowerbankLEl,       'build-powerbank-l-num',       0, onPowerbankChange],
+// Each entry: [slider, numId, defaultMm, get (→ current mm from controller), onChange]
+// syncSlidersFromController() uses the same array — no parallel mapping needed.
+const buildSliderPairs: Array<[HTMLInputElement, string, number, () => number, () => void]> = [
+    [buildChassisThicknessEl, 'build-chassis-thickness-num', CHASSIS_DEFAULTS.thickness     * 1000, () => buildCtrl.chassisParams.thickness     * 1000, onChassisChange],
+    [buildChassisBodyHWEl,    'build-chassis-body-hw-num',   CHASSIS_DEFAULTS.bodyHalfWidth * 1000, () => buildCtrl.chassisParams.bodyHalfWidth * 1000, onChassisChange],
+    [buildChassisRearHWEl,    'build-chassis-rear-hw-num',   CHASSIS_DEFAULTS.rearHalfWidth * 1000, () => buildCtrl.chassisParams.rearHalfWidth * 1000, onChassisChange],
+    [buildWheelRadiusEl,      'build-wheel-radius-num',      WHEEL_DEFAULTS.radius          * 1000, () => buildCtrl.wheelParams.radius          * 1000, onWheelChange],
+    [buildWheelWidthEl,       'build-wheel-width-num',       WHEEL_DEFAULTS.width           * 1000, () => buildCtrl.wheelParams.width           * 1000, onWheelChange],
+    [buildCasterRadiusEl,     'build-caster-radius-num',     0, () => buildCtrl.casterRadius * 1000, onCasterChange],
+    [buildCasterWidthEl,      'build-caster-width-num',      0, () => buildCtrl.casterWidth  * 1000, onCasterChange],
+    [buildBatteryLEl,         'build-battery-l-num',         0, () => buildCtrl.batteryBox.l * 1000, onBatteryChange],
+    [buildBatteryWEl,         'build-battery-w-num',         0, () => buildCtrl.batteryBox.w * 1000, onBatteryChange],
+    [buildBatteryHEl,         'build-battery-h-num',         0, () => buildCtrl.batteryBox.h * 1000, onBatteryChange],
+    [buildPowerbankREl,       'build-powerbank-r-num',       0, () => buildCtrl.powerbank.radius * 1000, onPowerbankChange],
+    [buildPowerbankLEl,       'build-powerbank-l-num',       0, () => buildCtrl.powerbank.length * 1000, onPowerbankChange],
 ];
 
-for (const [slider, numId, defaultVal, onChange] of buildSliderPairs) {
+for (const [slider, numId, defaultVal, , onChange] of buildSliderPairs) {
     if (defaultVal > 0) slider.value = String(defaultVal);
     const num = $<HTMLInputElement>(numId);
     num.value = slider.value;
@@ -858,27 +859,10 @@ const buildInspBody         = document.getElementById('build-inspector-body')!;
 const buildInspClose        = document.getElementById('build-inspector-close') as HTMLButtonElement;
 
 function syncSlidersFromController(): void {
-    const cp = buildCtrl.chassisParams;
-    const wp = buildCtrl.wheelParams;
-    const pb = buildCtrl.powerbank;
-    const bb = buildCtrl.batteryBox;
-    const values: Array<[HTMLInputElement, string, number]> = [
-        [buildChassisThicknessEl, 'build-chassis-thickness-num', cp.thickness     * 1000],
-        [buildChassisBodyHWEl,    'build-chassis-body-hw-num',   cp.bodyHalfWidth * 1000],
-        [buildChassisRearHWEl,    'build-chassis-rear-hw-num',   cp.rearHalfWidth * 1000],
-        [buildWheelRadiusEl,      'build-wheel-radius-num',      wp.radius        * 1000],
-        [buildWheelWidthEl,       'build-wheel-width-num',       wp.width         * 1000],
-        [buildCasterRadiusEl,     'build-caster-radius-num',     buildCtrl.casterRadius * 1000],
-        [buildCasterWidthEl,      'build-caster-width-num',      buildCtrl.casterWidth  * 1000],
-        [buildBatteryLEl,         'build-battery-l-num',         bb.l * 1000],
-        [buildBatteryWEl,         'build-battery-w-num',         bb.w * 1000],
-        [buildBatteryHEl,         'build-battery-h-num',         bb.h * 1000],
-        [buildPowerbankREl,       'build-powerbank-r-num',       pb.radius * 1000],
-        [buildPowerbankLEl,       'build-powerbank-l-num',       pb.length * 1000],
-    ];
-    for (const [el, numId, v] of values) {
-        el.value = String(v);
-        $<HTMLInputElement>(numId).value = String(v);
+    for (const [el, numId, , get] of buildSliderPairs) {
+        const v = String(get());
+        el.value = v;
+        $<HTMLInputElement>(numId).value = v;
     }
     // Re-render inspector to sync values after AI tool call or undo/redo
     if (_buildSelCompId) {
@@ -1197,13 +1181,15 @@ document.addEventListener('keydown', (e: KeyboardEvent) => {
         if (!c) return;
         const d = 0.001; // 1 mm nudge
         let { x, y, z } = c;
+        // Convention: −Y = left, +Y = right, −X = front, +X = rear (see CLAUDE.md).
+        // Shift+arrow moves vertically (Z); plain arrow moves in the XY plane.
         if (e.shiftKey) {
             if (e.key === 'ArrowUp')   z += d;
             if (e.key === 'ArrowDown') z -= d;
         } else {
-            if (e.key === 'ArrowLeft')  y += d;
+            if (e.key === 'ArrowLeft')  y += d; // screen-left → less negative Y → +Y
             if (e.key === 'ArrowRight') y -= d;
-            if (e.key === 'ArrowUp')    x -= d;
+            if (e.key === 'ArrowUp')    x -= d; // screen-up → toward front (−X)
             if (e.key === 'ArrowDown')  x += d;
         }
         buildCtrl.updateComponent(_buildSelCompId, { x, y, z });
@@ -1330,11 +1316,10 @@ for (const [type, def] of Object.entries(COMPONENT_CATALOG)) {
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'palette-btn';
-    btn.style.cssText = 'position: relative;';
     btn.textContent = def.label;
     btn.dataset.comp = type;
     const badge = document.createElement('span');
-    badge.style.cssText = 'position:absolute;top:2px;right:3px;font-size:9px;line-height:1;color:var(--blue);display:none;font-weight:700;';
+    badge.className = 'palette-badge';
     btn.appendChild(badge);
     paletteBadges.set(type, badge);
     btn.addEventListener('click', () => {
@@ -1434,14 +1419,15 @@ function renderComponentItem(id: string, type: string): void {
     header.className = 'build-component-header';
 
     const dot = document.createElement('span');
-    dot.style.cssText = `width:7px;height:7px;border-radius:50%;flex-shrink:0;background:${def?.cssColor ?? '#888'}`;
+    dot.className = 'comp-dot';
+    dot.style.background = def?.cssColor ?? '#888';
 
     const labelEl = document.createElement('span');
     labelEl.textContent = `${def.label} ${id.split('_').pop()}`;
 
     const dupBtn = document.createElement('button');
     dupBtn.type = 'button';
-    dupBtn.className = 'build-remove-btn';
+    dupBtn.className = 'build-dup-btn';
     dupBtn.title = 'Duplicate';
     dupBtn.textContent = '⧉';
     dupBtn.addEventListener('click', (e) => {
@@ -1468,7 +1454,12 @@ function renderComponentItem(id: string, type: string): void {
         refreshPaletteCounts();
     });
 
+    header.setAttribute('role', 'button');
+    header.tabIndex = 0;
     header.addEventListener('click', () => _selectCompCard(id));
+    header.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); _selectCompCard(id); }
+    });
     header.append(dot, labelEl, dupBtn, removeBtn);
     item.appendChild(header);
     buildComponentsListEl.appendChild(item);
@@ -1614,7 +1605,7 @@ function renderInspector(id: string, type: string): void {
     previewSlider.max   = String(saved.limitUpper ??  1.5708);
     previewSlider.value = '0';
     previewSlider.dataset.preview = 'true';
-    previewSlider.style.cssText = 'width: 100%; margin-top: 2px;';
+    previewSlider.className = 'insp-preview-slider';
     previewSlider.addEventListener('input', () => {
         viewer.robot?.setJointValue(`${id}_joint`, parseFloat(previewSlider.value));
     });
@@ -1774,6 +1765,8 @@ function _compFindId(obj: { parent: typeof obj | null; isURDFLink?: boolean; urd
     return null;
 }
 
+const _SNAP = 0.001; // 1 mm grid snap for component drag
+
 viewer.renderer.domElement.addEventListener('pointerdown', (e: PointerEvent) => {
     if (!buildCtrl.isCatalogActive) return;
     _compUpdateNDC(e);
@@ -1829,7 +1822,7 @@ viewer.renderer.domElement.addEventListener('pointermove', (e: PointerEvent) => 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const joint = (viewer.robot as any)?.joints[`${_compDragId}_joint`];
     const inp   = componentInputs.get(_compDragId);
-    const _snap = 0.001; // 1mm grid snap
+    const _snap = _SNAP;
 
     viewer.renderer.domElement.style.cursor = e.shiftKey ? 'ns-resize' : 'grabbing';
 
