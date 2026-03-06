@@ -45,8 +45,8 @@ print(screen_x(-0.010,  0.090, -0.002))  # wheel_right → positive = screen rig
 |------|---|---|---|-------|
 | motor_left | +0.040 | −0.057 | 0.000 | TT motor mesh: gearbox 36×22×18 mm (bottom at Z=0), DC can ø20×22 mm above |
 | motor_right | +0.040 | +0.057 | 0.000 | same mesh; shaft → +Y (right), left motor rpy="0 0 3.14159" |
-| wheel_left | −0.010 | −0.090 | +0.011 | r=32.5 mm, w=15 mm, continuous, rpy 1.5708 0 0 |
-| wheel_right | −0.010 | +0.090 | +0.011 | r=32.5 mm, w=15 mm, continuous |
+| wheel_left | +0.040 | −0.081 | −0.011 | r=32.5 mm, w=15 mm, continuous, rpy 1.5708 0 0 |
+| wheel_right | +0.040 | +0.081 | −0.011 | r=32.5 mm, w=15 mm, continuous |
 | caster_plate | −0.120 | 0 | −0.004 | 36×36×4 mm |
 | caster_fork | −0.120 | 0 | −0.0149 | 8×16×30 mm |
 | caster_wheel | −0.120 | 0 | −0.0289 | cylinder r=14.6 mm, continuous |

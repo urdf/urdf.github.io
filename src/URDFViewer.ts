@@ -139,7 +139,7 @@ export class URDFViewer extends HTMLElement {
         this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
         this.renderer.outputColorSpace = THREE.SRGBColorSpace;
 
-        this.camera = new THREE.PerspectiveCamera(75, 1, 0.1, 1000);
+        this.camera = new THREE.PerspectiveCamera(75, 1, 0.1, 100);
         this.camera.position.set(-5.5, 3.5, 5.5);
 
         this.controls = new OrbitControls(this.camera, this.renderer.domElement);
@@ -297,7 +297,7 @@ export class URDFViewer extends HTMLElement {
     private _onResize(): void {
         const w = this.clientWidth || 300;
         const h = this.clientHeight || 150;
-        this.renderer.setPixelRatio(devicePixelRatio);
+        this.renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
         this.renderer.setSize(w, h, false);
         this.camera.aspect = w / h;
         this.camera.updateProjectionMatrix();

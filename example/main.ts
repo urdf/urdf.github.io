@@ -10,7 +10,6 @@ import type { LibraryEntry } from '../src/generators/components/index.js';
 import { Raycaster, Vector2, Vector3, Plane, GridHelper } from 'three';
 import { MuJoCoSimulator } from './simulator.js';
 
-/** Typed shorthand for getElementById with a cast. */
 function $<T extends HTMLElement = HTMLElement>(id: string): T {
     return document.getElementById(id) as T;
 }
@@ -54,16 +53,23 @@ _buildGrid.raycast = () => {};   // GridHelper extends LineSegments whose raycas
 requestAnimationFrame(() => viewer.scene.add(_buildGrid));
 
 const chatInput = $<HTMLTextAreaElement>('chat-input');
+function _setActiveTab(id: string): void {
+    for (const btn of document.querySelectorAll<HTMLButtonElement>('.tab-btn'))
+        btn.setAttribute('aria-selected', btn.id === id ? 'true' : 'false');
+}
+
 $('tab-robot').addEventListener('click', () => {
     editorCtrl.close();
     buildCtrl.close();
     _buildGrid.visible = false;
+    _setActiveTab('tab-robot');
 });
 $('tab-editor').addEventListener('click', () => {
     buildCtrl.close();
     editorCtrl.open();
     _buildGrid.visible = false;
     chatInput.placeholder = 'Ask AI to edit this URDF…';
+    _setActiveTab('tab-editor');
 });
 $('tab-build').addEventListener('click', () => {
     editorCtrl.close();
@@ -72,6 +78,7 @@ $('tab-build').addEventListener('click', () => {
     _buildGrid.position.y = viewer.shadowPlane.position.y;
     chatInput.placeholder = 'Ask AI to add or modify components…';
     buildLibraryGrid();
+    _setActiveTab('tab-build');
 });
 
 const ignoreLimitsEl  = $<HTMLInputElement>('ignore-limits');
@@ -977,18 +984,9 @@ function _closeCurrentPanel(): void {
     gestureCtrl?.setParamCallback(null);
 }
 
-function openPanel(section: string): void {
-    _closeCurrentPanel();
-
-    const host = $('float-panels');
-    const def = FLOAT_PANEL_DEFS[section];
-    if (!def) return;
-
+function makeFloatPanel(title: string, onClose: () => void): { panel: HTMLDivElement; header: HTMLDivElement; body: HTMLDivElement } {
     const panel = document.createElement('div');
     panel.className = 'float-panel';
-    panel.dataset.panel = section;
-    panel.setAttribute('role', 'dialog');
-    panel.setAttribute('aria-label', `${def.title} controls`);
 
     const header = document.createElement('div');
     header.className = 'float-panel-header';
@@ -997,17 +995,33 @@ function openPanel(section: string): void {
     for (let i = 0; i < 6; i++) grip.appendChild(document.createElement('span'));
     const titleEl = document.createElement('span');
     titleEl.className = 'float-panel-title';
-    titleEl.textContent = def.title;
+    titleEl.textContent = title;
     const closeBtn = document.createElement('button');
     closeBtn.type = 'button';
     closeBtn.className = 'float-panel-close';
     closeBtn.setAttribute('aria-label', 'Close panel');
     closeBtn.textContent = '×';
-    closeBtn.addEventListener('click', () => _closeCurrentPanel());
+    closeBtn.addEventListener('click', onClose);
     header.append(grip, titleEl, closeBtn);
 
     const body = document.createElement('div');
     body.className = 'float-panel-body';
+    panel.append(header, body);
+
+    return { panel, header, body };
+}
+
+function openPanel(section: string): void {
+    _closeCurrentPanel();
+
+    const host = $('float-panels');
+    const def = FLOAT_PANEL_DEFS[section];
+    if (!def) return;
+
+    const { panel, header, body } = makeFloatPanel(def.title, () => _closeCurrentPanel());
+    panel.dataset.panel = section;
+    panel.setAttribute('role', 'dialog');
+    panel.setAttribute('aria-label', `${def.title} controls`);
     const syncFns: Array<(mm: number) => void> = [];
 
     for (let ri = 0; ri < def.rows.length; ri++) {
@@ -1054,7 +1068,6 @@ function openPanel(section: string): void {
     _floatPanelInitSection = section;
 
     const panelTop = nextPanelTop();
-    panel.append(header, body);
     host.appendChild(panel);
     panel.style.top = `${panelTop}px`;
     makeDraggable(panel, header);
@@ -1102,27 +1115,7 @@ function openGestureHint(): void {
         { icon: '👍', html: '<strong>Thumbs up</strong> — confirm / Continue' },
     ];
 
-    const panel = document.createElement('div');
-    panel.className = 'float-panel';
-
-    const header = document.createElement('div');
-    header.className = 'float-panel-header';
-    const grip = document.createElement('div');
-    grip.className = 'float-panel-grip';
-    for (let i = 0; i < 6; i++) grip.appendChild(document.createElement('span'));
-    const titleEl = document.createElement('span');
-    titleEl.className = 'float-panel-title';
-    titleEl.textContent = 'Gestures';
-    const closeBtn = document.createElement('button');
-    closeBtn.type = 'button';
-    closeBtn.className = 'float-panel-close';
-    closeBtn.setAttribute('aria-label', 'Close gesture hint');
-    closeBtn.textContent = '×';
-    closeBtn.addEventListener('click', () => { host.innerHTML = ''; });
-    header.append(grip, titleEl, closeBtn);
-
-    const body = document.createElement('div');
-    body.className = 'float-panel-body';
+    const { panel, header, body } = makeFloatPanel('Gestures', () => { host.innerHTML = ''; });
     body.style.gap = '7px';
     for (const row of rows) {
         const rowEl = document.createElement('div');
@@ -1138,7 +1131,6 @@ function openGestureHint(): void {
     }
 
     const hintTop = nextPanelTop();
-    panel.append(header, body);
     host.appendChild(panel);
     panel.style.top = `${hintTop}px`;
     makeDraggable(panel, header);
@@ -1337,7 +1329,7 @@ for (const [type, def] of Object.entries(COMPONENT_CATALOG)) {
     if (def.geomType === 'mesh' || def.hidden) continue;  // mesh types and superseded primitives excluded
     const btn = document.createElement('button');
     btn.type = 'button';
-    btn.className = 'robot-btn';
+    btn.className = 'palette-btn';
     btn.style.cssText = 'position: relative;';
     btn.textContent = def.label;
     btn.dataset.comp = type;

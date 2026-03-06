@@ -83,24 +83,27 @@ export class GestureController {
     private onThumbsUp: (() => void) | undefined;
     private onStop: () => void;
 
+    // ── MediaPipe / lifecycle ─────────────────────────────────────────────
     private recognizer: GestureRecognizer | null = null;
     private stream: MediaStream | null = null;
     private rafId = 0;
-    private selectedJoint: string | null = null;
     private running = false;
+    private _lastVideoTime = -1;
 
+    // ── Camera orbit (spherical coords; lerped toward target) ─────────────
     private sphTheta = 0;
     private sphPhi = Math.PI / 3;
     private sphRadius = 0;
-
     private targetTheta = 0;
     private targetPhi = Math.PI / 3;
     private targetRadius = 0;
 
+    // ── Signal filtering ──────────────────────────────────────────────────
     private _wristFilterX = new OneEuroFilter(1.0, 0.007);
     private _wristFilterY = new OneEuroFilter(1.0, 0.007);
-
     private prevHandPos: { x: number; y: number } | null = null;
+
+    // ── Dwell selection ───────────────────────────────────────────────────
     private dwellStart = 0;
     private dwellMoved = false;
     private dwellScreenX = 0;
@@ -109,23 +112,26 @@ export class GestureController {
     private dwellStartScreenY = 0;
     private readonly DWELL_MS = 800;
 
+    // ── Palm reset ────────────────────────────────────────────────────────
     private palmResetStart = 0;
     private readonly PALM_RESET_MS = 1000;
 
+    // ── Joint / parameter control ─────────────────────────────────────────
+    private selectedJoint: string | null = null;
     private prevWristAngle = Infinity;
     private _paramCallback: ((deltaRad: number) => void) | null = null;
 
+    // ── Two-hand zoom ─────────────────────────────────────────────────────
     private prevZoomDist = 0;
 
-    private _lastVideoTime = -1;
-
+    // ── Gesture recognition state ─────────────────────────────────────────
     private _prevGestureName = '';
     private _stableGestureName = '';
     private _thumbsUpFired = false;
 
+    // ── Raycasting / drag integration ─────────────────────────────────────
     private _raycaster = new THREE.Raycaster();
     private _overRobot = false;
-
     private _dragCtrl: { enabled: boolean; raycaster: THREE.Raycaster; update(): void } | null = null;
 
     constructor(opts: GestureControllerOptions) {
@@ -158,7 +164,7 @@ export class GestureController {
         });
 
         this.stream = await navigator.mediaDevices.getUserMedia({
-            video: { width: 640, height: 480, facingMode: 'user' },
+            video: { width: 1280, height: 720, facingMode: 'user' },
         });
         this.video.srcObject = this.stream;
         await this.video.play();
@@ -354,6 +360,8 @@ export class GestureController {
 
     // Detects index-finger-extended pose at any hand orientation.
     // Uses landmark distances rather than the orientation-sensitive ML label.
+    // Ratios chosen empirically: 1.2 requires index tip to extend 20% beyond
+    // wrist-to-MCP distance; 1.15 confirms remaining fingers are curled inward.
     private _isIndexPointing(lms: NormalizedLandmark[]): boolean {
         const w = lms[0];
         const d = (a: NormalizedLandmark, b: NormalizedLandmark) =>

@@ -310,7 +310,7 @@ export class URDFLoader {
                     const length = parseFloat(geo.getAttribute('length') ?? '0');
                     const mesh = new THREE.Mesh(_sharedCylinderGeom, material);
                     mesh.scale.set(radius, length, radius);
-                    mesh.rotation.set(Math.PI / 2, 0, 0);
+                    mesh.rotation.set(Math.PI / 2, 0, 0); // URDF cylinders are Z-axis; Three.js cylinders are Y-axis
                     parent.add(mesh);
                     break;
                 }

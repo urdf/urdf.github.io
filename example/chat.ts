@@ -1,7 +1,7 @@
 import type { URDFBuildController } from './build.js';
 import { LIBRARY } from '../src/generators/components/index.js';
 
-const LOCAL_PROXY = 'http://127.0.0.1:7337/claude';
+const LOCAL_PROXY = 'http://127.0.0.1:7337/claude'; // claude-local-proxy (npm i -g claude-local-proxy)
 const MODEL       = 'claude-sonnet-4-6';
 
 type GitHubAuth = { username: string; token: string };
@@ -122,7 +122,7 @@ export class URDFChatController {
     private _abortBtn!:      HTMLButtonElement;
     private _briefBtn!:      HTMLButtonElement;
     private _continueBtn!:   HTMLButtonElement;
-    private _toolCountBtn!:  HTMLButtonElement;
+    private _toolCountBtn!:  HTMLElement;
     private _cmdAcEl!:       HTMLElement;
     private _modelSelectEl!: HTMLSelectElement;
     private _ghBarEl!:       HTMLElement;
@@ -144,7 +144,7 @@ export class URDFChatController {
         this._abortBtn    = document.getElementById('chat-abort') as HTMLButtonElement;
         this._briefBtn    = document.getElementById('chat-brief-toggle') as HTMLButtonElement;
         this._continueBtn = document.getElementById('chat-continue') as HTMLButtonElement;
-        this._toolCountBtn = document.getElementById('chat-tool-count') as HTMLButtonElement;
+        this._toolCountBtn = document.getElementById('chat-tool-count') as HTMLElement;
         this._cmdAcEl      = document.getElementById('cmd-ac') as HTMLElement;
         this._modelSelectEl = document.getElementById('chat-model-select') as HTMLSelectElement;
         this._ghBarEl       = document.getElementById('chat-github-bar') as HTMLElement;
