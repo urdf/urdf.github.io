@@ -45,12 +45,15 @@ const buildCtrl  = new URDFBuildController(viewer, buildNoticeEl);
 // defined, so we declare and call init() below.
 let chatCtrl: URDFChatController;
 
+// Viewport grid: 2m × 2m, 100mm divisions — always visible for spatial reference (Three.js editor style)
+const _viewportGrid = new GridHelper(2, 20, 0x484848, 0x2d2d2d);
+_viewportGrid.raycast = () => {};
 // Ground grid: 0.5m × 0.5m, 20mm divisions — visible only in Build mode
 const _buildGrid = new GridHelper(0.5, 25, 0x555555, 0x333333);
 _buildGrid.visible = false;
 _buildGrid.raycast = () => {};   // GridHelper extends LineSegments whose raycast ignores .visible
 // Grid must be added after viewer element creates its scene (defer one frame)
-requestAnimationFrame(() => viewer.scene.add(_buildGrid));
+requestAnimationFrame(() => { viewer.scene.add(_viewportGrid); viewer.scene.add(_buildGrid); });
 
 const chatInput = $<HTMLTextAreaElement>('chat-input');
 function _setActiveTab(id: string): void {
@@ -539,8 +542,12 @@ viewer.addEventListener('urdf-processed', () => {
     // Reset all build component preview sliders after each URDF reload
     document.querySelectorAll<HTMLInputElement>('input[data-preview="true"]')
         .forEach(s => { s.value = '0'; });
-    // Sync build grid to ground level (shadowPlane updates on next render frame)
-    requestAnimationFrame(() => { _buildGrid.position.y = viewer.shadowPlane.position.y; });
+    // Sync grids to ground level (shadowPlane updates on next render frame)
+    requestAnimationFrame(() => {
+        const groundY = viewer.shadowPlane.position.y;
+        _viewportGrid.position.y = groundY;
+        _buildGrid.position.y = groundY;
+    });
 });
 
 const DEG_TO_RAD = Math.PI / 180; // multiply degrees → radians; divide radians → degrees

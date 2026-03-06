@@ -148,9 +148,10 @@ export class URDFViewer extends HTMLElement {
         this.scene.environment = pmrem.fromScene(new RoomEnvironment()).texture;
         pmrem.dispose();
 
-        // Background matches the app's CSS --bg token (dark/light mode aware).
-        const appBg = getComputedStyle(document.documentElement).getPropertyValue('--bg').trim();
-        if (appBg) this.scene.background = new THREE.Color(appBg);
+        // Background: --viewport-bg (neutral gray, 3D-viewport-specific) with --bg fallback.
+        const docStyle = getComputedStyle(document.documentElement);
+        const vpBg = docStyle.getPropertyValue('--viewport-bg').trim() || docStyle.getPropertyValue('--bg').trim();
+        if (vpBg) this.scene.background = new THREE.Color(vpBg);
 
         this.camera = new THREE.PerspectiveCamera(75, 1, 0.1, 100);
         this.camera.position.set(-5.5, 3.5, 5.5);
