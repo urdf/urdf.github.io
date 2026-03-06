@@ -16,7 +16,7 @@
     Chassis    — 220×150×3 mm acrylic (2WD kit, confirmed multiple sellers)
     TT Motor   — 70×22×18 mm body, 10 mm shaft @ ø5.3 mm (Adafruit #3777)
     Wheels     — ø65 mm × 25 mm rubber (Adafruit #3763)
-    Caster     — 20 mm total height, 15.7 mm ball (Adafruit #3948)
+    Caster     — swivel caster, ~29 mm total height; mount plate 36×36×4 mm, fork 8×16×30 mm, wheel ø29.2×14.5 mm rubber
     L298N      — 43×43×27.5 mm PCB + heatsink (Components101 datasheet)
     ESP32-CAM-MB — 27×51×15 mm combined unit (ESP32-CAM + programmer base board, PRIMARY MCU)
     HC-SR04    — 45×20×15 mm (SparkFun datasheet)
