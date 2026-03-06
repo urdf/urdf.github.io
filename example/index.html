@@ -10,7 +10,7 @@
     /* ── Design tokens ───────────────────────────────────────────────────── */
 
     :root {
-      --viewport-bg:   #333333;
+      --viewport-bg:   #1e293b;
       --bg:            #0f172a;
       --surface:       #1e293b;
       --surface-lo:    #0f172a;
@@ -35,7 +35,7 @@
 
     @media (prefers-color-scheme: light) {
       :root {
-        --viewport-bg:   #b0b0b0;
+        --viewport-bg:   #dde1e7;
         --bg:            #f2f2f7;
         --surface:       #ffffff;
         --surface-lo:    #f2f2f7;
@@ -2662,7 +2662,7 @@
         <div class="robot-track-slider" id="robot-track-slider"></div>
       </div>
     </div>
-    <urdf-viewer id="viewer" up="-Z" display-shadow></urdf-viewer>
+    <urdf-viewer id="viewer" up="-Z" display-shadow ambient-color="#8ea0a8"></urdf-viewer>
     <div id="build-hover-tip"></div>
     <div class="loading" id="loading">
       <svg class="spinner" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
