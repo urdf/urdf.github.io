@@ -7,13 +7,13 @@
 export interface WheelParams {
     /** Outer radius in metres (0.020–0.050). Default 0.0325. */
     radius: number;
-    /** Wheel width in metres (0.008–0.030). Default 0.026. */
+    /** Wheel width in metres (0.008–0.030). Default 0.015. */
     width:  number;
 }
 
 export const WHEEL_DEFAULTS: WheelParams = {
     radius: 0.0325,
-    width:  0.026,
+    width:  0.015,
 };
 
 export function generateWheel(p: WheelParams): ArrayBuffer {

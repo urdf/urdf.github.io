@@ -29,15 +29,15 @@ export function generateL298n(): ArrayBuffer {
     pcb.translate(0, 0, 0.001);
     geos.push(pcb);
 
-    // Heatsink block sitting on PCB
-    const heatsink = new THREE.BoxGeometry(0.030, 0.043, 0.018);
-    heatsink.translate(0, 0, 0.002 + 0.009);
+    // Heatsink block sitting on PCB — 20×12×20 mm (matches URDF)
+    const heatsink = new THREE.BoxGeometry(0.020, 0.012, 0.020);
+    heatsink.translate(0, 0, 0.002 + 0.010);
     geos.push(heatsink);
 
-    // 4 fins: 2mm wide, 43mm deep, 4mm tall, spaced 6mm apart
+    // 4 fins: 2mm wide, 12mm deep, 4mm tall, spaced 6mm apart
     for (let i = 0; i < 4; i++) {
-        const fin = new THREE.BoxGeometry(0.002, 0.043, 0.004);
-        fin.translate(-0.009 + i * 0.006, 0, 0.020 + 0.002);
+        const fin = new THREE.BoxGeometry(0.002, 0.012, 0.004);
+        fin.translate(-0.009 + i * 0.006, 0, 0.022 + 0.002);
         geos.push(fin);
     }
 
@@ -78,20 +78,20 @@ export function generateEsp32Cam(): ArrayBuffer {
 export function generateTtMotor(): ArrayBuffer {
     const geos: THREE.BufferGeometry[] = [];
 
-    // Gearbox: 36×18×22 mm, bottom at Z=0
-    const gearbox = new THREE.BoxGeometry(0.036, 0.018, 0.022);
-    gearbox.translate(0, 0, 0.011);
+    // Gearbox: 36×22×18 mm (X×Y×Z), bottom at Z=0
+    const gearbox = new THREE.BoxGeometry(0.036, 0.022, 0.018);
+    gearbox.translate(0, 0, 0.009);
     geos.push(gearbox);
 
-    // DC motor can: cylinder along X, attached to rear of gearbox
-    const can = new THREE.CylinderGeometry(0.010, 0.010, 0.028, 24);
+    // DC motor can: ø20×22 mm cylinder along X, butts against gearbox -X face
+    const can = new THREE.CylinderGeometry(0.010, 0.010, 0.022, 24);
     can.rotateZ(Math.PI / 2);
-    can.translate(-0.032, 0, 0.011);
+    can.translate(-0.029, 0, 0.009);
     geos.push(can);
 
     // Output shaft along +Y
     const shaft = new THREE.CylinderGeometry(0.002, 0.002, 0.006, 12);
-    shaft.translate(0, 0.012, 0.011);
+    shaft.translate(0, 0.014, 0.009);
     geos.push(shaft);
 
     const merged = mergeGeometries(geos);
