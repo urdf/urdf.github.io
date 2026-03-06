@@ -153,7 +153,7 @@ export class URDFViewer extends HTMLElement {
         const vpBg = docStyle.getPropertyValue('--viewport-bg').trim() || docStyle.getPropertyValue('--bg').trim();
         if (vpBg) this.scene.background = new THREE.Color(vpBg);
 
-        this.camera = new THREE.PerspectiveCamera(75, 1, 0.1, 100);
+        this.camera = new THREE.PerspectiveCamera(75, 1, 0.01, 100);
         this.camera.position.set(-5.5, 3.5, 5.5);
 
         this.controls = new OrbitControls(this.camera, this.renderer.domElement);

@@ -46,10 +46,10 @@ const buildCtrl  = new URDFBuildController(viewer, buildNoticeEl);
 let chatCtrl: URDFChatController;
 
 // Viewport grid: 2m × 2m, 100mm divisions — always visible for spatial reference (Three.js editor style)
-const _viewportGrid = new GridHelper(2, 20, 0x484848, 0x2d2d2d);
+const _viewportGrid = new GridHelper(2, 20, 0x888888, 0x444444);
 _viewportGrid.raycast = () => {};
-// Ground grid: 0.5m × 0.5m, 20mm divisions — visible only in Build mode
-const _buildGrid = new GridHelper(0.5, 25, 0x555555, 0x333333);
+// Ground grid: 0.5m × 0.5m, 20mm divisions — visible only in Build mode, replaces viewport grid
+const _buildGrid = new GridHelper(0.5, 25, 0x666666, 0x3d3d3d);
 _buildGrid.visible = false;
 _buildGrid.raycast = () => {};   // GridHelper extends LineSegments whose raycast ignores .visible
 // Grid must be added after viewer element creates its scene (defer one frame)
@@ -65,18 +65,21 @@ $('tab-robot').addEventListener('click', () => {
     editorCtrl.close();
     buildCtrl.close();
     _buildGrid.visible = false;
+    _viewportGrid.visible = true;
     _setActiveTab('tab-robot');
 });
 $('tab-editor').addEventListener('click', () => {
     buildCtrl.close();
     editorCtrl.open();
     _buildGrid.visible = false;
+    _viewportGrid.visible = true;
     chatInput.placeholder = 'Ask AI to edit this URDF…';
     _setActiveTab('tab-editor');
 });
 $('tab-build').addEventListener('click', () => {
     editorCtrl.close();
     buildCtrl.open();
+    _viewportGrid.visible = false;
     _buildGrid.visible = true;
     _buildGrid.position.y = viewer.shadowPlane.position.y;
     chatInput.placeholder = 'Ask AI to add or modify components…';
