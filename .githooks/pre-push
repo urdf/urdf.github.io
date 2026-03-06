@@ -1,0 +1,3 @@
+#!/bin/sh
+# Push submodules before the parent so the committed pointer is always resolvable.
+git submodule foreach 'git push origin HEAD' || exit 1
