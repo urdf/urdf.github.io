@@ -81,7 +81,7 @@ export class URDFViewer extends HTMLElement {
     readonly directionalLight: THREE.DirectionalLight;
     readonly shadowPlane: THREE.Mesh;
 
-    private _collisionMaterial: THREE.MeshPhongMaterial;
+    private _collisionMaterial: THREE.MeshStandardMaterial;
     private _rafId = 0;
     private _dirty = false;
     private _loadId = 0;
@@ -109,7 +109,8 @@ export class URDFViewer extends HTMLElement {
 
         this.scene = new THREE.Scene();
 
-        this.ambientLight = new THREE.HemisphereLight('#8ea0a8', '#000', 0.2);
+        // IBL covers ambient by default; intensity 0 until ambient-color is explicitly set.
+        this.ambientLight = new THREE.HemisphereLight('#8ea0a8', '#000', 0);
         this.ambientLight.groundColor.lerp(this.ambientLight.color, 0.5 * Math.PI);
         this.ambientLight.position.set(0, 1, 0);
         this.scene.add(this.ambientLight);
@@ -168,10 +169,12 @@ export class URDFViewer extends HTMLElement {
             this.controls.enableDamping = !e.matches;
         });
 
-        this._collisionMaterial = new THREE.MeshPhongMaterial({
+        this._collisionMaterial = new THREE.MeshStandardMaterial({
             transparent: true,
             opacity: 0.35,
             color: 0xffbe38,
+            roughness: 0.8,
+            metalness: 0.0,
             polygonOffset: true,
             polygonOffsetFactor: -1,
             polygonOffsetUnits: -1,
@@ -207,6 +210,7 @@ export class URDFViewer extends HTMLElement {
             case 'ambient-color':
                 this.ambientLight.color.set(this.ambientColor);
                 this.ambientLight.groundColor.set('#000').lerp(this.ambientLight.color, 0.5);
+                this.ambientLight.intensity = 0.15;
                 this.redraw();
                 break;
             case 'ignore-limits':
@@ -441,8 +445,10 @@ export class URDFViewer extends HTMLElement {
                 mesh.geometry.computeVertexNormals();
             }
             if (mesh.material) {
-                const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
-                for (const m of mats) {
+                const isArray = Array.isArray(mesh.material);
+                const mats: THREE.Material[] = isArray ? mesh.material as THREE.Material[] : [mesh.material as THREE.Material];
+                const converted = mats.map(m => {
+                    let out = m;
                     if (m instanceof THREE.MeshBasicMaterial) {
                         // Convert to MeshStandardMaterial so it responds to IBL (scene.environment).
                         // std.copy(m) is unsafe — only copy the properties that transfer cleanly.
@@ -456,13 +462,15 @@ export class URDFViewer extends HTMLElement {
                         std.name        = m.name;
                         std.roughness   = 0.7;
                         std.metalness   = 0.05;
-                        mesh.material = std;
                         m.dispose();
+                        out = std;
                     }
-                    if ((m as THREE.MeshStandardMaterial).map) {
-                        (m as THREE.MeshStandardMaterial).map!.colorSpace = THREE.SRGBColorSpace;
+                    if ((out as THREE.MeshStandardMaterial).map) {
+                        (out as THREE.MeshStandardMaterial).map!.colorSpace = THREE.SRGBColorSpace;
                     }
-                }
+                    return out;
+                });
+                mesh.material = isArray ? converted : converted[0];
             }
         });
     }
