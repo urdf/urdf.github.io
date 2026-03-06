@@ -972,9 +972,17 @@ Use tools to modify the robot. Prefer direct tool calls over lengthy explanation
     private _sanitizeHistory(): void {
         while (this._history.length > 0) {
             const last = this._history[this._history.length - 1];
-            if (last.role !== 'assistant') return;
-            if (!(last.content as ContentBlock[]).some(b => b.type === 'tool_use')) return;
-            this._history.pop();
+            // Remove trailing user message that is only tool_result blocks (orphaned after a failed tool loop)
+            if (last.role === 'user' && Array.isArray(last.content) &&
+                (last.content as ContentBlock[]).every(b => b.type === 'tool_result')) {
+                this._history.pop(); continue;
+            }
+            // Remove trailing assistant message with unresolved tool_use
+            if (last.role === 'assistant' &&
+                (last.content as ContentBlock[]).some(b => b.type === 'tool_use')) {
+                this._history.pop(); continue;
+            }
+            break;
         }
     }
 
@@ -1202,7 +1210,7 @@ Use tools to modify the robot. Prefer direct tool calls over lengthy explanation
             stream:   true,
         };
 
-        // Try local proxy first (silent fallback if not running)
+        // Try local proxy first (fall through only on network error — proxy not running)
         try {
             const r = await fetch(LOCAL_PROXY, {
                 method: 'POST', signal: this._abortCtrl!.signal,
@@ -1210,7 +1218,13 @@ Use tools to modify the robot. Prefer direct tool calls over lengthy explanation
                 body: JSON.stringify(body),
             });
             if (r.ok) return r.body!;
-        } catch { /* proxy not running */ }
+            // HTTP error from the API — retrying directly won't help
+            const msg = await r.text().catch(() => r.statusText);
+            throw new Error(`API ${r.status}: ${msg.slice(0, 200)}`);
+        } catch (e) {
+            if (!(e instanceof TypeError)) throw e; // propagate API errors and AbortError
+            // TypeError = network failure = proxy not running, fall through to direct API
+        }
 
         // Fallback: direct Anthropic API
         const key = localStorage.getItem('urdf-api-key');

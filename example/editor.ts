@@ -557,9 +557,17 @@ export class URDFEditorController {
     private _sanitizeHistory(): void {
         while (this._history.length > 0) {
             const last = this._history[this._history.length - 1];
-            if (last.role !== 'assistant') return;
-            if (!(last.content as ContentBlock[]).some(b => b.type === 'tool_use')) return;
-            this._history.pop();
+            // Remove trailing user message that is only tool_result blocks (orphaned after a failed tool loop)
+            if (last.role === 'user' && Array.isArray(last.content) &&
+                (last.content as ContentBlock[]).every(b => b.type === 'tool_result')) {
+                this._history.pop(); continue;
+            }
+            // Remove trailing assistant message with unresolved tool_use
+            if (last.role === 'assistant' &&
+                (last.content as ContentBlock[]).some(b => b.type === 'tool_use')) {
+                this._history.pop(); continue;
+            }
+            break;
         }
     }
 
