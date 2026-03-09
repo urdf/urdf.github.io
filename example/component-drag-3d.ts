@@ -1,6 +1,7 @@
 import { Raycaster, Vector2, Vector3, Plane } from 'three';
 import { URDFBuildController, COMPONENT_CATALOG } from './build.js';
 import type { URDFManipulator } from '../src/index.js';
+import type { ComponentCrudController } from './component-crud.js';
 
 // ── Pre-allocated constants (Pattern 8 — no per-frame heap allocation) ────
 const _planeNormal  = new Vector3();
@@ -29,19 +30,19 @@ const _SNAP = 0.001; // 1 mm grid snap for component drag
 let _buildCtrl: URDFBuildController;
 let _viewer: URDFManipulator;
 let _buildComponentsListEl: HTMLElement;
-let _selectCompCard: (id: string) => void;
+let _crudCtrl: ComponentCrudController;
 let _hoverTip: HTMLElement;
 
 export function initComponentDrag3D(
     buildCtrl: URDFBuildController,
     viewer: URDFManipulator,
     buildComponentsListEl: HTMLElement,
-    selectCompCard: (id: string) => void,
+    crudCtrl: ComponentCrudController,
 ): void {
     _buildCtrl            = buildCtrl;
     _viewer               = viewer;
     _buildComponentsListEl = buildComponentsListEl;
-    _selectCompCard       = selectCompCard;
+    _crudCtrl             = crudCtrl;
     _hoverTip             = document.getElementById('build-hover-tip')!;
 
     viewer.renderer.domElement.addEventListener('pointerdown', _onPointerDown);
@@ -111,7 +112,7 @@ function _onPointerDown(e: PointerEvent): void {
 
     _compDrag.card = _buildComponentsListEl.querySelector<HTMLElement>(`[data-id="${id}"]`);
     _compDrag.card?.classList.add('dragging');
-    _selectCompCard(id);
+    _crudCtrl.selectCompCard(id);
 
     _viewer.renderer.domElement.setPointerCapture(e.pointerId);
     e.stopPropagation();
@@ -152,7 +153,7 @@ function _onPointerUp(e: PointerEvent): void {
 
     if (!wasDrag && _compDrag.card) {
         const cardId = _compDrag.card.dataset.id;
-        if (cardId) _selectCompCard(cardId);
+        if (cardId) _crudCtrl.selectCompCard(cardId);
         _compDrag.card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
 
@@ -187,13 +188,6 @@ function _onPointerLeave(): void {
     _hoverTip.style.display = 'none';
 }
 
-// Lazy accessor — avoids circular import; componentInputs lives in component-crud.ts
-let _componentInputsRef: Map<string, Record<string, HTMLInputElement>> | null = null;
-
-export function setComponentInputsRef(map: Map<string, Record<string, HTMLInputElement>>): void {
-    _componentInputsRef = map;
-}
-
 function getComponentInputs(): Map<string, Record<string, HTMLInputElement>> {
-    return _componentInputsRef ?? new Map();
+    return _crudCtrl?.componentInputs ?? new Map();
 }

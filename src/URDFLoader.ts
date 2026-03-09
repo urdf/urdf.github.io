@@ -244,7 +244,7 @@ export class URDFLoader {
             const geoEl = el.querySelector(':scope > geometry');
             if (geoEl) {
                 const geo = geoEl.firstElementChild;
-                if (geo) buildGeometry(geo, group, material ?? new THREE.MeshPhongMaterial());
+                if (geo) buildGeometry(geo, group, material ?? new THREE.MeshStandardMaterial({ roughness: 0.7, metalness: 0.05 }));
             }
 
             const originEl = el.querySelector(':scope > origin');
@@ -320,7 +320,7 @@ export class URDFLoader {
         }
 
         function parseMaterial(el: Element): THREE.Material {
-            const mat = new THREE.MeshPhongMaterial();
+            const mat = new THREE.MeshStandardMaterial({ roughness: 0.7, metalness: 0.05 });
             mat.name = el.getAttribute('name') ?? '';
 
             const colorEl = el.querySelector(':scope > color');
@@ -363,7 +363,7 @@ export class URDFLoader {
                 return new Promise((resolve, reject) => {
                     new STLLoader(manager).load(
                         path,
-                        geom => resolve(new THREE.Mesh(geom, new THREE.MeshPhongMaterial({ side: THREE.DoubleSide }))),
+                        geom => resolve(new THREE.Mesh(geom, new THREE.MeshStandardMaterial({ roughness: 0.7, metalness: 0.05, side: THREE.DoubleSide }))),
                         undefined,
                         reject,
                     );

@@ -4,38 +4,27 @@ import { URDFBuildController, COMPONENT_CATALOG } from './build.js';
 import { URDFChatController } from './chat.js';
 import type { ChatCallbacks } from './chat.js';
 import type { GestureController } from './gesture.js';
-import { LIBRARY } from '../src/generators/components/index.js';
 import { GridHelper } from 'three';
 import { MuJoCoSimulator } from './simulator.js';
 import { initPanel } from './panel.js';
 
 // ── Module imports for extracted concerns ─────────────────────────────────
-import { initBuildSliders, syncSlidersFromCtrl, makeFloatPanelDefs } from './build-sliders.js';
-import {
-    initInspector, closeCurrentPanel,
-    getFloatPanelSync, getFloatPanelInitSection,
-    setFloatPanelSync, setFloatPanelInitState,
-} from './inspector.js';
-import {
-    initComponentCrud, renderComponentItem, renderInspector,
-    removeComponentItem, selectCompCard, deselectComp, clearBuildUI,
-    updateContextPill, addOptionToParentSelects, removeOptionFromParentSelects,
-    componentInputs, getBuildSelCompId, getBuildSelPartName, setBuildSelPartName,
-} from './component-crud.js';
-import { initComponentDrag3D, setComponentInputsRef } from './component-drag-3d.js';
-import { initLibraryTab, buildLibraryGrid } from './library-tab.js';
-
-function $<T extends HTMLElement = HTMLElement>(id: string): T {
-    return document.getElementById(id) as T;
-}
+import { BuildSlidersController } from './build-sliders.js';
+import { InspectorController } from './inspector.js';
+import { ComponentCrudController } from './component-crud.js';
+import { initComponentDrag3D } from './component-drag-3d.js';
+import { LibraryTabController } from './library-tab.js';
+import { LIBRARY } from '../src/generators/components/index.js';
+import { RobotLoader, catalogToConfig } from './robot-loader.js';
+import type { RobotConfig, CatalogEntry } from './robot-loader.js';
+import { $ } from './dom-utils.js';
+import { initJointPanel, makeScrubLabel } from './joint-panel.js';
+import { openPanel, openGestureHint } from './float-panel.js';
+import { RobotCarousel } from './robot-carousel.js';
 
 customElements.define('urdf-viewer', URDFManipulator);
 
 const simulator = new MuJoCoSimulator();
-type SimSource =
-    | { kind: 'url'; urdfUrl: string; pkgStr: string }
-    | { kind: 'xml'; xml: string; base: string };
-let _simSource: SimSource | null = null;
 
 const viewer           = $<URDFManipulator>('viewer');
 const jointsPanel      = $('joints');
@@ -95,7 +84,7 @@ $('tab-build').addEventListener('click', () => {
     _buildGrid.visible = true;
     _buildGrid.position.y = viewer.shadowPlane.position.y;
     chatInput.placeholder = 'Ask AI to add or modify components…';
-    buildLibraryGrid();
+    libTabCtrl.buildLibraryGrid();
     _setActiveTab('tab-build');
 });
 
@@ -109,178 +98,15 @@ const simStatus       = $('simulate-status');
 const simFloatBase    = $<HTMLInputElement>('sim-float-base');
 const physicsModeOptions = $('physics-mode-options');
 
-interface RobotConfig {
-    name: string;
-    label: string;
-    urdf?: string;
-    parts?: string;
-    up: string;
-    package?: string;
-    id?: string;
-}
-
-interface CatalogEntry {
-    id: string;
-    name: string;
-    label: string;
-    tags: string[];
-    up: string;
-    urdf?: string;
-    parts?: string;
-    package?: string;
-}
-
-function catalogToConfig(e: CatalogEntry): RobotConfig {
-    return {
-        id:      e.id,
-        name:    e.name,
-        label:   e.label,
-        up:      e.up,
-        ...(e.parts   ? { parts:   `/robots/${e.parts}`   } : {}),
-        ...(e.urdf    ? { urdf:    `/robots/${e.urdf}`    } : {}),
-        ...(e.package ? { package: `${e.package}: /robots/${e.id}` } : {}),
-    };
-}
-
-function assembleURDF(robotName: string, partMap: Map<string, string>): string {
-    const sorted = [...partMap.entries()].sort(([a], [b]) => a.localeCompare(b));
-    const intro  = sorted.filter(([k]) => k.startsWith('00')).map(([, v]) => v.trimEnd()).join('\n');
-    const body   = sorted.filter(([k]) => !k.startsWith('00')).map(([, v]) => v.trimEnd()).join('\n\n');
-    return `<?xml version="1.0"?>\n${intro}\n<robot name="${robotName}">\n\n${body}\n\n</robot>\n`;
-}
-
-let _partsBlobUrl: string | null = null;
-
-async function loadViaBrowserAssembly(robot: RobotConfig): Promise<void> {
-    const base     = robot.parts!;
-    const manifest = await fetch(`${base}.parts.json`).then(r => r.json()) as {
-        robot: string; parts: string[];
-    };
-    const dir      = base.replace(/\/[^/]+$/, '');
-    const partMap  = new Map(await Promise.all(manifest.parts.map(async f =>
-        [f, await fetch(`${dir}/parts/${f}`).then(r => r.text())] as [string, string]
-    )));
-    buildCtrl.init(manifest.robot, dir, partMap);
-    const xml      = assembleURDF(manifest.robot, partMap)
-        .replace(/filename="([^/"]+)"/g, `filename="${dir}/$1"`);
-    if (_partsBlobUrl) URL.revokeObjectURL(_partsBlobUrl);
-    _partsBlobUrl  = URL.createObjectURL(new Blob([xml], { type: 'application/xml' }));
-    viewer.urdf    = _partsBlobUrl;
-
-    _simSource = { kind: 'xml', xml, base: dir + '/' };
-    $('physics-mode-bar').hidden = false;
-
-    clearBuildUI();
-    const restored = buildCtrl.restore();
-    for (const { id, type } of restored) {
-        const def = COMPONENT_CATALOG[type];
-        if (def?.geomType === 'mesh') {
-            const libEntry = LIBRARY.find(e => e.id === type);
-            if (libEntry) {
-                libEntry.factory()
-                    .then(({ generate }) => buildCtrl.restoreMeshBlob(id, generate()))
-                    .catch(err => console.warn('[restore] mesh regen failed for', id, err));
-            }
-        }
-        renderComponentItem(id, type);
-    }
-
-    if (restored.length > 0) syncSlidersFromController();
-    refreshPaletteCounts();
-    refreshBuildHeader();
-}
-
 let ROBOTS: RobotConfig[] = [];
-let currentRobotIndex = 0;
+// Instantiated after refreshBuildHeader / syncSlidersFromController are defined (see below).
+// eslint-disable-next-line prefer-const
+let robotLoader: RobotLoader;
 
 const robotTrackSlider = $('robot-track-slider');
-
-function moveSliderTo(btn: HTMLButtonElement): void {
-    const trackRect  = robotsPanel.getBoundingClientRect();
-    const btnRect    = btn.getBoundingClientRect();
-    robotTrackSlider.style.width  = `${btnRect.width}px`;
-    robotTrackSlider.style.height = `${btnRect.height}px`;
-    robotTrackSlider.style.left   = `${btnRect.left - trackRect.left}px`;
-    robotTrackSlider.style.top    = `${btnRect.top  - trackRect.top}px`;
-}
-
-function moveSliderToActive(): void {
-    const active = robotsPanel.querySelector<HTMLButtonElement>('.robot-btn.active');
-    if (active) moveSliderTo(active);
-}
-
-function clearActiveRobot(): void {
-    for (const btn of robotsPanel.querySelectorAll<HTMLButtonElement>('.robot-btn')) {
-        btn.classList.remove('active');
-    }
-}
-
-function loadRobot(robot: RobotConfig, index: number): void {
-    currentRobotIndex = index;
-    viewer.up = robot.up;
-    upAxisEl.value = robot.up;
-    viewer.package = robot.package ?? '';
-
-    simulator.stop();
-    document.body.classList.remove('simulating');
-    viewer.disableDragging = false;
-    simStatus.textContent = '';
-    physicsModeOptions.hidden = true;
-
-    _simSource = robot.urdf ? { kind: 'url', urdfUrl: robot.urdf, pkgStr: robot.package ?? '' } : null;
-    simFloatBase.checked = !!robot.parts;
-    $('physics-mode-bar').hidden = !robot.urdf;
-
-    const sourceUrl = robot.parts ? `${robot.parts}.urdf` : robot.urdf!;
-
-    if (robot.parts) {
-        void loadViaBrowserAssembly(robot).catch(() => {});
-    } else {
-        viewer.urdf = robot.urdf!;
-    }
-
-    clearActiveRobot();
-    const btn = robot.name
-        ? robotsPanel.querySelector<HTMLButtonElement>(`.robot-btn[data-name="${robot.name}"]`)
-        : null;
-    if (btn) {
-        btn.classList.add('active');
-        moveSliderTo(btn);
-    }
-    editorCtrl.setSourceUrl(sourceUrl);
-    editorCtrl.loadPartsInBackground();
-}
-
-let _hoverTimer: ReturnType<typeof setTimeout> | null = null;
-let _gestureHoverBtn: HTMLButtonElement | null = null;
-
-function buildRobotButtons(robots: RobotConfig[]): void {
-    robotsPanel.querySelectorAll('.robot-btn').forEach(b => b.remove());
-    for (let i = 0; i < robots.length; i++) {
-        const robot = robots[i];
-        const btn = document.createElement('button');
-        btn.type = 'button';
-        btn.className = 'robot-btn';
-        btn.textContent = robot.label;
-        btn.title = robot.name;
-        btn.dataset.name  = robot.name;
-        btn.dataset.index = String(i);
-        btn.addEventListener('click', () => loadRobot(robot, i));
-        btn.addEventListener('mouseenter', () => {
-            moveSliderTo(btn);
-            if (_hoverTimer) clearTimeout(_hoverTimer);
-            _hoverTimer = setTimeout(() => loadRobot(robot, i), 150);
-        });
-        robotsPanel.appendChild(btn);
-    }
-}
-
-robotsPanel.closest('.robot-shell')!.addEventListener('mouseleave', () => {
-    if (_hoverTimer) { clearTimeout(_hoverTimer); _hoverTimer = null; }
-    moveSliderToActive();
-});
-
-new ResizeObserver(moveSliderToActive).observe(robotsPanel);
+// robotCarousel instantiated later (after buildCtrl / crudCtrl / helpers are ready).
+// eslint-disable-next-line prefer-const
+let robotCarousel: RobotCarousel;
 
 robotTrackSlider.style.transition = 'none';
 fetch('/robots/catalog.json')
@@ -299,10 +125,10 @@ fetch('/robots/catalog.json')
         ];
     })
     .finally(() => {
-        buildRobotButtons(ROBOTS);
+        robotCarousel.buildRobotButtons(ROBOTS);
         const paramId = new URLSearchParams(location.search).get('robot');
         const startIdx = paramId ? Math.max(0, ROBOTS.findIndex(r => r.id === paramId)) : 0;
-        loadRobot(ROBOTS[startIdx], startIdx);
+        robotLoader.load(ROBOTS[startIdx], startIdx);
         requestAnimationFrame(() => requestAnimationFrame(() => {
             robotTrackSlider.style.transition = '';
         }));
@@ -313,8 +139,8 @@ document.addEventListener('keydown', (e) => {
     const el = document.activeElement as HTMLElement;
     if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable) return;
     const dir = e.key === 'ArrowRight' ? 1 : -1;
-    const idx = (currentRobotIndex + dir + ROBOTS.length) % ROBOTS.length;
-    loadRobot(ROBOTS[idx], idx);
+    const idx = (robotLoader.currentRobotIndex + dir + ROBOTS.length) % ROBOTS.length;
+    robotLoader.load(ROBOTS[idx], idx);
 });
 
 ignoreLimitsEl.addEventListener('change', () => { viewer.ignoreLimits = ignoreLimitsEl.checked; });
@@ -338,7 +164,7 @@ btnDynamic.addEventListener('click', async () => {
     physicsModeOptions.hidden = false;
     simStatus.textContent = 'Loading physics…';
     try {
-        const src = _simSource!;
+        const src = robotLoader.simSource!;
         const floatBase = simFloatBase.checked;
         if (src.kind === 'xml') {
             await simulator.loadFromXML(src.xml, src.base, '', floatBase);
@@ -436,7 +262,7 @@ function selectPart(jointName: string | null): void {
     const joint = jointName ? viewer.robot?.joints[jointName] : null;
     if (!joint) {
         inspectorEl.style.display = 'none';
-        if (getBuildSelPartName()) { setBuildSelPartName(null); updateContextPill(null); }
+        if (crudCtrl.getBuildSelPartName()) { crudCtrl.setBuildSelPartName(null); crudCtrl.updateContextPill(null); }
         return;
     }
 
@@ -464,40 +290,14 @@ function selectPart(jointName: string | null): void {
             for (const el of buildComponentsListEl.querySelectorAll<HTMLElement>('.build-component'))
                 el.classList.remove('selected');
             $('build-inspector').hidden = true;
-            setBuildSelPartName(jointName);
-            updateContextPill({
+            crudCtrl.setBuildSelPartName(jointName);
+            crudCtrl.updateContextPill({
                 label:     toLabel(jointName),
                 color:     'var(--text-3)',
                 onDismiss: () => selectPart(null),
             });
         }
     }
-}
-
-function makeScrubLabel(label: HTMLElement, input: HTMLInputElement): void {
-    let startX = 0, startVal = 0, dragging = false;
-    const step = parseFloat(input.step) || 0.001;
-
-    label.addEventListener('pointerdown', (e) => {
-        startX   = e.clientX;
-        startVal = parseFloat(input.value) || 0;
-        dragging = false;
-        label.setPointerCapture(e.pointerId);
-    });
-
-    label.addEventListener('pointermove', (e) => {
-        if (!label.hasPointerCapture(e.pointerId)) return;
-        const dx = e.clientX - startX;
-        if (!dragging && Math.abs(dx) < 3) return;
-        dragging = true;
-        input.value = String(parseFloat((startVal + dx * step).toFixed(6)));
-        input.dispatchEvent(new Event('input', { bubbles: true }));
-    });
-
-    label.addEventListener('pointerup', () => {
-        if (!dragging) input.focus();
-        dragging = false;
-    });
 }
 
 for (const input of [inspectorX, inspectorY, inspectorZ, inspectorScaleX, inspectorScaleY, inspectorScaleZ]) {
@@ -550,96 +350,8 @@ viewer.addEventListener('urdf-processed', () => {
     });
 });
 
-const DEG_TO_RAD = Math.PI / 180;
-
-type JointEl = HTMLElement & { update: () => void };
-
-let _jointPanelAbort: AbortController | null = null;
-
-function buildJointPanel(): void {
-    _jointPanelAbort?.abort();
-    _jointPanelAbort = new AbortController();
-    const { signal } = _jointPanelAbort;
-
-    jointsPanel.innerHTML = '';
-    if (!viewer.robot) return;
-
-    const joints = Object.values(viewer.robot.joints)
-        .filter(j => j.jointType !== 'fixed' && j.visible)
-        .sort((a, b) => a.name.localeCompare(b.name));
-
-    for (const joint of joints) {
-        const el = document.createElement('div') as JointEl;
-        el.className = 'joint';
-        el.dataset.joint = joint.name;
-
-        const nameEl = document.createElement('div');
-        nameEl.className = 'joint-name';
-        nameEl.title = joint.name;
-        nameEl.textContent = joint.name;
-
-        const row = document.createElement('div');
-        row.className = 'joint-row';
-
-        const slider = document.createElement('input');
-        slider.type = 'range';
-        slider.step = '0.001';
-
-        const number = document.createElement('input');
-        number.type = 'number';
-        number.step = '0.001';
-
-        const ticks = document.createElement('div');
-        ticks.className = 'joint-ticks';
-        const tickLo = document.createElement('span');
-        const tickHi = document.createElement('span');
-        ticks.append(tickLo, tickHi);
-
-        const isPrismatic = joint.jointType === 'prismatic';
-        const displayScale = isPrismatic ? 1 : 1 / DEG_TO_RAD;
-
-        el.update = () => {
-            const continuous = joint.jointType === 'continuous';
-            const lo = (viewer.ignoreLimits || continuous) ? -6.28 : joint.limit.lower;
-            const hi = (viewer.ignoreLimits || continuous) ? 6.28 : joint.limit.upper;
-            slider.min = String(lo);
-            slider.max = String(hi);
-            slider.value = String(joint.angle);
-            number.min = String(+(lo * displayScale).toFixed(3));
-            number.max = String(+(hi * displayScale).toFixed(3));
-            number.value = String(+(joint.angle * displayScale).toPrecision(4));
-            const loD = +(lo * displayScale).toFixed(1);
-            const hiD = +(hi * displayScale).toFixed(1);
-            tickLo.textContent = isPrismatic ? `${loD} m` : `${loD}°`;
-            tickHi.textContent = isPrismatic ? `${hiD} m` : `${hiD}°`;
-        };
-
-        slider.addEventListener('input', () => {
-            viewer.setJointValue(joint.name, parseFloat(slider.value));
-        }, { signal });
-
-        number.addEventListener('change', () => {
-            const scale = isPrismatic ? 1 : DEG_TO_RAD;
-            viewer.setJointValue(joint.name, parseFloat(number.value) * scale);
-        }, { signal });
-
-        row.append(slider, number);
-        el.append(nameEl, row, ticks);
-        jointsPanel.appendChild(el);
-        el.update();
-    }
-}
-
-viewer.addEventListener('urdf-processed', buildJointPanel);
-
-viewer.addEventListener('ignore-limits-change', () => {
-    for (const el of jointsPanel.querySelectorAll<JointEl>('.joint')) el.update?.();
-});
-
-viewer.addEventListener('angle-change', (e: Event) => {
-    const name = (e as CustomEvent<string>).detail;
-    jointsPanel.querySelector<JointEl>(`[data-joint="${name}"]`)?.update?.();
-});
+// ── Init joint panel ──────────────────────────────────────────────────────
+initJointPanel(viewer, jointsPanel);
 
 let _labelRaf = 0;
 viewer.addEventListener('pointermove', (e: PointerEvent) => {
@@ -665,18 +377,29 @@ viewer.addEventListener('joint-mouseout', (e: Event) => {
     partLabel.style.display = 'none';
 });
 
+// ── Init build sliders ────────────────────────────────────────────────────
+const buildSlidersCtrl = new BuildSlidersController(buildCtrl);
+
 // ── Float panel defs — built once after buildCtrl is available ────────────
-const FLOAT_PANEL_DEFS = makeFloatPanelDefs(buildCtrl);
+const FLOAT_PANEL_DEFS = buildSlidersCtrl.makeFloatPanelDefs();
+
+// ── Init inspector module ─────────────────────────────────────────────────
+// Defined here so it is available inside onDwellSelect (called lazily on gesture click).
+const inspectorCtrl = new InspectorController({
+    getFloatPanelDefs: () => FLOAT_PANEL_DEFS,
+    onPanelClose: (title, changes) => chatCtrl?.appendRecapCard(title, changes),
+    onGestureParamClear: () => gestureCtrl?.setParamCallback(null),
+});
 
 function syncSlidersFromController(): void {
-    syncSlidersFromCtrl();
+    buildSlidersCtrl.syncSlidersFromCtrl();
     // Re-render inspector to sync values after AI tool call or undo/redo
-    const selId = getBuildSelCompId();
+    const selId = crudCtrl.getBuildSelCompId();
     if (selId) {
         const entry = buildCtrl.getComponentEntries().find(e => e.id === selId);
-        if (entry) renderInspector(selId, entry.type);
+        if (entry) crudCtrl.renderInspector(selId, entry.type);
     }
-    getFloatPanelSync()?.();
+    inspectorCtrl.getFloatPanelSync()?.();
 }
 
 function onDwellSelect(clientX: number, clientY: number): void {
@@ -684,7 +407,7 @@ function onDwellSelect(clientX: number, clientY: number): void {
     if (robotBtn) { robotBtn.click(); return; }
 
     const fpRow = document.elementFromPoint(clientX, clientY)?.closest<HTMLElement>('[data-fp-row-index]');
-    const initSection = getFloatPanelInitSection();
+    const initSection = inspectorCtrl.getFloatPanelInitSection();
     if (fpRow && gestureCtrl && initSection) {
         const def = FLOAT_PANEL_DEFS[initSection];
         const ri  = parseInt(fpRow.dataset.fpRowIndex!, 10);
@@ -718,27 +441,26 @@ gestureToggleBtn.addEventListener('click', async () => {
         onPointerMove(clientX, clientY) {
             const btn = document.elementFromPoint(clientX, clientY)?.closest<HTMLButtonElement>('.robot-btn');
             if (btn) {
-                moveSliderTo(btn);
-                if (btn !== _gestureHoverBtn) {
-                    _gestureHoverBtn = btn;
-                    if (_hoverTimer) clearTimeout(_hoverTimer);
+                robotCarousel.moveSliderTo(btn);
+                if (btn !== robotCarousel.gestureHoverBtn) {
+                    robotCarousel.gestureHoverBtn = btn;
                     const idx = parseInt(btn.dataset.index!, 10);
-                    _hoverTimer = setTimeout(() => loadRobot(ROBOTS[idx], idx), 150);
+                    robotCarousel.scheduleHoverLoad(idx, ROBOTS);
                 }
             } else {
-                if (_gestureHoverBtn) {
-                    _gestureHoverBtn = null;
-                    if (_hoverTimer) { clearTimeout(_hoverTimer); _hoverTimer = null; }
+                if (robotCarousel.gestureHoverBtn) {
+                    robotCarousel.gestureHoverBtn = null;
+                    robotCarousel.cancelHoverLoad();
                 }
-                moveSliderToActive();
+                robotCarousel.moveSliderToActive();
             }
         },
-        onPointerLeave() { _gestureHoverBtn = null; moveSliderToActive(); },
+        onPointerLeave() { robotCarousel.gestureHoverBtn = null; robotCarousel.moveSliderToActive(); },
         onThumbsUp() { chatCtrl?.resumeFromGesture(); },
         onStop() {
             gestureCtrl = null;
             gestureToggleBtn.classList.remove('active');
-            moveSliderToActive();
+            robotCarousel.moveSliderToActive();
         },
     });
     gestureCtrl.start()
@@ -764,16 +486,6 @@ gestureHeaderEl.addEventListener('keydown', (e: KeyboardEvent) => {
 // ── Init panel (open/close + resize) ─────────────────────────────────────
 initPanel();
 
-// ── Init inspector module ─────────────────────────────────────────────────
-initInspector({
-    getFloatPanelDefs: () => FLOAT_PANEL_DEFS,
-    onPanelClose: (title, changes) => chatCtrl?.appendRecapCard(title, changes),
-    onGestureParamClear: () => gestureCtrl?.setParamCallback(null),
-});
-
-// ── Init build sliders ────────────────────────────────────────────────────
-initBuildSliders(buildCtrl);
-
 // ── Build panel elements ──────────────────────────────────────────────────
 const buildExportBtn        = $<HTMLButtonElement>('build-export');
 const buildCopyUrdfBtn      = $<HTMLButtonElement>('build-copy-urdf');
@@ -793,10 +505,10 @@ const buildShortcutsToggle  = $<HTMLButtonElement>('build-shortcuts-toggle');
 const buildShortcutsEl      = $('build-shortcuts');
 const buildCompCountEl      = $('build-comp-count');
 const buildCompEmptyEl      = $('build-comp-empty');
-const buildInspEl           = document.getElementById('build-inspector')!;
-const buildInspTitle        = document.getElementById('build-inspector-title')!;
-const buildInspBody         = document.getElementById('build-inspector-body')!;
-const buildInspClose        = document.getElementById('build-inspector-close') as HTMLButtonElement;
+const buildInspEl           = $('build-inspector');
+const buildInspTitle        = $('build-inspector-title');
+const buildInspBody         = $('build-inspector-body');
+const buildInspClose        = $<HTMLButtonElement>('build-inspector-close');
 
 // ── Init component-crud module ────────────────────────────────────────────
 function regenMeshBlob(id: string, type: string): void {
@@ -807,187 +519,28 @@ function regenMeshBlob(id: string, type: string): void {
         .catch(err => console.warn('[regenMeshBlob] failed for', id, err));
 }
 
-initComponentCrud({
+const crudCtrl = new ComponentCrudController({
     buildCtrl,
     viewer,
     buildComponentsListEl,
     buildInspEl,
     buildInspTitle,
     buildInspBody,
-    onContextPillUpdate:          updateContextPill,
     onSelectPartFromBuild:        (jointName) => selectPart(jointName),
     makeScrubLabel,
     refreshPaletteCounts:         () => refreshPaletteCounts(),
-    addOptionToParentSelects,
-    removeOptionFromParentSelects,
     regenMeshBlob,
 });
 
-// Wire component inputs ref into drag module after crud is initialized
-setComponentInputsRef(componentInputs);
-
 // ── Init component 3D drag ────────────────────────────────────────────────
-initComponentDrag3D(buildCtrl, viewer, buildComponentsListEl, selectCompCard);
+initComponentDrag3D(buildCtrl, viewer, buildComponentsListEl, crudCtrl);
 
 // ── Init library tab ──────────────────────────────────────────────────────
-initLibraryTab(buildCtrl, (id, type) => {
-    addOptionToParentSelects(id);
-    renderComponentItem(id, type);
+const libTabCtrl = new LibraryTabController(buildCtrl, (id, type) => {
+    crudCtrl.addOptionToParentSelects(id);
+    crudCtrl.renderComponentItem(id, type);
     refreshPaletteCounts();
 });
-
-// ── Floating control panels ───────────────────────────────────────────────
-
-function makeFloatPanel(title: string, onClose: () => void): { panel: HTMLDivElement; header: HTMLDivElement; body: HTMLDivElement } {
-    const panel = document.createElement('div');
-    panel.className = 'float-panel';
-
-    const header = document.createElement('div');
-    header.className = 'float-panel-header';
-    const grip = document.createElement('div');
-    grip.className = 'float-panel-grip';
-    for (let i = 0; i < 6; i++) grip.appendChild(document.createElement('span'));
-    const titleEl = document.createElement('span');
-    titleEl.className = 'float-panel-title';
-    titleEl.textContent = title;
-    const closeBtn = document.createElement('button');
-    closeBtn.type = 'button';
-    closeBtn.className = 'float-panel-close';
-    closeBtn.setAttribute('aria-label', 'Close panel');
-    closeBtn.textContent = '×';
-    closeBtn.addEventListener('click', onClose);
-    header.append(grip, titleEl, closeBtn);
-
-    const body = document.createElement('div');
-    body.className = 'float-panel-body';
-    panel.append(header, body);
-
-    return { panel, header, body };
-}
-
-function openPanel(section: string): void {
-    closeCurrentPanel();
-
-    const host = $('float-panels');
-    const def = FLOAT_PANEL_DEFS[section];
-    if (!def) return;
-
-    const { panel, header, body } = makeFloatPanel(def.title, () => closeCurrentPanel());
-    panel.dataset.panel = section;
-    panel.setAttribute('role', 'dialog');
-    panel.setAttribute('aria-label', `${def.title} controls`);
-    const syncFns: Array<(mm: number) => void> = [];
-
-    for (let ri = 0; ri < def.rows.length; ri++) {
-        const row = def.rows[ri];
-        const rowEl = document.createElement('div');
-        rowEl.className = 'float-panel-row';
-        rowEl.setAttribute('data-gesture-track', '');
-        rowEl.dataset.fpRowIndex = String(ri);
-
-        const head = document.createElement('div');
-        head.className = 'float-panel-row-head';
-        const lbl  = document.createElement('span'); lbl.className  = 'float-panel-row-label'; lbl.textContent  = row.label;
-        const unit = document.createElement('span'); unit.className = 'float-panel-row-unit';  unit.textContent = row.unit;
-        head.append(lbl, unit);
-
-        const controls = document.createElement('div');
-        controls.className = 'float-panel-row-inputs';
-
-        const slider = document.createElement('input');
-        slider.type = 'range';
-        slider.min = String(row.min); slider.max = String(row.max); slider.step = String(row.step);
-        slider.value = String(row.get());
-
-        const num = document.createElement('input');
-        num.type = 'number';
-        num.min = String(row.min); num.max = String(row.max); num.step = String(row.step);
-        num.value = String(row.get());
-
-        const onChange = (mm: number): void => {
-            row.set(mm);
-            syncSlidersFromController();
-        };
-        slider.addEventListener('input',  () => { num.value    = slider.value; onChange(parseFloat(slider.value)); });
-        num.addEventListener('change',    () => { slider.value = num.value;    onChange(parseFloat(num.value));    });
-
-        syncFns.push((mm) => { slider.value = String(mm); num.value = String(mm); });
-        controls.append(slider, num);
-        rowEl.append(head, controls);
-        body.appendChild(rowEl);
-    }
-
-    setFloatPanelSync(() => def.rows.forEach((row, i) => syncFns[i](row.get())));
-    setFloatPanelInitState(section, def.rows.map(r => r.get()));
-
-    const panelTop = nextPanelTop();
-    host.appendChild(panel);
-    panel.style.top = `${panelTop}px`;
-    makeDraggable(panel, header);
-    panel.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') closeCurrentPanel();
-    });
-}
-
-function nextPanelTop(): number {
-    let maxBottom = 60;
-    document.querySelectorAll<HTMLElement>('.float-panel').forEach(p => {
-        const r = p.getBoundingClientRect();
-        if (r.width > 0) maxBottom = Math.max(maxBottom, r.bottom + 8);
-    });
-    return maxBottom;
-}
-
-function makeDraggable(panel: HTMLElement, handle: HTMLElement): void {
-    handle.addEventListener('pointerdown', (e: PointerEvent) => {
-        if ((e.target as HTMLElement).closest('.float-panel-close')) return;
-        handle.setPointerCapture(e.pointerId);
-        const rect = panel.getBoundingClientRect();
-        const ox = e.clientX - rect.left;
-        const oy = e.clientY - rect.top;
-        const onMove = (ev: PointerEvent) => {
-            panel.style.left = `${ev.clientX - ox}px`;
-            panel.style.top  = `${ev.clientY - oy}px`;
-        };
-        handle.addEventListener('pointermove', onMove);
-        handle.addEventListener('pointerup', () => handle.removeEventListener('pointermove', onMove), { once: true });
-    });
-}
-
-function openGestureHint(): void {
-    const host = $('gesture-hint-host');
-    if (!host) return;
-    if (host.querySelector('.float-panel')) return;
-
-    const rows: Array<{ icon: string; html: string }> = [
-        { icon: '✊', html: '<strong>Fist + move</strong> — orbit camera' },
-        { icon: '☝️', html: '<strong>Point + dwell 0.8 s</strong> — select joint' },
-        { icon: '🤚', html: '<strong>Tilt wrist</strong> (joint selected) — rotate joint' },
-        { icon: '🖐️', html: '<strong>Open palm, hold 1 s</strong> — reset all joints' },
-        { icon: '🤲', html: '<strong>Two hands pinch/spread</strong> — zoom' },
-        { icon: '👍', html: '<strong>Thumbs up</strong> — confirm / Continue' },
-    ];
-
-    const { panel, header, body } = makeFloatPanel('Gestures', () => { host.innerHTML = ''; });
-    body.style.gap = '7px';
-    for (const row of rows) {
-        const rowEl = document.createElement('div');
-        rowEl.className = 'gesture-row';
-        const iconEl = document.createElement('span');
-        iconEl.className = 'gesture-icon';
-        iconEl.textContent = row.icon;
-        const descEl = document.createElement('span');
-        descEl.className = 'gesture-desc';
-        descEl.innerHTML = row.html;
-        rowEl.append(iconEl, descEl);
-        body.appendChild(rowEl);
-    }
-
-    const hintTop = nextPanelTop();
-    host.appendChild(panel);
-    panel.style.top = `${hintTop}px`;
-    makeDraggable(panel, header);
-}
 
 buildUndoBtn.addEventListener('click',  () => buildCtrl.undo());
 buildRedoBtn.addEventListener('click',  () => buildCtrl.redo());
@@ -1003,44 +556,44 @@ buildCtrl.onHistoryChange = () => {
 };
 
 buildCtrl.onDOMRebuild = () => {
-    const prevSel = getBuildSelCompId();
-    clearBuildUI();
+    const prevSel = crudCtrl.getBuildSelCompId();
+    crudCtrl.clearBuildUI();
     for (const { id, type } of buildCtrl.getComponentEntries()) {
-        renderComponentItem(id, type);
+        crudCtrl.renderComponentItem(id, type);
         if (COMPONENT_CATALOG[type]?.geomType === 'mesh') regenMeshBlob(id, type);
     }
     syncSlidersFromController();
     refreshPaletteCounts();
     buildCtrl.onHistoryChange?.();
     chatCtrl?.syncToolCount();
-    if (prevSel && buildCtrl.getComponentData(prevSel)) selectCompCard(prevSel);
+    if (prevSel && buildCtrl.getComponentData(prevSel)) crudCtrl.selectCompCard(prevSel);
 };
 
-buildInspClose.addEventListener('click', () => deselectComp());
+buildInspClose.addEventListener('click', () => crudCtrl.deselectComp());
 
 document.addEventListener('keydown', (e: KeyboardEvent) => {
     if (!buildCtrl.isActive) return;
     if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) { e.preventDefault(); buildCtrl.undo(); }
     if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) { e.preventDefault(); buildCtrl.redo(); }
 
-    const selId = getBuildSelCompId();
+    const selId = crudCtrl.getBuildSelCompId();
     if (selId && (e.key === 'Delete' || e.key === 'Backspace') && !e.ctrlKey && !e.metaKey) {
         const el = document.activeElement as HTMLElement;
         if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable) return;
         e.preventDefault();
         const card = buildComponentsListEl.querySelector<HTMLElement>(`[data-id="${selId}"]`);
         buildCtrl.removeComponent(selId);
-        deselectComp();
-        removeOptionFromParentSelects(selId);
+        crudCtrl.deselectComp();
+        crudCtrl.removeOptionFromParentSelects(selId);
         card?.remove();
         refreshPaletteCounts();
         return;
     }
 
-    if (e.key === 'Escape' && getBuildSelCompId()) {
+    if (e.key === 'Escape' && crudCtrl.getBuildSelCompId()) {
         const el = document.activeElement as HTMLElement;
         if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') return;
-        deselectComp();
+        crudCtrl.deselectComp();
         return;
     }
 
@@ -1060,7 +613,7 @@ document.addEventListener('keydown', (e: KeyboardEvent) => {
             if (e.key === 'ArrowDown')  x += d;
         }
         buildCtrl.updateComponent(selId, { x, y, z });
-        const inp = componentInputs.get(selId);
+        const inp = crudCtrl.componentInputs.get(selId);
         if (inp) { inp['x'].value = x.toFixed(4); inp['y'].value = y.toFixed(4); inp['z'].value = z.toFixed(4); }
     }
 });
@@ -1077,69 +630,14 @@ buildCopyUrdfBtn.addEventListener('click', () => {
 });
 
 buildNewCreateBtn.addEventListener('click', () => {
-    clearBuildUI();
+    crudCtrl.clearBuildUI();
     buildCtrl.initFromScratch(buildNewNameEl.value);
     buildCtrl.open();
     $('tab-build').click();
-    refreshSavedList();
-    refreshBuildHeader();
+    robotCarousel.refreshSavedList();
+    robotCarousel.refreshBuildHeader();
     refreshPaletteCounts();
 });
-
-function refreshSavedList(): void {
-    const names = URDFBuildController.savedCustomNames();
-    buildSavedToggleBtn.hidden = names.length === 0;
-    if (names.length === 0) { buildSavedListEl.hidden = true; return; }
-
-    buildSavedListEl.innerHTML = '';
-    for (const name of names) {
-        const row = document.createElement('div');
-        row.className = 'build-saved-row';
-
-        const nameEl = document.createElement('span');
-        nameEl.className = 'build-saved-name';
-        nameEl.textContent = name;
-
-        const loadBtn = document.createElement('button');
-        loadBtn.type = 'button';
-        loadBtn.className = 'build-export-btn build-saved-load';
-        loadBtn.textContent = 'Load';
-        loadBtn.addEventListener('click', () => {
-            clearBuildUI();
-            const entries = buildCtrl.restoreCustomByName(name);
-            for (const { id, type } of entries) renderComponentItem(id, type);
-            if (entries.length > 0) syncSlidersFromController();
-            refreshPaletteCounts();
-            buildCtrl.open();
-            $('tab-build').click();
-            refreshBuildHeader();
-            buildSavedListEl.hidden = true;
-        });
-
-        const delBtn = document.createElement('button');
-        delBtn.type = 'button';
-        delBtn.className = 'build-remove-btn';
-        delBtn.textContent = '×';
-        delBtn.title = 'Delete saved robot';
-        delBtn.addEventListener('click', () => {
-            buildCtrl.deleteCustom(name);
-            if (buildCtrl.robotName === name) refreshBuildHeader();
-            refreshSavedList();
-        });
-
-        row.append(nameEl, loadBtn, delBtn);
-        buildSavedListEl.appendChild(row);
-    }
-}
-
-function refreshBuildHeader(): void {
-    const active = buildCtrl.isCatalogActive;
-    buildActiveHeaderEl.hidden = !active;
-    if (active) {
-        buildActiveNameEl.textContent = buildCtrl.robotName;
-        buildClearCustomBtn.hidden = buildCtrl.isSupported;
-    }
-}
 
 buildSavedToggleBtn.addEventListener('click', () => {
     buildSavedListEl.hidden = !buildSavedListEl.hidden;
@@ -1149,7 +647,7 @@ buildClearCustomBtn.addEventListener('click', () => {
     buildCtrl.deleteCustom(buildCtrl.robotName);
     buildActiveHeaderEl.hidden = true;
     buildSavedListEl.hidden = true;
-    refreshSavedList();
+    robotCarousel.refreshSavedList();
 });
 
 buildShortcutsToggle.addEventListener('click', (e) => {
@@ -1157,10 +655,8 @@ buildShortcutsToggle.addEventListener('click', (e) => {
     buildShortcutsEl.hidden = !buildShortcutsEl.hidden;
 });
 
-refreshSavedList();
-refreshBuildHeader();
-
-const paletteBadges = new Map<string, HTMLSpanElement>();
+const paletteBadges
+ = new Map<string, HTMLSpanElement>();
 
 function refreshPaletteCounts(): void {
     const counts = new Map<string, number>();
@@ -1178,6 +674,40 @@ function refreshPaletteCounts(): void {
     buildCompEmptyEl.hidden = total > 0 || !buildCtrl.isCatalogActive;
 }
 
+// ── Robot carousel ─────────────────────────────────────────────────────────
+robotCarousel = new RobotCarousel({
+    robotsPanel,
+    robotTrackSlider,
+    buildCtrl,
+    buildActiveHeaderEl,
+    buildActiveNameEl,
+    buildClearCustomBtn,
+    buildSavedToggleBtn,
+    buildSavedListEl,
+    crudCtrl,
+    syncSlidersFromController,
+    refreshPaletteCounts,
+    getRobotLoader: () => robotLoader,
+});
+robotCarousel.refreshSavedList();
+robotCarousel.refreshBuildHeader();
+
+// ── Robot loader ───────────────────────────────────────────────────────────
+robotLoader = new RobotLoader({
+    viewer, buildCtrl, crudCtrl, editorCtrl, simulator,
+    upAxisEl, simStatus, physicsModeOptions, simFloatBase,
+    syncSlidersFromController,
+    refreshPaletteCounts,
+    refreshBuildHeader: () => robotCarousel.refreshBuildHeader(),
+    onRobotSelected(robot) {
+        robotCarousel.clearActiveRobot();
+        const btn = robot.name
+            ? robotsPanel.querySelector<HTMLButtonElement>(`.robot-btn[data-name="${robot.name}"]`)
+            : null;
+        if (btn) { btn.classList.add('active'); robotCarousel.moveSliderTo(btn); }
+    },
+});
+
 for (const [type, def] of Object.entries(COMPONENT_CATALOG)) {
     if (def.geomType === 'mesh' || def.hidden) continue;
     const btn = document.createElement('button');
@@ -1192,8 +722,8 @@ for (const [type, def] of Object.entries(COMPONENT_CATALOG)) {
     btn.addEventListener('click', () => {
         if (!buildCtrl.isCatalogActive) return;
         const id = buildCtrl.addComponent(type);
-        addOptionToParentSelects(id);
-        renderComponentItem(id, type);
+        crudCtrl.addOptionToParentSelects(id);
+        crudCtrl.renderComponentItem(id, type);
         refreshPaletteCounts();
         buildComponentsListEl.querySelector<HTMLElement>(`[data-id="${id}"]`)
             ?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -1206,7 +736,7 @@ document.querySelectorAll<HTMLButtonElement>('.build-section-detach').forEach(bt
         e.preventDefault();
         e.stopPropagation();
         const section = btn.closest<HTMLElement>('[data-panel]')?.dataset.panel ?? '';
-        openPanel(section);
+        openPanel(section, inspectorCtrl, FLOAT_PANEL_DEFS, syncSlidersFromController);
     });
 });
 
@@ -1216,10 +746,10 @@ document.querySelectorAll<HTMLButtonElement>('.build-section-detach').forEach(bt
         isEditorTabActive:        () => document.body.classList.contains('editor-open'),
         handleEditorInput:        (t) => editorCtrl.handleExternalInput(t),
         onComponentAdded:         (id, type) => {
-            addOptionToParentSelects(id);
-            renderComponentItem(id, type);
+            crudCtrl.addOptionToParentSelects(id);
+            crudCtrl.renderComponentItem(id, type);
         },
-        onComponentRemoved:       (id) => removeComponentItem(id),
+        onComponentRemoved:       (id) => crudCtrl.removeComponentItem(id),
         syncSlidersFromController,
         switchToBuildTab:         () => $<HTMLButtonElement>('tab-build').click(),
         onBriefToggle:            (v) => { editorCtrl.brief = v; },
@@ -1230,7 +760,7 @@ document.querySelectorAll<HTMLButtonElement>('.build-section-detach').forEach(bt
         highlightPart:            (jointName) => selectPart(jointName),
         getJointNames:            () => Object.keys(viewer.robot?.joints ?? {}),
         initRobot: (type, name) => {
-            clearBuildUI();
+            crudCtrl.clearBuildUI();
             buildCtrl.initFromScratch(type === 'robot-car' ? 'Robot Car' : (name ?? 'My Robot'));
             if (type === 'robot-car') {
                 ['03-wheels.xml', '04-caster.xml', '06-power.xml'].forEach(f => {
@@ -1241,20 +771,20 @@ document.querySelectorAll<HTMLButtonElement>('.build-section-detach').forEach(bt
                 });
             }
             buildCtrl.open();
-            refreshSavedList();
-            refreshBuildHeader();
+            robotCarousel.refreshSavedList();
+            robotCarousel.refreshBuildHeader();
             refreshPaletteCounts();
             $<HTMLButtonElement>('tab-build').click();
             chatCtrl?.syncToolCount();
         },
         getFocusedComponent: () => {
-            const selId = getBuildSelCompId();
+            const selId = crudCtrl.getBuildSelCompId();
             if (selId) {
                 const entry = buildCtrl.getComponentEntries().find(e => e.id === selId);
                 if (!entry) return null;
                 return { id: selId, type: entry.type, data: buildCtrl.getComponentData(selId) };
             }
-            const selPart = getBuildSelPartName();
+            const selPart = crudCtrl.getBuildSelPartName();
             if (selPart) {
                 const joint = viewer.robot?.joints[selPart];
                 if (!joint) return null;
@@ -1270,7 +800,7 @@ document.querySelectorAll<HTMLButtonElement>('.build-section-detach').forEach(bt
             }
             return null;
         },
-        openPanel:        (section) => openPanel(section),
+        openPanel:        (section) => openPanel(section, inspectorCtrl, FLOAT_PANEL_DEFS, syncSlidersFromController),
         openGestureHint:  () => openGestureHint(),
         isGestureActive:  () => gestureCtrl !== null,
     };

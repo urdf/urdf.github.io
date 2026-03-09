@@ -93,6 +93,7 @@ export class URDFViewer extends HTMLElement {
     private _center = new THREE.Vector3();
     private _sphere = new THREE.Sphere();
     private _lightOffset = new THREE.Vector3();
+    private _bboxDirty = true;
 
     constructor() {
         super();
@@ -241,6 +242,7 @@ export class URDFViewer extends HTMLElement {
     setJointValue(name: string, ...values: number[]): void {
         if (!this.robot) return;
         if (this.robot.setJointValue(name, ...values)) {
+            this._bboxDirty = true;
             this.redraw();
             this.dispatchEvent(new CustomEvent('angle-change', { bubbles: true, detail: name }));
         }
@@ -348,6 +350,7 @@ export class URDFViewer extends HTMLElement {
             }
 
             this.robot = robot;
+            this._bboxDirty = true;
             this.world.add(robot);
             this._prepareMeshes(robot);
             this._applyIgnoreLimits(this.ignoreLimits);
@@ -433,19 +436,18 @@ export class URDFViewer extends HTMLElement {
                 const mats: THREE.Material[] = isArray ? mesh.material as THREE.Material[] : [mesh.material as THREE.Material];
                 const converted = mats.map(m => {
                     let out = m;
-                    if (m instanceof THREE.MeshBasicMaterial) {
+                    if (m instanceof THREE.MeshBasicMaterial || m instanceof THREE.MeshPhongMaterial) {
                         // Convert to MeshStandardMaterial so it responds to IBL (scene.environment).
-                        // std.copy(m) is unsafe — only copy the properties that transfer cleanly.
                         const std = new THREE.MeshStandardMaterial();
-                        std.color.copy(m.color);
-                        std.map         = m.map;
-                        std.alphaMap    = m.alphaMap;
+                        std.color.copy((m as THREE.MeshBasicMaterial).color);
+                        std.map         = (m as THREE.MeshBasicMaterial).map ?? null;
                         std.opacity     = m.opacity;
                         std.transparent = m.transparent;
                         std.side        = m.side;
                         std.name        = m.name;
                         std.roughness   = 0.7;
                         std.metalness   = 0.05;
+                        if (m instanceof THREE.MeshBasicMaterial) std.alphaMap = m.alphaMap;
                         m.dispose();
                         out = std;
                     }
@@ -465,10 +467,13 @@ export class URDFViewer extends HTMLElement {
 
         this.world.updateMatrixWorld();
 
-        this._bbox.makeEmpty();
-        robot.traverse(c => {
-            if ((c as URDFVisual).isURDFVisual) this._bbox.expandByObject(c);
-        });
+        if (this._bboxDirty) {
+            this._bbox.makeEmpty();
+            robot.traverse(c => {
+                if ((c as URDFVisual).isURDFVisual) this._bbox.expandByObject(c);
+            });
+            this._bboxDirty = false;
+        }
 
         if (!this._bbox.isEmpty()) {
             this._bbox.getCenter(this._center);

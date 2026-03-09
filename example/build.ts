@@ -4,6 +4,7 @@ import { generateWheel, WHEEL_DEFAULTS } from '../src/generators/wheel.js';
 import type { ChassisParams } from '../src/generators/chassis.js';
 import type { WheelParams } from '../src/generators/wheel.js';
 import { LIBRARY } from '../src/generators/components/index.js';
+import { assembleURDF } from './urdf-assemble.js';
 
 interface SavedState {
     version:   1;
@@ -72,6 +73,10 @@ export const COMPONENT_CATALOG: Record<string, ComponentDef> = {
 };
 
 // ── Internals ──────────────────────────────────────────────────────────────
+
+const CASTER_DEFAULTS    = { radius: 0.0146, width:  0.0145 } as const;
+const BATTERY_DEFAULTS   = { l: 0.0806, w: 0.0442, h: 0.022 } as const;
+const POWERBANK_DEFAULTS = { radius: 0.0175, length: 0.130  } as const;
 
 const SUPPORTED_ROBOTS = new Set(['robot-car']);
 
@@ -148,10 +153,11 @@ const BLANK_CASTER_XML = `<link name="caster_plate">
     <material name="caster_metal"><color rgba="0.76 0.76 0.78 1.00"/></material>
   </visual>
 </link>
-<joint name="caster_fork_joint" type="fixed">
-  <parent link="base_link"/>
+<joint name="caster_fork_joint" type="continuous">
+  <parent link="caster_plate"/>
   <child link="caster_fork"/>
-  <origin xyz="-0.1200 0.0000 -0.0149" rpy="0 0 0"/>
+  <origin xyz="0 0 -0.002" rpy="0 0 0"/>
+  <axis xyz="0 0 1"/>
 </joint>
 
 <link name="caster_wheel">
@@ -161,9 +167,9 @@ const BLANK_CASTER_XML = `<link name="caster_plate">
   </visual>
 </link>
 <joint name="caster_wheel_joint" type="continuous">
-  <parent link="base_link"/>
+  <parent link="caster_fork"/>
   <child link="caster_wheel"/>
-  <origin xyz="-0.1200 0.0000 -0.0289" rpy="1.5708 0.0000 0.0000"/>
+  <origin xyz="0 0 -0.0229" rpy="1.5708 0.0000 0.0000"/>
   <axis xyz="0 0 1"/>
 </joint>`;
 
@@ -181,7 +187,7 @@ const BLANK_POWER_XML = `<link name="battery_box">
 
 <link name="powerbank">
   <visual>
-    <geometry><cylinder radius="0.0115" length="0.1199"/></geometry>
+    <geometry><cylinder radius="0.0175" length="0.130"/></geometry>
     <material name="powerbank_blue"><color rgba="0.15 0.45 0.85 1.00"/></material>
   </visual>
 </link>
@@ -205,13 +211,6 @@ export interface Component {
     parent:     string;
 }
 
-function assembleXML(robotName: string, partMap: Map<string, string>): string {
-    const sorted = [...partMap.entries()].sort(([a], [b]) => a.localeCompare(b));
-    const intro  = sorted.filter(([k]) =>  k.startsWith('00')).map(([, v]) => v.trimEnd()).join('\n');
-    const body   = sorted.filter(([k]) => !k.startsWith('00')).map(([, v]) => v.trimEnd()).join('\n\n');
-    return `<?xml version="1.0"?>\n${intro}\n<robot name="${robotName}">\n\n${body}\n\n</robot>\n`;
-}
-
 // ── Controller ─────────────────────────────────────────────────────────────
 
 export class URDFBuildController {
@@ -231,14 +230,14 @@ export class URDFBuildController {
     private _isCustom     = false;
 
     // Inline geometry patches (no STL needed — primitive shapes)
-    private _casterRadius = 0.0146;
-    private _casterWidth  = 0.0145;
-    private _batteryBox   = { l: 0.0806, w: 0.0442, h: 0.022 };
+    private _casterRadius = CASTER_DEFAULTS.radius;
+    private _casterWidth  = CASTER_DEFAULTS.width;
+    private _batteryBox   = { ...BATTERY_DEFAULTS };
 
     // Parametric params — tracked so they can be persisted
     private _chassisParams: ChassisParams = { ...CHASSIS_DEFAULTS };
     private _wheelParams:   WheelParams   = { ...WHEEL_DEFAULTS   };
-    private _powerbank      = { radius: 0.0115, length: 0.1199 };
+    private _powerbank      = { ...POWERBANK_DEFAULTS };
 
     private _undoStack: Snapshot[] = [];
     private _redoStack: Snapshot[] = [];
@@ -258,13 +257,7 @@ export class URDFBuildController {
     get isSupported(): boolean     { return SUPPORTED_ROBOTS.has(this._robotName); }
     get isCatalogActive(): boolean { return this.isSupported || this._isCustom; }
 
-    init(robotName: string, dir: string, partMap: Map<string, string>): void {
-        this._robotName = robotName;
-        this._dir       = dir;
-        this._partMap   = new Map(partMap);
-        this._isCustom  = false;
-        document.body.classList.remove('build-custom');
-
+    private _resetRuntimeState(): void {
         for (const url of this._stlBlobs.values()) URL.revokeObjectURL(url.split('#')[0]);
         this._stlBlobs.clear();
         for (const url of this._meshBlobs.values()) URL.revokeObjectURL(url.split('#')[0]);
@@ -273,14 +266,24 @@ export class URDFBuildController {
         this._components.clear();
         this._compCounters.clear();
 
-        this._casterRadius = 0.0146;
-        this._casterWidth  = 0.0145;
-        this._batteryBox   = { l: 0.0806, w: 0.0442, h: 0.022 };
-        this._powerbank    = { radius: 0.0115, length: 0.1199 };
+        this._casterRadius = CASTER_DEFAULTS.radius;
+        this._casterWidth  = CASTER_DEFAULTS.width;
+        this._batteryBox   = { ...BATTERY_DEFAULTS };
+        this._powerbank    = { ...POWERBANK_DEFAULTS };
         this._chassisParams = { ...CHASSIS_DEFAULTS };
         this._wheelParams   = { ...WHEEL_DEFAULTS   };
         this._undoStack.length = 0;
         this._redoStack.length = 0;
+    }
+
+    init(robotName: string, dir: string, partMap: Map<string, string>): void {
+        this._robotName = robotName;
+        this._dir       = dir;
+        this._partMap   = new Map(partMap);
+        this._isCustom  = false;
+        document.body.classList.remove('build-custom');
+
+        this._resetRuntimeState();
 
         const origWheelZ   = this._parseJointZ('wheel_left_joint') ?? (-WHEEL_DEFAULTS.radius);
         this._wheelGroundZ = origWheelZ - WHEEL_DEFAULTS.radius;
@@ -294,23 +297,8 @@ export class URDFBuildController {
         this._isCustom  = true;
         document.body.classList.add('build-custom');
 
-        for (const url of this._stlBlobs.values()) URL.revokeObjectURL(url.split('#')[0]);
-        this._stlBlobs.clear();
-        for (const url of this._meshBlobs.values()) URL.revokeObjectURL(url.split('#')[0]);
-        this._meshBlobs.clear();
-        this._jointZPatches.clear();
-        this._components.clear();
-        this._compCounters.clear();
-
-        this._chassisParams = { ...CHASSIS_DEFAULTS };
-        this._wheelParams   = { ...WHEEL_DEFAULTS   };
-        this._casterRadius  = 0.0146;
-        this._casterWidth   = 0.0145;
-        this._batteryBox    = { l: 0.0806, w: 0.0442, h: 0.022 };
-        this._powerbank     = { radius: 0.0115, length: 0.1199 };
+        this._resetRuntimeState();
         this._wheelGroundZ  = -WHEEL_DEFAULTS.radius;
-        this._undoStack.length = 0;
-        this._redoStack.length = 0;
         this._partTemplates.clear();
 
         // Truly blank — parts appear progressively as update_* methods are called.
@@ -462,7 +450,7 @@ export class URDFBuildController {
         return c ? { x: c.x, y: c.y, z: c.z } : null;
     }
 
-    startComponentDrag(id: string): void { this._pushUndo(); }
+    startComponentDrag(): void { this._pushUndo(); }
 
     finishComponentDrag(id: string, x: number, y: number, z: number): void {
         this._updateComponentDirect(id, { x, y, z });
@@ -506,14 +494,15 @@ export class URDFBuildController {
         this._pushUndo();
         this._chassisParams = { ...CHASSIS_DEFAULTS };
         this._wheelParams   = { ...WHEEL_DEFAULTS   };
-        this._casterRadius  = 0.0146;
-        this._casterWidth   = 0.0145;
-        this._batteryBox    = { l: 0.0806, w: 0.0442, h: 0.022 };
-        this._powerbank     = { radius: 0.0115, length: 0.1199 };
+        this._casterRadius  = CASTER_DEFAULTS.radius;
+        this._casterWidth   = CASTER_DEFAULTS.width;
+        this._batteryBox    = { ...BATTERY_DEFAULTS };
+        this._powerbank     = { ...POWERBANK_DEFAULTS };
         this._jointZPatches.clear();
         this._components.clear();
         this._compCounters.clear();
 
+        // Revoke after param reset to preserve existing ordering
         for (const url of this._stlBlobs.values()) URL.revokeObjectURL(url.split('#')[0]);
         this._stlBlobs.clear();
         for (const url of this._meshBlobs.values()) URL.revokeObjectURL(url.split('#')[0]);
@@ -549,7 +538,7 @@ export class URDFBuildController {
         this._casterRadius  = saved.caster.radius;
         this._casterWidth   = saved.caster.width;
         this._batteryBox    = { ...saved.battery };
-        this._powerbank     = saved.powerbank ?? { radius: 0.0115, length: 0.1199 };
+        this._powerbank     = saved.powerbank ?? { ...POWERBANK_DEFAULTS };
         this._components    = new Map(saved.components);
         this._compCounters  = new Map(saved.counters);
 
@@ -644,76 +633,71 @@ export class URDFBuildController {
     private _buildXML(): string {
         return this._insertComponents(
             this._applyGeometryPatches(
-                this._applyJointPatches(assembleXML(this._robotName, this._partMap))
+                this._applyJointPatches(assembleURDF(this._robotName, this._partMap))
             )
         );
     }
 
     private _applyJointPatches(xml: string): string {
+        if (this._jointZPatches.size === 0) return xml;
+        const doc = new DOMParser().parseFromString(xml, 'application/xml');
         for (const [joint, z] of this._jointZPatches) {
-            xml = xml.replace(
-                new RegExp(`(<joint\\b[^>]*?\\bname="${joint}"[\\s\\S]*?<origin\\b[^>]*?\\bxyz=")([^"]+)(")`),
-                (_, pre, xyz, post) => {
-                    const parts = xyz.trim().split(/\s+/);
-                    parts[2] = z.toFixed(4);
-                    return `${pre}${parts.join(' ')}${post}`;
-                }
-            );
+            const originEl = doc.querySelector(`joint[name="${joint}"] > origin`);
+            if (!originEl) continue;
+            const parts = (originEl.getAttribute('xyz') ?? '0 0 0').trim().split(/\s+/);
+            parts[2] = z.toFixed(4);
+            originEl.setAttribute('xyz', parts.join(' '));
         }
-        return xml;
+        return new XMLSerializer().serializeToString(doc);
     }
 
     private _applyGeometryPatches(xml: string): string {
-        const r = this._casterRadius;
+        const doc = new DOMParser().parseFromString(xml, 'application/xml');
+
+        // Caster wheel: update cylinder size and joint Z (fork-relative)
+        const r  = this._casterRadius;
         const cw = this._casterWidth;
+        const casterCyl = doc.querySelector('link[name="caster_wheel"] cylinder');
+        if (casterCyl) {
+            casterCyl.setAttribute('radius', r.toFixed(4));
+            casterCyl.setAttribute('length', cw.toFixed(4));
+        }
+        const casterOrigin = doc.querySelector('joint[name="caster_wheel_joint"] > origin');
+        if (casterOrigin) {
+            // caster_wheel_joint is relative to caster_fork (world Z = −0.006)
+            const parts = (casterOrigin.getAttribute('xyz') ?? '0 0 0').trim().split(/\s+/);
+            parts[2] = (this._wheelGroundZ + r + 0.006).toFixed(4);
+            casterOrigin.setAttribute('xyz', parts.join(' '));
+        }
 
-        // Caster wheel cylinder size
-        xml = xml.replace(
-            /(<link\s[^>]*name="caster_wheel"[\s\S]*?<cylinder\s+)radius="[^"]*"\s+length="[^"]*"/,
-            `$1radius="${r.toFixed(4)}" length="${cw.toFixed(4)}"`
-        );
-        // Caster wheel joint Z — bottom of wheel = wheelGroundZ
-        xml = xml.replace(
-            new RegExp(`(<joint\\b[^>]*?\\bname="caster_wheel_joint"[\\s\\S]*?<origin\\b[^>]*?\\bxyz=")([^"]+)(")`),
-            (_, pre, xyz, post) => {
-                const parts = xyz.trim().split(/\s+/);
-                parts[2] = (this._wheelGroundZ + r).toFixed(4);
-                return `${pre}${parts.join(' ')}${post}`;
-            }
-        );
-
-        // Battery box size
+        // Battery box: update box size and joint Z
         const { l, w, h } = this._batteryBox;
-        xml = xml.replace(
-            /(<link\s[^>]*name="battery_box"[\s\S]*?<box\s+)size="[^"]*"/,
-            `$1size="${l.toFixed(4)} ${w.toFixed(4)} ${h.toFixed(4)}"`
-        );
-        // Battery box joint Z — flush against chassis underside (bottom at -1.5 mm)
-        xml = xml.replace(
-            new RegExp(`(<joint\\b[^>]*?\\bname="battery_box_joint"[\\s\\S]*?<origin\\b[^>]*?\\bxyz=")([^"]+)(")`),
-            (_, pre, xyz, post) => {
-                const parts = xyz.trim().split(/\s+/);
-                parts[2] = (-0.0015 - h / 2).toFixed(4);
-                return `${pre}${parts.join(' ')}${post}`;
-            }
-        );
+        const batteryBox = doc.querySelector('link[name="battery_box"] box');
+        if (batteryBox) {
+            batteryBox.setAttribute('size', `${l.toFixed(4)} ${w.toFixed(4)} ${h.toFixed(4)}`);
+        }
+        const batteryOrigin = doc.querySelector('joint[name="battery_box_joint"] > origin');
+        if (batteryOrigin) {
+            const parts = (batteryOrigin.getAttribute('xyz') ?? '0 0 0').trim().split(/\s+/);
+            parts[2] = (-0.0015 - h / 2).toFixed(4);
+            batteryOrigin.setAttribute('xyz', parts.join(' '));
+        }
 
-        // Powerbank cylinder size + joint Z
+        // Powerbank: update cylinder size and joint Z
         const { radius: pr, length: pl } = this._powerbank;
-        xml = xml.replace(
-            /(<link\s[^>]*name="powerbank"[\s\S]*?<cylinder\s+)radius="[^"]*"\s+length="[^"]*"/,
-            `$1radius="${pr.toFixed(4)}" length="${pl.toFixed(4)}"`
-        );
-        xml = xml.replace(
-            new RegExp(`(<joint\\b[^>]*?\\bname="powerbank_joint"[\\s\\S]*?<origin\\b[^>]*?\\bxyz=")([^"]+)(")`),
-            (_, pre, xyz, post) => {
-                const parts = xyz.trim().split(/\s+/);
-                parts[2] = (-0.0015 - pr).toFixed(4);
-                return `${pre}${parts.join(' ')}${post}`;
-            }
-        );
+        const powerbankCyl = doc.querySelector('link[name="powerbank"] cylinder');
+        if (powerbankCyl) {
+            powerbankCyl.setAttribute('radius', pr.toFixed(4));
+            powerbankCyl.setAttribute('length', pl.toFixed(4));
+        }
+        const powerbankOrigin = doc.querySelector('joint[name="powerbank_joint"] > origin');
+        if (powerbankOrigin) {
+            const parts = (powerbankOrigin.getAttribute('xyz') ?? '0 0 0').trim().split(/\s+/);
+            parts[2] = (-0.0015 - pr).toFixed(4);
+            powerbankOrigin.setAttribute('xyz', parts.join(' '));
+        }
 
-        return xml;
+        return new XMLSerializer().serializeToString(doc);
     }
 
     private _insertComponents(xml: string): string {
@@ -796,8 +780,15 @@ export class URDFBuildController {
 
         for (const url of this._stlBlobs.values()) URL.revokeObjectURL(url.split('#')[0]);
         this._stlBlobs.clear();
-        for (const url of this._meshBlobs.values()) URL.revokeObjectURL(url.split('#')[0]);
-        this._meshBlobs.clear();
+        // Only revoke mesh blobs for components absent from the snapshot.
+        // Components that survive the undo/redo keep their blobs, avoiding a flash of invisible geometry.
+        const snapCompIds = new Set(snap.components.map(([id]) => id));
+        for (const [id, url] of this._meshBlobs) {
+            if (!snapCompIds.has(id)) {
+                URL.revokeObjectURL(url.split('#')[0]);
+                this._meshBlobs.delete(id);
+            }
+        }
         this._storeSTLBlob('chassis.stl', generateChassis(this._chassisParams));
         this._storeSTLBlob('wheel.stl',   generateWheel(this._wheelParams));
 
@@ -906,7 +897,7 @@ export class URDFBuildController {
         if (!this._robotName) return;
         let xml = this._insertComponents(
             this._applyGeometryPatches(
-                this._applyJointPatches(assembleXML(this._robotName, this._partMap))
+                this._applyJointPatches(assembleURDF(this._robotName, this._partMap))
             )
         );
 

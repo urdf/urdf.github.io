@@ -1,66 +1,64 @@
 import type { FloatPanelDefs, FPRow } from './build-sliders.js';
+import { $ } from './dom-utils.js';
 
 // ── Floating panel state ───────────────────────────────────────────────────
-// All three variables are intentionally unexported; callers use the accessor
-// functions below to read them and closeCurrentPanel() to close the panel.
 
-let _floatPanelSync: (() => void) | null = null;
-let _floatPanelInitVals: number[] | null = null;
-let _floatPanelInitSection: string | null = null;
+export class InspectorController {
+    private _floatPanelSync: (() => void) | null = null;
+    private _floatPanelInitVals: number[] | null = null;
+    private _floatPanelInitSection: string | null = null;
 
-// Injected at init time — avoids circular imports.
-let _getFloatPanelDefs: (() => FloatPanelDefs) | null = null;
-let _onPanelClose: ((title: string, changes: Array<{ label: string; unit: string; from: number; to: number }>) => void) | null = null;
-let _onGestureParamClear: (() => void) | null = null;
+    private readonly _getFloatPanelDefs: () => FloatPanelDefs;
+    private readonly _onPanelClose: (title: string, changes: Array<{ label: string; unit: string; from: number; to: number }>) => void;
+    private readonly _onGestureParamClear: () => void;
 
-export interface InspectorOptions {
-    getFloatPanelDefs: () => FloatPanelDefs;
-    onPanelClose: (title: string, changes: Array<{ label: string; unit: string; from: number; to: number }>) => void;
-    onGestureParamClear: () => void;
-}
-
-export function initInspector(opts: InspectorOptions): void {
-    _getFloatPanelDefs    = opts.getFloatPanelDefs;
-    _onPanelClose         = opts.onPanelClose;
-    _onGestureParamClear  = opts.onGestureParamClear;
-}
-
-export function getFloatPanelSync(): (() => void) | null {
-    return _floatPanelSync;
-}
-
-export function getFloatPanelInitSection(): string | null {
-    return _floatPanelInitSection;
-}
-
-export function getFloatPanelInitVals(): number[] | null {
-    return _floatPanelInitVals;
-}
-
-export function closeCurrentPanel(): void {
-    const host = document.getElementById('float-panels')!;
-    if (!host.hasChildNodes()) return;
-    if (_floatPanelInitVals && _floatPanelInitSection && _getFloatPanelDefs) {
-        const def = _getFloatPanelDefs()[_floatPanelInitSection];
-        if (def) {
-            const changes = def.rows
-                .map((row: FPRow, i: number) => ({ label: row.label, unit: row.unit, from: _floatPanelInitVals![i], to: row.get() }))
-                .filter((c: { from: number; to: number }) => Math.abs(c.from - c.to) >= 0.01);
-            if (changes.length > 0) _onPanelClose?.(def.title, changes);
-        }
+    constructor(opts: {
+        getFloatPanelDefs: () => FloatPanelDefs;
+        onPanelClose: (title: string, changes: Array<{ label: string; unit: string; from: number; to: number }>) => void;
+        onGestureParamClear: () => void;
+    }) {
+        this._getFloatPanelDefs   = opts.getFloatPanelDefs;
+        this._onPanelClose        = opts.onPanelClose;
+        this._onGestureParamClear = opts.onGestureParamClear;
     }
-    host.innerHTML = '';
-    _floatPanelSync = null;
-    _floatPanelInitVals = null;
-    _floatPanelInitSection = null;
-    _onGestureParamClear?.();
-}
 
-export function setFloatPanelSync(fn: (() => void) | null): void {
-    _floatPanelSync = fn;
-}
+    getFloatPanelSync(): (() => void) | null {
+        return this._floatPanelSync;
+    }
 
-export function setFloatPanelInitState(section: string, initVals: number[]): void {
-    _floatPanelInitSection = section;
-    _floatPanelInitVals    = initVals;
+    getFloatPanelInitSection(): string | null {
+        return this._floatPanelInitSection;
+    }
+
+    getFloatPanelInitVals(): number[] | null {
+        return this._floatPanelInitVals;
+    }
+
+    closeCurrentPanel(): void {
+        const host = $('float-panels');
+        if (!host.hasChildNodes()) return;
+        if (this._floatPanelInitVals && this._floatPanelInitSection) {
+            const def = this._getFloatPanelDefs()[this._floatPanelInitSection];
+            if (def) {
+                const changes = def.rows
+                    .map((row: FPRow, i: number) => ({ label: row.label, unit: row.unit, from: this._floatPanelInitVals![i], to: row.get() }))
+                    .filter((c: { from: number; to: number }) => Math.abs(c.from - c.to) >= 0.01);
+                if (changes.length > 0) this._onPanelClose(def.title, changes);
+            }
+        }
+        host.innerHTML = '';
+        this._floatPanelSync = null;
+        this._floatPanelInitVals = null;
+        this._floatPanelInitSection = null;
+        this._onGestureParamClear();
+    }
+
+    setFloatPanelSync(fn: (() => void) | null): void {
+        this._floatPanelSync = fn;
+    }
+
+    setFloatPanelInitState(section: string, initVals: number[]): void {
+        this._floatPanelInitSection = section;
+        this._floatPanelInitVals    = initVals;
+    }
 }

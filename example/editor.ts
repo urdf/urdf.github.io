@@ -1,6 +1,8 @@
 import type { URDFManipulator } from '../src/index.js';
 import type { TextBlock, ToolUseBlock, ToolResBlock, ContentBlock, Msg } from './ai-types.js';
 import { renderMd } from './ai-types.js';
+import { assembleURDF } from './urdf-assemble.js';
+import { parseSSE, appendUserBubble, appendAssistantBubble, appendSpinner, appendToolCard } from './ai-chat-ui.js';
 
 const LOCAL_PROXY        = 'http://127.0.0.1:7337/claude';
 const MODEL              = 'claude-sonnet-4-6';
@@ -384,12 +386,10 @@ export class URDFEditorController {
     }
 
     private _assembleFromCache(): string {
-        const sorted = this._partsList
-            .map(f => [f, this._partCache.get(this._partUrl(f)) ?? ''] as [string, string])
-            .sort(([a], [b]) => a.localeCompare(b));
-        const intro = sorted.filter(([k]) => k.startsWith('00')).map(([, v]) => v.trimEnd()).join('\n');
-        const body  = sorted.filter(([k]) => !k.startsWith('00')).map(([, v]) => v.trimEnd()).join('\n\n');
-        return `<?xml version="1.0"?>\n${intro}\n<robot name="${this._robotName}">\n\n${body}\n\n</robot>\n`;
+        return assembleURDF(
+            this._robotName,
+            this._partsList.map(f => [f, this._partCache.get(this._partUrl(f)) ?? ''] as [string, string]),
+        );
     }
 
     private _applyPartsRender(): void {
@@ -540,12 +540,12 @@ export class URDFEditorController {
             this._history = JSON.parse(raw) as Msg[];
             for (const msg of this._history) {
                 if (msg.role === 'user' && typeof msg.content === 'string') {
-                    this._appendUserBubble(msg.content);
+                    appendUserBubble(this._chatMsgsEl, msg.content);
                 } else if (msg.role === 'assistant') {
                     for (const b of msg.content as ContentBlock[]) {
-                        if (b.type === 'text' && b.text) this._appendAssistantBubble(b.text);
+                        if (b.type === 'text' && b.text) appendAssistantBubble(this._chatMsgsEl, b.text);
                         else if (b.type === 'tool_use' && TOOL_CARDS.has(b.name))
-                            this._appendToolCard(b.name).setResult(true);
+                            appendToolCard(this._chatMsgsEl, b.name).setResult(true);
                     }
                 }
             }
@@ -578,7 +578,7 @@ export class URDFEditorController {
         let noFollowUp = false;
         const results: ToolResBlock[] = [];
         for (const tc of toolCalls) {
-            const card = cardMap?.get(tc.id) ?? (TOOL_CARDS.has(tc.name) ? this._appendToolCard(tc.name) : null);
+            const card = cardMap?.get(tc.id) ?? (TOOL_CARDS.has(tc.name) ? appendToolCard(this._chatMsgsEl, tc.name) : null);
             const res  = await this._executeTool(tc.name, tc.input);
             const ok   = !(res as Record<string, unknown>).error;
             card?.setResult(ok);
@@ -592,7 +592,7 @@ export class URDFEditorController {
 
     private async _runLoop(): Promise<void> {
         while (true) {
-            const spinnerEl = this._appendSpinner();
+            const spinnerEl = appendSpinner(this._chatMsgsEl);
             const stream    = await this._callAPI();
             const { content, toolCalls, toolCards } = await this._processStream(stream, spinnerEl);
             this._history.push({ role: 'assistant', content });
@@ -615,7 +615,7 @@ export class URDFEditorController {
             if (e.name !== 'AbortError') {
                 this._sanitizeHistory();
                 this._saveHistory();
-                this._appendAssistantBubble(`\u26a0 ${e.message || 'Request failed'}`);
+                appendAssistantBubble(this._chatMsgsEl, `\u26a0 ${e.message || 'Request failed'}`);
             }
         } finally {
             this._abort          = null;
@@ -639,7 +639,7 @@ export class URDFEditorController {
 
     private async _runConversation(userText: string): Promise<void> {
         this._sanitizeHistory();
-        this._appendUserBubble(userText);
+        appendUserBubble(this._chatMsgsEl, userText);
         this._history.push({ role: 'user', content: userText });
         this._saveHistory();
 
@@ -787,7 +787,7 @@ Be concise. Use tools proactively.${briefNote}`;
             spinnerEl.remove();
         }
 
-        for await (const { event, data } of this._parseSSE(body)) {
+        for await (const { event, data } of parseSSE(body)) {
             const d = data as {
                 content_block?: { type: string; id?: string; name?: string };
                 delta?: { type: string; text?: string; partial_json?: string };
@@ -797,7 +797,7 @@ Be concise. Use tools proactively.${briefNote}`;
                 removeSpinner();
                 const cb = d.content_block;
                 if (cb?.type === 'text') {
-                    curMsgEl = this._appendAssistantBubble('');
+                    curMsgEl = appendAssistantBubble(this._chatMsgsEl, '');
                     curText  = '';
                     content.push({ type: 'text', text: '' });
                 } else if (cb?.type === 'tool_use') {
@@ -805,7 +805,7 @@ Be concise. Use tools proactively.${briefNote}`;
                     curJson = '';
                     content.push({ type: 'tool_use', id: cb.id!, name: cb.name!, input: {} });
                     if (TOOL_CARDS.has(cb.name!)) {
-                        toolCards.set(cb.id!, this._appendToolCard(cb.name!));
+                        toolCards.set(cb.id!, appendToolCard(this._chatMsgsEl, cb.name!));
                     }
                 }
             } else if (event === 'content_block_delta') {
@@ -921,51 +921,6 @@ Be concise. Use tools proactively.${briefNote}`;
         }
     }
 
-    private _appendChat(el: HTMLElement): void {
-        this._chatMsgsEl.appendChild(el);
-        this._chatMsgsEl.scrollTop = this._chatMsgsEl.scrollHeight;
-    }
-
-    private _appendUserBubble(text: string): void {
-        const div = document.createElement('div');
-        div.className   = 'chat-msg-user';
-        div.textContent = text;
-        this._appendChat(div);
-    }
-
-    private _appendAssistantBubble(html: string): HTMLElement {
-        const div = document.createElement('div');
-        div.className = 'chat-msg-assistant';
-        div.innerHTML  = renderMd(html);
-        this._appendChat(div);
-        return div;
-    }
-
-    private _appendSpinner(): HTMLElement {
-        const div = document.createElement('div');
-        div.className = 'chat-spinner';
-        div.innerHTML = '<span></span><span></span><span></span>';
-        this._appendChat(div);
-        return div;
-    }
-
-    private _appendToolCard(name: string): { setResult(ok: boolean): void } {
-        const card     = document.createElement('div');
-        card.className = 'chat-tool-card';
-        const nameEl   = document.createElement('span');
-        nameEl.className   = 'chat-tool-card-name';
-        nameEl.textContent = name;
-        const statusEl = document.createElement('span');
-        statusEl.className = 'chat-tool-card-status';
-        card.append(nameEl, statusEl);
-        this._appendChat(card);
-        return {
-            setResult(ok: boolean) {
-                statusEl.textContent = ok ? '✓' : '✕';
-                statusEl.classList.add(ok ? 'ok' : 'err');
-            },
-        };
-    }
 }
 
 function _indentXml(xml: string): string {

@@ -2,6 +2,7 @@ import type { URDFBuildController } from './build.js';
 import { LIBRARY } from '../src/generators/components/index.js';
 import type { TextBlock, ToolUseBlock, ToolResBlock, ContentBlock, Msg } from './ai-types.js';
 import { renderMd } from './ai-types.js';
+import { parseSSE, appendUserBubble, appendAssistantBubble, appendSpinner } from './ai-chat-ui.js';
 
 const LOCAL_PROXY = 'http://127.0.0.1:7337/claude'; // claude-local-proxy (npm i -g claude-local-proxy)
 const MODEL       = 'claude-sonnet-4-6';
@@ -1003,7 +1004,7 @@ Use tools to modify the robot. Prefer direct tool calls over lengthy explanation
 
     private async _runLoop(): Promise<void> {
         while (true) {
-            const spinner = this._appendSpinner();
+            const spinner = appendSpinner(this._messagesEl);
             const stream  = await this._callAPI();
             const result  = this._provider === 'github'
                 ? await this._processStreamOpenAI(stream, spinner)
@@ -1025,7 +1026,7 @@ Use tools to modify the robot. Prefer direct tool calls over lengthy explanation
             const e = err as Error;
             if (e.name !== 'AbortError') {
                 this._sanitizeHistory();
-                this._appendAssistantBubble(`\u26a0 ${e.message || 'Request failed'}`);
+                appendAssistantBubble(this._messagesEl, `\u26a0 ${e.message || 'Request failed'}`);
             }
         } finally {
             this._abortCtrl        = null;
@@ -1046,11 +1047,11 @@ Use tools to modify the robot. Prefer direct tool calls over lengthy explanation
         for (let i = 0; i < this._history.length; i++) {
             const msg = this._history[i];
             if (msg.role === 'user') {
-                if (typeof msg.content === 'string') this._appendUserBubble(msg.content);
+                if (typeof msg.content === 'string') appendUserBubble(this._messagesEl, msg.content);
             } else {
                 for (const block of msg.content as ContentBlock[]) {
                     if (block.type === 'text' && block.text) {
-                        this._appendAssistantBubble(block.text);
+                        appendAssistantBubble(this._messagesEl, block.text);
                     } else if (block.type === 'tool_use') {
                         const nextMsg = this._history[i + 1];
                         let result: unknown = { ok: true };
@@ -1069,7 +1070,7 @@ Use tools to modify the robot. Prefer direct tool calls over lengthy explanation
 
     private async _runConversation(userText: string): Promise<void> {
         this._sanitizeHistory();
-        this._appendUserBubble(userText);
+        appendUserBubble(this._messagesEl, userText);
         this._history.push({ role: 'user', content: userText });
         this._saveHistory();
         this._updateEmptyState();
@@ -1343,7 +1344,7 @@ Use tools to modify the robot. Prefer direct tool calls over lengthy explanation
 
             if (delta.content) {
                 removeSpinner();
-                if (!curMsgEl) { curMsgEl = this._appendAssistantBubble(''); curText = ''; }
+                if (!curMsgEl) { curMsgEl = appendAssistantBubble(this._messagesEl, ''); curText = ''; }
                 curText += delta.content;
                 if (!rafPending) {
                     rafPending = true;
@@ -1381,34 +1382,6 @@ Use tools to modify the robot. Prefer direct tool calls over lengthy explanation
         return { content, toolCalls, toolCards };
     }
 
-    // ── SSE parsing (identical to editor.ts) ─────────────────────────────────
-
-    private async *_parseSSE(
-        body: ReadableStream<Uint8Array>,
-    ): AsyncGenerator<{ event: string; data: unknown }> {
-        const reader  = body.getReader();
-        const decoder = new TextDecoder();
-        let buffer   = '';
-        let curEvent: string | null = null;
-
-        while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-            buffer += decoder.decode(value, { stream: true });
-            const lines = buffer.split('\n');
-            buffer = lines.pop()!;
-            for (const line of lines) {
-                if (line.startsWith('event: '))      curEvent = line.slice(7).trim();
-                else if (line.startsWith('data: ') && curEvent) {
-                    const raw = line.slice(6);
-                    if (raw === '[DONE]') return;
-                    try { yield { event: curEvent, data: JSON.parse(raw) }; } catch { /**/ }
-                    curEvent = null;
-                }
-            }
-        }
-    }
-
     private async _processStream(
         body: ReadableStream<Uint8Array>,
         spinnerEl: HTMLElement,
@@ -1429,7 +1402,7 @@ Use tools to modify the robot. Prefer direct tool calls over lengthy explanation
             spinnerEl.remove();
         };
 
-        for await (const { event, data } of this._parseSSE(body)) {
+        for await (const { event, data } of parseSSE(body)) {
             const d = data as {
                 content_block?: { type: string; id?: string; name?: string };
                 delta?: { type: string; text?: string; partial_json?: string };
@@ -1439,7 +1412,7 @@ Use tools to modify the robot. Prefer direct tool calls over lengthy explanation
                 removeSpinner();
                 const cb = d.content_block;
                 if (cb?.type === 'text') {
-                    curMsgEl = this._appendAssistantBubble('');
+                    curMsgEl = appendAssistantBubble(this._messagesEl, '');
                     curText  = '';
                     content.push({ type: 'text', text: '' });
                 } else if (cb?.type === 'tool_use') {
@@ -1494,34 +1467,11 @@ Use tools to modify the robot. Prefer direct tool calls over lengthy explanation
         this._messagesEl.scrollTop = this._messagesEl.scrollHeight;
     }
 
-    private _appendUserBubble(text: string): void {
-        const div = document.createElement('div');
-        div.className   = 'chat-msg-user';
-        div.textContent = text;
-        this._appendChat(div);
-    }
-
-    private _appendAssistantBubble(html: string): HTMLElement {
-        const div = document.createElement('div');
-        div.className = 'chat-msg-assistant';
-        div.innerHTML  = renderMd(html);
-        this._appendChat(div);
-        return div;
-    }
-
     private _appendSystemMsg(text: string): void {
         const div = document.createElement('div');
         div.className   = 'chat-msg-system';
         div.textContent = text;
         this._appendChat(div);
-    }
-
-    private _appendSpinner(): HTMLElement {
-        const div = document.createElement('div');
-        div.className = 'chat-spinner';
-        div.innerHTML = '<span></span><span></span><span></span>';
-        this._appendChat(div);
-        return div;
     }
 
     private _appendToolCard(name: string): ToolCardHandle {
