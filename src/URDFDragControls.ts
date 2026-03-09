@@ -148,7 +148,7 @@ export class PointerURDFDragControls extends URDFDragControls {
     private _downY = 0;
     private _dragCommitted = false;
 
-    // Dwell-to-grab: cursor must be stationary for 300 ms before a joint grab is allowed.
+    // Dwell-to-grab: cursor must be stationary for 150 ms before a joint grab is allowed.
     // Quick left-drags (orbit intent) never accumulate enough dwell, so OrbitControls handles them.
     private _readyToGrab = false;
     private _readyToGrabAtDown = false;
@@ -203,7 +203,7 @@ export class PointerURDFDragControls extends URDFDragControls {
                     this._dwellTimer = window.setTimeout(() => {
                         this._dwellTimer = 0;
                         this._readyToGrab = true;
-                    }, 300);
+                    }, 150);
                 }
             }
 

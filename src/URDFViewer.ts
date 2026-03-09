@@ -149,9 +149,10 @@ export class URDFViewer extends HTMLElement {
         this.camera.position.set(-5.5, 3.5, 5.5);
 
         this.controls = new OrbitControls(this.camera, this.renderer.domElement);
-        this.controls.rotateSpeed = 2;
-        this.controls.zoomSpeed = 5;
-        this.controls.panSpeed = 2;
+        this.controls.rotateSpeed = 1;
+        this.controls.zoomSpeed = 2;
+        this.controls.panSpeed = 1.5;
+        this.controls.dampingFactor = 0.08;
         this.controls.maxDistance = 50;
         this.controls.minDistance = 0.25;
         this.controls.addEventListener('change', () => this.redraw());

@@ -77,22 +77,24 @@ function buildJointPanel(): void {
         const row = document.createElement('div');
         row.className = 'joint-row';
 
+        const isPrismatic = joint.jointType === 'prismatic';
+        const displayScale = isPrismatic ? 1 : 1 / DEG_TO_RAD; // show degrees for rotary joints
+
         const slider = document.createElement('input');
         slider.type = 'range';
-        slider.step = '0.001';
+        slider.step = isPrismatic ? '0.001' : '0.01';
 
         const number = document.createElement('input');
         number.type = 'number';
-        number.step = '0.001';
+        number.step = isPrismatic ? '0.001' : '0.1'; // degrees for rotary
 
         const ticks = document.createElement('div');
         ticks.className = 'joint-ticks';
         const tickLo = document.createElement('span');
+        const tickMid = document.createElement('span');
+        tickMid.className = 'joint-tick-mid';
         const tickHi = document.createElement('span');
-        ticks.append(tickLo, tickHi);
-
-        const isPrismatic = joint.jointType === 'prismatic';
-        const displayScale = isPrismatic ? 1 : 1 / DEG_TO_RAD; // show degrees for rotary joints
+        ticks.append(tickLo, tickMid, tickHi);
 
         el.update = () => {
             const continuous = joint.jointType === 'continuous';
@@ -108,6 +110,15 @@ function buildJointPanel(): void {
             const hiD = +(hi * displayScale).toFixed(1);
             tickLo.textContent = isPrismatic ? `${loD} m` : `${loD}°`;
             tickHi.textContent = isPrismatic ? `${hiD} m` : `${hiD}°`;
+            // Center tick: show "0" only when range spans zero and joint is not continuous
+            if (!continuous && lo < 0 && hi > 0) {
+                const pct = (-lo / (hi - lo)) * 100;
+                tickMid.textContent = isPrismatic ? '0 m' : '0°';
+                tickMid.style.left = `${pct.toFixed(1)}%`;
+                tickMid.hidden = false;
+            } else {
+                tickMid.hidden = true;
+            }
         };
 
         slider.addEventListener('input', () => {
