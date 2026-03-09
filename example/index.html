@@ -22,7 +22,7 @@
     ></div>
     <div class="panel-header">
       <div class="panel-tabs" role="tablist">
-        <button type="button" class="tab-btn" data-tab="inspect" id="tab-robot" role="tab" aria-selected="true" aria-label="Inspect" title="Inspect">
+        <button type="button" class="tab-btn" data-tab="inspect" id="tab-inspect" role="tab" aria-selected="true" aria-label="Inspect" title="Inspect">
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/>
             <path d="M2 14h2"/><path d="M20 14h2"/>
@@ -60,7 +60,7 @@
         </label>
       </div>
 
-      <details id="gesture-section" class="build-section">
+      <details id="gesture-section" class="info-section">
         <summary>Gestures</summary>
         <div class="build-section-body">
           <div class="gesture-grid">
@@ -154,7 +154,7 @@
         <div id="build-active-header" class="build-active-header" hidden>
           <span id="build-active-name" class="build-active-name"></span>
           <button type="button" id="build-shortcuts-toggle" class="icon-btn" title="Keyboard shortcuts">?</button>
-          <button type="button" id="build-clear-custom" class="build-remove-btn" title="Delete saved custom robot" hidden>×</button>
+          <button type="button" id="build-clear-custom" class="build-danger-btn" title="Delete saved custom robot" hidden>🗑</button>
         </div>
         <div id="build-inspector" hidden>
           <div class="build-inspector-header">
@@ -180,7 +180,7 @@
           </div>
           <div class="build-new-actions">
             <button type="button" id="build-new-create" class="build-export-btn">Create Robot</button>
-            <button type="button" id="build-saved-toggle" class="build-export-btn" hidden title="Saved robots">☰ Saved</button>
+            <button type="button" id="build-saved-toggle" class="build-secondary-btn" hidden title="Saved robots" aria-expanded="false">☰ Saved</button>
           </div>
           <div id="build-saved-list" hidden></div>
         </div>
@@ -189,21 +189,21 @@
           <details class="build-section" data-panel="chassis">
             <summary>Chassis <button type="button" class="build-section-detach" title="Open as floating panel">⊡</button></summary>
             <div class="build-section-body">
-              <div class="build-param joint">
+              <div class="build-param">
                 <div class="joint-name">Thickness <span class="unit">mm</span></div>
                 <div class="joint-row">
                   <input type="range"  id="build-chassis-thickness" min="1" max="10" step="0.5" value="3">
                   <input type="number" id="build-chassis-thickness-num" min="1" max="10" step="0.5" value="3">
                 </div>
               </div>
-              <div class="build-param joint">
+              <div class="build-param">
                 <div class="joint-name">Body width <span class="unit">mm × 2</span></div>
                 <div class="joint-row">
                   <input type="range"  id="build-chassis-body-hw" min="40" max="90" step="1" value="62">
                   <input type="number" id="build-chassis-body-hw-num" min="40" max="90" step="1" value="62">
                 </div>
               </div>
-              <div class="build-param joint">
+              <div class="build-param">
                 <div class="joint-name">Rear width <span class="unit">mm × 2</span></div>
                 <div class="joint-row">
                   <input type="range"  id="build-chassis-rear-hw" min="85" max="130" step="1" value="95">
@@ -216,14 +216,14 @@
           <details class="build-section" data-panel="wheels">
             <summary>Wheels <button type="button" class="build-section-detach" title="Open as floating panel">⊡</button></summary>
             <div class="build-section-body">
-              <div class="build-param joint">
+              <div class="build-param">
                 <div class="joint-name">Radius <span class="unit">mm</span></div>
                 <div class="joint-row">
                   <input type="range"  id="build-wheel-radius" min="20" max="50" step="0.5" value="32.5">
                   <input type="number" id="build-wheel-radius-num" min="20" max="50" step="0.5" value="32.5">
                 </div>
               </div>
-              <div class="build-param joint">
+              <div class="build-param">
                 <div class="joint-name">Width <span class="unit">mm</span></div>
                 <div class="joint-row">
                   <input type="range"  id="build-wheel-width" min="8" max="30" step="1" value="26">
@@ -236,14 +236,14 @@
           <details class="build-section" data-panel="caster">
             <summary>Caster <button type="button" class="build-section-detach" title="Open as floating panel">⊡</button></summary>
             <div class="build-section-body">
-              <div class="build-param joint">
+              <div class="build-param">
                 <div class="joint-name">Radius <span class="unit">mm</span></div>
                 <div class="joint-row">
                   <input type="range"  id="build-caster-radius" min="8" max="25" step="0.5" value="14.6">
                   <input type="number" id="build-caster-radius-num" min="8" max="25" step="0.5" value="14.6">
                 </div>
               </div>
-              <div class="build-param joint">
+              <div class="build-param">
                 <div class="joint-name">Width <span class="unit">mm</span></div>
                 <div class="joint-row">
                   <input type="range"  id="build-caster-width" min="5" max="25" step="0.5" value="14.5">
@@ -256,21 +256,21 @@
           <details class="build-section" data-panel="battery">
             <summary>Battery Box <button type="button" class="build-section-detach" title="Open as floating panel">⊡</button></summary>
             <div class="build-section-body">
-              <div class="build-param joint">
+              <div class="build-param">
                 <div class="joint-name">Length <span class="unit">mm</span></div>
                 <div class="joint-row">
                   <input type="range"  id="build-battery-l" min="40" max="120" step="1" value="80.6">
                   <input type="number" id="build-battery-l-num" min="40" max="120" step="1" value="80.6">
                 </div>
               </div>
-              <div class="build-param joint">
+              <div class="build-param">
                 <div class="joint-name">Width <span class="unit">mm</span></div>
                 <div class="joint-row">
                   <input type="range"  id="build-battery-w" min="25" max="80" step="1" value="44.2">
                   <input type="number" id="build-battery-w-num" min="25" max="80" step="1" value="44.2">
                 </div>
               </div>
-              <div class="build-param joint">
+              <div class="build-param">
                 <div class="joint-name">Height <span class="unit">mm</span></div>
                 <div class="joint-row">
                   <input type="range"  id="build-battery-h" min="15" max="50" step="1" value="22">
@@ -283,14 +283,14 @@
           <details class="build-section" data-panel="powerbank">
             <summary>Power Bank <button type="button" class="build-section-detach" title="Open as floating panel">⊡</button></summary>
             <div class="build-section-body">
-              <div class="build-param joint">
+              <div class="build-param">
                 <div class="joint-name">Radius <span class="unit">mm</span></div>
                 <div class="joint-row">
                   <input type="range"  id="build-powerbank-r" min="8" max="25" step="0.5" value="11.5">
                   <input type="number" id="build-powerbank-r-num" min="8" max="25" step="0.5" value="11.5">
                 </div>
               </div>
-              <div class="build-param joint">
+              <div class="build-param">
                 <div class="joint-name">Length <span class="unit">mm</span></div>
                 <div class="joint-row">
                   <input type="range"  id="build-powerbank-l" min="50" max="200" step="1" value="119.9">

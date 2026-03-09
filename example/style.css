@@ -304,6 +304,38 @@
     .build-export-btn:active { transform: scale(0.98); }
     .build-export-btn:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
 
+    /* Secondary/outline button — toggles state but does not submit/create */
+    .build-secondary-btn {
+      display: block;
+      width: 100%;
+      padding: 8px 0;
+      background: none;
+      color: var(--blue-text);
+      border: 1px solid var(--blue);
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      letter-spacing: 0.02em;
+    }
+    .build-secondary-btn:hover  { background: var(--blue-bg); }
+    .build-secondary-btn:active { transform: scale(0.98); }
+    .build-secondary-btn:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+
+    /* Destructive action button — muted red to signal irreversible action */
+    .build-danger-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 14px;
+      line-height: 1;
+      padding: 0 4px;
+      border-radius: 3px;
+      color: rgba(255, 69, 58, 0.6);
+    }
+    .build-danger-btn:hover { color: var(--red); background: var(--surface-hover); }
+    .build-danger-btn:focus-visible { outline: 2px solid var(--red); outline-offset: 2px; }
+
     /* ── Build panel: extracted inline styles ───────────────────────────── */
 
     .build-active-header {
@@ -423,7 +455,10 @@
     /* ── Parametric accordions ────────────────────────────────────────────── */
     .build-section { border-top: 1px solid var(--border); }
 
-    .build-section > summary {
+    /* .info-section shares accordion structure but is semantically distinct */
+    .info-section { border-top: 1px solid var(--border); }
+
+    :is(.build-section, .info-section) > summary {
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -437,16 +472,16 @@
       user-select: none;
       list-style: none;
     }
-    .build-section > summary::-webkit-details-marker { display: none; }
-    .build-section > summary::after {
+    :is(.build-section, .info-section) > summary::-webkit-details-marker { display: none; }
+    :is(.build-section, .info-section) > summary::after {
       content: '›';
       font-size: 0.875rem;
       color: var(--text-3);
       flex-shrink: 0;
       transition: transform 0.15s;
     }
-    .build-section[open] > summary::after { transform: rotate(90deg); }
-    .build-section > summary:hover { background: var(--surface-hover); }
+    :is(.build-section, .info-section)[open] > summary::after { transform: rotate(90deg); }
+    :is(.build-section, .info-section) > summary:hover { background: var(--surface-hover); }
 
     .build-section-body { padding-bottom: 4px; }
 
@@ -1282,7 +1317,7 @@
 
     /* ── Gesture cheat sheet ─────────────────────────────────────────────── */
 
-    /* Override .build-section border direction: gesture section sits above physics bar */
+    /* Override .info-section border direction: gesture section sits above physics bar */
     #gesture-section { border-top: none; border-bottom: 1px solid var(--border); }
 
     /* ── Editor tab content ──────────────────────────────────────────────── */

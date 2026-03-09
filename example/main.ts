@@ -61,12 +61,12 @@ function _setActiveTab(id: string): void {
         btn.setAttribute('aria-selected', btn.id === id ? 'true' : 'false');
 }
 
-$('tab-robot').addEventListener('click', () => {
+$('tab-inspect').addEventListener('click', () => {
     editorCtrl.close();
     buildCtrl.close();
     _buildGrid.visible = false;
     _viewportGrid.visible = true;
-    _setActiveTab('tab-robot');
+    _setActiveTab('tab-inspect');
 });
 $('tab-editor').addEventListener('click', () => {
     buildCtrl.close();
@@ -133,7 +133,56 @@ fetch('/robots/catalog.json')
         }));
     });
 
-document.addEventListener('keydown', (e) => {
+document.addEventListener('keydown', (e: KeyboardEvent) => {
+    // ── Build-mode keys ───────────────────────────────────────────────────
+    if (buildCtrl.isActive) {
+        if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) { e.preventDefault(); buildCtrl.undo(); }
+        if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) { e.preventDefault(); buildCtrl.redo(); }
+
+        const selId = crudCtrl.getBuildSelCompId();
+        if (selId && (e.key === 'Delete' || e.key === 'Backspace') && !e.ctrlKey && !e.metaKey) {
+            const el = document.activeElement as HTMLElement;
+            if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable) return;
+            e.preventDefault();
+            const card = buildComponentsListEl.querySelector<HTMLElement>(`[data-id="${selId}"]`);
+            buildCtrl.removeComponent(selId);
+            crudCtrl.deselectComp();
+            crudCtrl.removeOptionFromParentSelects(selId);
+            card?.remove();
+            refreshPaletteCounts();
+            return;
+        }
+
+        if (e.key === 'Escape' && crudCtrl.getBuildSelCompId()) {
+            const el = document.activeElement as HTMLElement;
+            if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') return;
+            crudCtrl.deselectComp();
+            return;
+        }
+
+        if (selId && ['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.key) && !e.ctrlKey && !e.metaKey) {
+            e.preventDefault();
+            const c = buildCtrl.getComponentData(selId);
+            if (!c) return;
+            const d = 0.001;
+            let { x, y, z } = c;
+            if (e.shiftKey) {
+                if (e.key === 'ArrowUp')   z += d;
+                if (e.key === 'ArrowDown') z -= d;
+            } else {
+                if (e.key === 'ArrowLeft')  y += d;
+                if (e.key === 'ArrowRight') y -= d;
+                if (e.key === 'ArrowUp')    x -= d;
+                if (e.key === 'ArrowDown')  x += d;
+            }
+            buildCtrl.updateComponent(selId, { x, y, z });
+            const inp = crudCtrl.componentInputs.get(selId);
+            if (inp) { inp['x'].value = x.toFixed(4); inp['y'].value = y.toFixed(4); inp['z'].value = z.toFixed(4); }
+            return;
+        }
+    }
+
+    // ── Robot carousel navigation (ArrowLeft / ArrowRight) ────────────────
     if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
     const el = document.activeElement as HTMLElement;
     if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable) return;
@@ -560,52 +609,6 @@ buildCtrl.onDOMRebuild = () => {
 
 buildInspClose.addEventListener('click', () => crudCtrl.deselectComp());
 
-document.addEventListener('keydown', (e: KeyboardEvent) => {
-    if (!buildCtrl.isActive) return;
-    if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) { e.preventDefault(); buildCtrl.undo(); }
-    if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) { e.preventDefault(); buildCtrl.redo(); }
-
-    const selId = crudCtrl.getBuildSelCompId();
-    if (selId && (e.key === 'Delete' || e.key === 'Backspace') && !e.ctrlKey && !e.metaKey) {
-        const el = document.activeElement as HTMLElement;
-        if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable) return;
-        e.preventDefault();
-        const card = buildComponentsListEl.querySelector<HTMLElement>(`[data-id="${selId}"]`);
-        buildCtrl.removeComponent(selId);
-        crudCtrl.deselectComp();
-        crudCtrl.removeOptionFromParentSelects(selId);
-        card?.remove();
-        refreshPaletteCounts();
-        return;
-    }
-
-    if (e.key === 'Escape' && crudCtrl.getBuildSelCompId()) {
-        const el = document.activeElement as HTMLElement;
-        if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') return;
-        crudCtrl.deselectComp();
-        return;
-    }
-
-    if (selId && ['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.key) && !e.ctrlKey && !e.metaKey) {
-        e.preventDefault();
-        const c = buildCtrl.getComponentData(selId);
-        if (!c) return;
-        const d = 0.001;
-        let { x, y, z } = c;
-        if (e.shiftKey) {
-            if (e.key === 'ArrowUp')   z += d;
-            if (e.key === 'ArrowDown') z -= d;
-        } else {
-            if (e.key === 'ArrowLeft')  y += d;
-            if (e.key === 'ArrowRight') y -= d;
-            if (e.key === 'ArrowUp')    x -= d;
-            if (e.key === 'ArrowDown')  x += d;
-        }
-        buildCtrl.updateComponent(selId, { x, y, z });
-        const inp = crudCtrl.componentInputs.get(selId);
-        if (inp) { inp['x'].value = x.toFixed(4); inp['y'].value = y.toFixed(4); inp['z'].value = z.toFixed(4); }
-    }
-});
 
 buildExportBtn.addEventListener('click', () => void buildCtrl.exportZip(buildExportBtn));
 
@@ -629,13 +632,16 @@ buildNewCreateBtn.addEventListener('click', () => {
 });
 
 buildSavedToggleBtn.addEventListener('click', () => {
-    buildSavedListEl.hidden = !buildSavedListEl.hidden;
+    const next = buildSavedListEl.hidden;
+    buildSavedListEl.hidden = !next;
+    buildSavedToggleBtn.setAttribute('aria-expanded', String(next));
 });
 
 buildClearCustomBtn.addEventListener('click', () => {
     buildCtrl.deleteCustom(buildCtrl.robotName);
     buildActiveHeaderEl.hidden = true;
     buildSavedListEl.hidden = true;
+    buildSavedToggleBtn.setAttribute('aria-expanded', 'false');
     robotCarousel.refreshSavedList();
 });
 

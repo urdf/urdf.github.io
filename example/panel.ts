@@ -45,7 +45,6 @@ interface ResizeHandleOptions {
     minW:         number;
     maxW:         () => number;
     dirSign:      1 | -1;       // +1: drag right = wider; -1: drag left = wider
-    ariaMax:      number;
     tooltip:      HTMLElement;  // element to show width while dragging
 }
 
@@ -144,7 +143,6 @@ makeResizeHandle({
     minW:       260,
     maxW:       () => Math.min(700, window.innerWidth * 0.6),
     dirSign:    1,
-    ariaMax:    700,
     tooltip:    resizeTooltip,
 });
 
@@ -159,7 +157,6 @@ makeResizeHandle({
     minW:       260,
     maxW:       () => Math.min(600, window.innerWidth * 0.6),
     dirSign:    -1,
-    ariaMax:    600,
     tooltip:    resizeTooltip,
 });
 

@@ -92,7 +92,7 @@ export class RobotCarousel {
         const { buildCtrl, buildSavedToggleBtn, buildSavedListEl, crudCtrl, syncSlidersFromController, refreshPaletteCounts } = this._opts;
         const names = URDFBuildController.savedCustomNames();
         buildSavedToggleBtn.hidden = names.length === 0;
-        if (names.length === 0) { buildSavedListEl.hidden = true; return; }
+        if (names.length === 0) { buildSavedListEl.hidden = true; buildSavedToggleBtn.setAttribute('aria-expanded', 'false'); return; }
 
         buildSavedListEl.innerHTML = '';
         for (const name of names) {
@@ -117,6 +117,7 @@ export class RobotCarousel {
                 $<HTMLButtonElement>('tab-build').click();
                 this.refreshBuildHeader();
                 buildSavedListEl.hidden = true;
+                buildSavedToggleBtn.setAttribute('aria-expanded', 'false');
             });
 
             const delBtn = document.createElement('button');
