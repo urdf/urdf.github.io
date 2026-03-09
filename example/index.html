@@ -47,12 +47,12 @@
 
     <div class="tab-body" data-tab="inspect">
       <div class="section options-bar">
-        <label class="option"><input type="checkbox" id="ignore-limits" /> Ignore limits</label>
+        <label class="option"><input type="checkbox" id="ignore-limits" /> Unlock joints</label>
         <label class="option"><input type="checkbox" id="show-collision" /> Collision</label>
         <label class="option"><input type="checkbox" id="display-shadow" /> Shadow</label>
         <label class="option">Up
           <select id="up-axis">
-            <option value="+Z">+Z (ROS)</option>
+            <option value="+Z">+Z</option>
             <option value="-Z">−Z</option>
             <option value="+Y">+Y</option>
             <option value="-Y">−Y</option>
@@ -95,6 +95,7 @@
           </div>
           <div class="inspector-part-name" id="inspector-name"></div>
           <div class="inspector-fields">
+            <div class="inspector-group-label">Position</div>
             <div class="inspector-row">
               <label>X</label>
               <input type="number" id="inspector-x" step="0.001"/>
@@ -107,16 +108,17 @@
               <label>Z</label>
               <input type="number" id="inspector-z" step="0.001"/>
             </div>
+            <div class="inspector-group-label">Scale</div>
             <div class="inspector-row">
-              <label>Sx</label>
+              <label>X</label>
               <input type="number" id="inspector-scale-x" step="0.01" min="0.01" value="1"/>
             </div>
             <div class="inspector-row">
-              <label>Sy</label>
+              <label>Y</label>
               <input type="number" id="inspector-scale-y" step="0.01" min="0.01" value="1"/>
             </div>
             <div class="inspector-row">
-              <label>Sz</label>
+              <label>Z</label>
               <input type="number" id="inspector-scale-z" step="0.01" min="0.01" value="1"/>
             </div>
           </div>
@@ -197,14 +199,14 @@
                 </div>
               </div>
               <div class="build-param">
-                <div class="joint-name">Body width <span class="unit">mm × 2</span></div>
+                <div class="joint-name">Body half-width <span class="unit">mm</span></div>
                 <div class="joint-row">
                   <input type="range"  id="build-chassis-body-hw" min="40" max="90" step="1" value="62">
                   <input type="number" id="build-chassis-body-hw-num" min="40" max="90" step="1" value="62">
                 </div>
               </div>
               <div class="build-param">
-                <div class="joint-name">Rear width <span class="unit">mm × 2</span></div>
+                <div class="joint-name">Rear half-width <span class="unit">mm</span></div>
                 <div class="joint-row">
                   <input type="range"  id="build-chassis-rear-hw" min="85" max="130" step="1" value="95">
                   <input type="number" id="build-chassis-rear-hw-num" min="85" max="130" step="1" value="95">
@@ -303,12 +305,9 @@
 
         <div class="build-palette-header">
           <span class="section-label">Add Component</span>
-          <span id="build-comp-count" class="build-comp-count"></span>
         </div>
         <div class="component-palette" id="build-palette"></div>
-        <div id="build-components-list">
-          <p id="build-comp-empty" class="build-comp-empty" hidden>No components yet. Click a type above to add one.</p>
-        </div>
+        <div id="build-components-list"></div>
 
         <details class="build-section" id="library-section">
           <summary>Library</summary>
@@ -339,7 +338,7 @@
         <div class="build-footer-row">
           <button id="build-undo" class="build-action-btn" title="Undo (Ctrl+Z)" disabled>Undo</button>
           <button id="build-redo" class="build-action-btn" title="Redo (Ctrl+Y)" disabled>Redo</button>
-          <button id="build-reset" class="build-action-btn" title="Reset to defaults">Reset</button>
+          <button id="build-reset" class="build-action-btn build-reset-btn" title="Reset to defaults">Reset</button>
         </div>
         <div class="build-footer-row">
           <button id="build-export" class="build-export-btn">Download .zip</button>
@@ -369,22 +368,12 @@
       </div>
     </div>
     <div id="chat-github-bar" class="chat-github-bar" hidden></div>
-    <div id="chat-proxy-bar" class="chat-proxy-bar" hidden>Local proxy active · no API key needed</div>
+    <div id="chat-proxy-bar" class="chat-proxy-bar" hidden>Local proxy active · no API key needed<button type="button" class="chat-proxy-dismiss" aria-label="Dismiss" onclick="this.parentElement.hidden=true">×</button></div>
     <div id="chat-apikey-bar" class="chat-apikey-bar" hidden></div>
     <div id="chat-context-bar" hidden></div>
     <div class="chat-pane">
       <div class="chat-messages" id="chat-messages" aria-live="polite" aria-label="AI conversation"></div>
       <div id="chat-empty-state" class="chat-empty-state" style="display:none" aria-hidden="true">
-        <svg class="chat-empty-robot" xmlns="http://www.w3.org/2000/svg" width="56" height="56"
-             viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
-             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <path d="M12 8V4H8"/>
-          <rect width="16" height="12" x="4" y="8" rx="2"/>
-          <path d="M2 14h2"/>
-          <path d="M20 14h2"/>
-          <path d="M15 13v2"/>
-          <path d="M9 13v2"/>
-        </svg>
         <button type="button" class="chat-guide-card" id="chat-guide-start">
           <span class="chat-guide-card-title">Guided Assembly</span>
           <span class="chat-guide-card-desc">Step-by-step build with 3D highlights</span>

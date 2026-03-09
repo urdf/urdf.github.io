@@ -541,8 +541,8 @@ const buildActiveNameEl     = $('build-active-name');
 const buildClearCustomBtn   = $<HTMLButtonElement>('build-clear-custom');
 const buildShortcutsToggle  = $<HTMLButtonElement>('build-shortcuts-toggle');
 const buildShortcutsEl      = $('build-shortcuts');
-const buildCompCountEl      = $('build-comp-count');
-const buildCompEmptyEl      = $('build-comp-empty');
+const buildCompCountEl      = document.getElementById('build-comp-count');
+const buildCompEmptyEl      = document.getElementById('build-comp-empty') as HTMLElement | null;
 const buildInspEl           = $('build-inspector');
 const buildInspTitle        = $('build-inspector-title');
 const buildInspBody         = $('build-inspector-body');
@@ -665,8 +665,8 @@ function refreshPaletteCounts(): void {
         badge.style.display = n > 0 ? 'inline' : 'none';
     }
     const total = entries.length;
-    buildCompCountEl.textContent = total > 0 ? `${total} added` : '';
-    buildCompEmptyEl.hidden = total > 0 || !buildCtrl.isCatalogActive;
+    if (buildCompCountEl) buildCompCountEl.textContent = total > 0 ? `${total} added` : '';
+    if (buildCompEmptyEl) buildCompEmptyEl.hidden = total > 0 || !buildCtrl.isCatalogActive;
 }
 
 // ── Robot carousel ─────────────────────────────────────────────────────────

@@ -10,6 +10,10 @@
       --text-1:        #e2e8f0;
       --text-2:        #94a3b8;
       --text-3:        #64748b;
+      /* --label: passive non-interactive labels (section headers, group labels) */
+      --label:         #4e6074;
+      /* --control-muted: interactive controls in resting/unselected state */
+      --control-muted: #64748b;
       --blue:          #3b82f6;
       --blue-hover:    #2563eb;
       --blue-bg:       rgba(59, 130, 246, 0.15);
@@ -35,6 +39,8 @@
         --text-1:        #1c1c1e;
         --text-2:        #3c3c43;
         --text-3:        #8e8e93;
+        --label:         #aeaeb2;
+        --control-muted: #8e8e93;
         --blue:          #2563eb;
         --blue-hover:    #1d4ed8;
         --blue-bg:       rgba(37, 99, 235, 0.1);
@@ -133,6 +139,24 @@
       transition: width 0.12s, background 0.12s;
     }
 
+    /* Gripper dots — visible at rest to signal draggability */
+    .panel-resize-handle::before {
+      content: '';
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      width: 3px;
+      height: 24px;
+      background-image: radial-gradient(circle, var(--text-3) 1px, transparent 1px);
+      background-size: 3px 6px;
+      opacity: 0.5;
+      transition: opacity 0.12s;
+    }
+
+    .panel-resize-handle:hover::before,
+    .panel-resize-handle.dragging::before { opacity: 0; }
+
     .panel-resize-handle:hover::after,
     .panel-resize-handle.dragging::after { width: 2px; background: rgba(59, 130, 246, 0.6); }
     .panel-resize-handle.dragging::after { background: var(--blue); }
@@ -160,7 +184,7 @@
       border-radius: 8px;
       padding: 6px 4px;
       height: auto;
-      color: var(--text-3);
+      color: var(--control-muted);
       cursor: pointer;
       transition: color 0.12s, background 0.12s;
       display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
@@ -177,9 +201,9 @@
     }
 
     .tab-btn[data-tab="inspect"] { color: var(--blue-text); background: var(--blue-bg); }
-    body.editor-open .tab-btn[data-tab="inspect"]  { color: var(--text-3); background: none; }
+    body.editor-open .tab-btn[data-tab="inspect"]  { color: var(--control-muted); background: none; }
     body.editor-open .tab-btn[data-tab="editor"]   { color: var(--blue-text); background: var(--blue-bg); }
-    body.build-open  .tab-btn[data-tab="inspect"]  { color: var(--text-3);   background: none; }
+    body.build-open  .tab-btn[data-tab="inspect"]  { color: var(--control-muted); background: none; }
     body.build-open  .tab-btn[data-tab="build"]    { color: var(--blue-text); background: var(--blue-bg); }
     body.build-open  .tab-body[data-tab="inspect"] { display: none; }
     body.build-open  .tab-body[data-tab="build"]   { display: flex; }
@@ -280,7 +304,7 @@
 
     .build-group-label {
       font-size: 0.6875rem;
-      color: var(--text-3);
+      color: var(--label);
       text-transform: uppercase;
       letter-spacing: 0.06em;
       padding: 4px 0 1px;
@@ -407,9 +431,6 @@
     }
     .build-palette-header .section-label { padding: 0; }
 
-    .build-comp-count { font-size: 0.6875rem; color: var(--text-3); }
-
-    .build-comp-empty { font-size: 0.6875rem; color: var(--text-3); padding: 6px 12px; margin: 0; }
 
     /* ── Build sticky footer ──────────────────────────────────────────────── */
     .build-footer {
@@ -427,7 +448,7 @@
     #build-export { flex: 2; }
     #build-copy-urdf { flex: 1; }
 
-    /* ── Build action buttons (undo / redo / reset) ──────────────────────── */
+    /* ── Build action buttons (undo / redo) ───────────────────────────────── */
     .build-action-btn {
       background: none;
       border: 1px solid var(--border);
@@ -443,6 +464,18 @@
     .build-action-btn:active { transform: scale(0.94); }
     .build-action-btn:disabled { opacity: 0.35; cursor: default; }
     .build-action-btn:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+
+    /* Reset is destructive — muted red border distinguishes it from Undo/Redo */
+    .build-reset-btn {
+      color: rgba(255, 69, 58, 0.7);
+      border-color: rgba(255, 69, 58, 0.25);
+    }
+    .build-reset-btn:hover:not(:disabled) {
+      color: var(--red);
+      border-color: rgba(255, 69, 58, 0.6);
+      background: rgba(255, 69, 58, 0.07);
+    }
+    .build-reset-btn:focus-visible { outline-color: var(--red); }
 
     /* ── Build new-robot form layout ─────────────────────────────────────── */
     .build-name-row  { margin-bottom: 6px; }
@@ -465,7 +498,7 @@
       padding: 9px 12px;
       font-size: 0.625rem;
       font-weight: 700;
-      color: var(--text-3);
+      color: var(--label);
       text-transform: uppercase;
       letter-spacing: 0.08em;
       cursor: pointer;
@@ -476,7 +509,7 @@
     :is(.build-section, .info-section) > summary::after {
       content: '›';
       font-size: 0.875rem;
-      color: var(--text-3);
+      color: var(--label);
       flex-shrink: 0;
       transition: transform 0.15s;
     }
@@ -671,7 +704,7 @@
     .section-label {
       font-size: 0.625rem;
       font-weight: 700;
-      color: var(--text-3);
+      color: var(--label);
       letter-spacing: 0.08em;
       text-transform: uppercase;
       padding: 10px 12px 4px;
@@ -891,10 +924,9 @@
     .gesture-tile {
       display: flex; flex-direction: column; align-items: center;
       gap: 4px; padding: 8px 4px 6px;
-      background: var(--surface); border: 1px solid var(--border);
+      background: none; border: none;
       border-radius: 8px; font-size: 9px; line-height: 1.2;
-      color: var(--text-3); text-align: center;
-      transition: border-color 0.12s, background 0.12s;
+      color: var(--label); text-align: center;
     }
 
     .gesture-tile-icon { font-size: 1.25rem; line-height: 1; }
@@ -1157,6 +1189,17 @@
 
     .inspector-fields { display: flex; flex-direction: column; gap: 4px; }
 
+    .inspector-group-label {
+      font-size: 0.5625rem;
+      font-weight: 700;
+      color: var(--label);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-top: 6px;
+      margin-bottom: 1px;
+    }
+    .inspector-group-label:first-child { margin-top: 0; }
+
     .inspector-row {
       display: flex;
       align-items: center;
@@ -1171,6 +1214,10 @@
       cursor: ew-resize;
       user-select: none;
       touch-action: none;
+      text-decoration: underline;
+      text-decoration-style: dotted;
+      text-decoration-color: var(--border);
+      text-underline-offset: 2px;
     }
 
     .inspector-row input[type=number],
@@ -1414,8 +1461,6 @@
       gap: 20px;
       padding: 24px 20px;
     }
-
-    .chat-empty-robot { color: var(--text-3); opacity: 0.45; }
 
     .chat-guide-card {
       display: flex;
@@ -2007,13 +2052,30 @@
     .chat-apikey-remove:hover { background: var(--surface-hover); color: var(--text-1); }
 
     .chat-proxy-bar {
-      padding: 5px 12px;
+      padding: 4px 6px 4px 12px;
       border-bottom: 1px solid rgba(59, 130, 246, 0.2);
       background: var(--blue-bg);
       font-size: 0.5625rem;
       color: var(--blue-text);
       flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
     }
+
+    .chat-proxy-dismiss {
+      background: none;
+      border: none;
+      color: var(--blue-text);
+      opacity: 0.6;
+      cursor: pointer;
+      font-size: 13px;
+      line-height: 1;
+      padding: 0 2px;
+      flex-shrink: 0;
+    }
+    .chat-proxy-dismiss:hover { opacity: 1; }
     @media (prefers-color-scheme: light) {
       .chat-proxy-bar { color: #1d4ed8; background: rgba(59,130,246,0.08); }
     }
@@ -2223,11 +2285,11 @@
     /* Detach button inside sidebar section summaries */
     .build-section-detach {
       background: none; border: none; padding: 1px 4px;
-      color: var(--text-3); cursor: pointer; font-size: 11px;
+      color: var(--label); cursor: pointer; font-size: 11px;
       border-radius: 4px; line-height: 1; flex-shrink: 0;
-      opacity: 0;
+      opacity: 0.45;
       transition: opacity 0.12s, color 0.12s, background 0.12s;
     }
     .build-section > summary:hover .build-section-detach,
-    .build-section > summary:focus-within .build-section-detach { opacity: 1; }
+    .build-section > summary:focus-within .build-section-detach { opacity: 1; color: var(--text-2); }
     .build-section-detach:hover { color: var(--text-1); background: var(--surface-hover); }
