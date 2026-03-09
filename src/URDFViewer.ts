@@ -45,7 +45,7 @@ const _SLIDE_LEFT  = new THREE.Vector3(-1, 0, -1).normalize();
 export class URDFViewer extends HTMLElement {
 
     static get observedAttributes() {
-        return ['urdf', 'package', 'up', 'ignore-limits', 'show-collision', 'display-shadow', 'ambient-color'];
+        return ['urdf', 'package', 'up', 'ignore-limits', 'show-collision', 'display-shadow'];
     }
 
     get urdf(): string { return this.getAttribute('urdf') ?? ''; }
@@ -66,9 +66,6 @@ export class URDFViewer extends HTMLElement {
     get displayShadow(): boolean { return this.hasAttribute('display-shadow'); }
     set displayShadow(v: boolean) { v ? this.setAttribute('display-shadow', '') : this.removeAttribute('display-shadow'); }
 
-    get ambientColor(): string { return this.getAttribute('ambient-color') ?? '#8ea0a8'; }
-    set ambientColor(v: string) { this.setAttribute('ambient-color', v); }
-
     robot: URDFRobot | null = null;
     loadMesh: URDFLoader['loadMesh'] | null = null;
 
@@ -77,7 +74,6 @@ export class URDFViewer extends HTMLElement {
     readonly renderer: THREE.WebGLRenderer;
     readonly controls: OrbitControls;
     readonly world: THREE.Object3D;
-    readonly ambientLight: THREE.HemisphereLight;
     readonly directionalLight: THREE.DirectionalLight;
     readonly shadowPlane: THREE.Mesh;
 
@@ -108,12 +104,6 @@ export class URDFViewer extends HTMLElement {
         this._shadow.appendChild(style);
 
         this.scene = new THREE.Scene();
-
-        // IBL covers ambient by default; intensity 0 until ambient-color is explicitly set.
-        this.ambientLight = new THREE.HemisphereLight('#8ea0a8', '#000', 0);
-        this.ambientLight.groundColor.lerp(this.ambientLight.color, 0.5 * Math.PI);
-        this.ambientLight.position.set(0, 1, 0);
-        this.scene.add(this.ambientLight);
 
         this.directionalLight = new THREE.DirectionalLight(0xffffff, Math.PI);
         this.directionalLight.position.set(4, 10, 1);
@@ -205,12 +195,6 @@ export class URDFViewer extends HTMLElement {
                 break;
             case 'up':
                 this._applyUp(this.up);
-                this.redraw();
-                break;
-            case 'ambient-color':
-                this.ambientLight.color.set(this.ambientColor);
-                this.ambientLight.groundColor.set('#000').lerp(this.ambientLight.color, 0.5);
-                this.ambientLight.intensity = 0.15;
                 this.redraw();
                 break;
             case 'ignore-limits':

@@ -15,7 +15,7 @@
     </visual>
     <!-- Yellow hub disc on the outboard face (local +Z = outboard for left wheel) -->
     <visual>
-      <origin xyz="0 0 0.013" rpy="0 0 0"/>
+      <origin xyz="0 0 0.015" rpy="0 0 0"/>
       <geometry>
         <cylinder radius="0.022" length="0.008"/>
       </geometry>
@@ -30,7 +30,7 @@
     </inertial>
     <collision>
       <geometry>
-        <cylinder radius="0.0325" length="0.026"/>
+        <cylinder radius="0.0325" length="0.030"/>
       </geometry>
     </collision>
   </link>
@@ -38,7 +38,7 @@
     <parent link="base_link"/>
     <child link="wheel_left"/>
     <!-- rpy rotates cylinder from Z-axis to Y-axis so wheel spins around Y -->
-    <origin xyz="-0.0100 -0.0900 -0.0110" rpy="1.5708 0.0000 0.0000"/>
+    <origin xyz="0.0400 -0.0900 -0.0110" rpy="1.5708 0.0000 0.0000"/>
     <axis xyz="0 0 1"/>
     <limit effort="2.0" velocity="15.0"/>
   </joint>
@@ -58,7 +58,7 @@
     </visual>
     <!-- Yellow hub disc on the outboard face (local -Z = outboard for right wheel) -->
     <visual>
-      <origin xyz="0 0 -0.013" rpy="0 0 0"/>
+      <origin xyz="0 0 -0.015" rpy="0 0 0"/>
       <geometry>
         <cylinder radius="0.022" length="0.008"/>
       </geometry>
@@ -73,14 +73,14 @@
     </inertial>
     <collision>
       <geometry>
-        <cylinder radius="0.0325" length="0.026"/>
+        <cylinder radius="0.0325" length="0.030"/>
       </geometry>
     </collision>
   </link>
   <joint name="wheel_right_joint" type="continuous">
     <parent link="base_link"/>
     <child link="wheel_right"/>
-    <origin xyz="-0.0100 0.0900 -0.0110" rpy="1.5708 0.0000 0.0000"/>
+    <origin xyz="0.0400 0.0900 -0.0110" rpy="1.5708 0.0000 0.0000"/>
     <axis xyz="0 0 1"/>
     <limit effort="2.0" velocity="15.0"/>
   </joint>
