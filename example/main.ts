@@ -7,7 +7,7 @@ import type { GestureController } from './gesture.js';
 import { LIBRARY } from '../src/generators/components/index.js';
 import { GridHelper } from 'three';
 import { MuJoCoSimulator } from './simulator.js';
-import './panel.js';
+import { initPanel } from './panel.js';
 
 // ── Module imports for extracted concerns ─────────────────────────────────
 import { initBuildSliders, syncSlidersFromCtrl, makeFloatPanelDefs } from './build-sliders.js';
@@ -760,6 +760,9 @@ gestureHeaderEl.addEventListener('click', () => {
 gestureHeaderEl.addEventListener('keydown', (e: KeyboardEvent) => {
     if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); gestureHeaderEl.click(); }
 });
+
+// ── Init panel (open/close + resize) ─────────────────────────────────────
+initPanel();
 
 // ── Init inspector module ─────────────────────────────────────────────────
 initInspector({

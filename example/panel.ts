@@ -1,8 +1,8 @@
 // Panel open/close, backdrop, and resize logic.
-// Extracted from the inline <script> in index.html so the dependency on main.ts
-// execution order is explicit (main.ts imports this module).
 
 function isDesktop(): boolean { return window.innerWidth > 768; }
+
+export function initPanel(): void {
 
 const ctrlPanel  = document.getElementById('control-panel')!;
 const chatPanel  = document.getElementById('chat-panel')!;
@@ -170,3 +170,5 @@ document.getElementById('editor-tabs')?.addEventListener('wheel', (e: WheelEvent
         (e.currentTarget as HTMLElement).scrollLeft += e.deltaY;
     }
 }, { passive: false });
+
+} // end initPanel
