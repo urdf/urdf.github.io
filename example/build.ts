@@ -83,7 +83,7 @@ const SUPPORTED_ROBOTS = new Set(['robot-car']);
 const BLANK_WHEELS_XML = `<link name="wheel_left">
   <visual>
     <geometry><mesh filename="wheel.stl"/></geometry>
-    <material name="rubber"><color rgba="0.10 0.10 0.10 1.00"/></material>
+    <material name="rubber"><color rgba="0.03 0.03 0.03 1.00"/></material>
   </visual>
   <visual>
     <origin xyz="0 0 0.0075" rpy="0 0 0"/>
@@ -102,7 +102,7 @@ const BLANK_WHEELS_XML = `<link name="wheel_left">
 <link name="wheel_right">
   <visual>
     <geometry><mesh filename="wheel.stl"/></geometry>
-    <material name="rubber"><color rgba="0.10 0.10 0.10 1.00"/></material>
+    <material name="rubber"><color rgba="0.03 0.03 0.03 1.00"/></material>
   </visual>
   <visual>
     <origin xyz="0 0 -0.0075" rpy="0 0 0"/>
