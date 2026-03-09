@@ -1,6 +1,6 @@
 // Robot button carousel — builds and manages the robot selector strip.
 
-import type { URDFBuildController } from './build.js';
+import { URDFBuildController } from './build.js';
 import type { ComponentCrudController } from './component-crud.js';
 import type { RobotLoader, RobotConfig } from './robot-loader.js';
 import { $ } from './dom-utils.js';
