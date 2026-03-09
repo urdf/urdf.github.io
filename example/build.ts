@@ -194,7 +194,7 @@ const BLANK_POWER_XML = `<link name="battery_box">
 <joint name="powerbank_joint" type="fixed">
   <parent link="base_link"/>
   <child link="powerbank"/>
-  <origin xyz="-0.0350 0.0000 -0.0110" rpy="1.5708 0.0000 0.0000"/>
+  <origin xyz="-0.0350 0.0000 -0.0180" rpy="1.5708 0.0000 0.0000"/>
 </joint>`;
 
 type JointType = 'fixed' | 'continuous' | 'revolute' | 'prismatic';
@@ -701,7 +701,7 @@ export class URDFBuildController {
         const powerbankOrigin = doc.querySelector('joint[name="powerbank_joint"] > origin');
         if (powerbankOrigin) {
             const parts = (powerbankOrigin.getAttribute('xyz') ?? '0 0 0').trim().split(/\s+/);
-            parts[2] = (-0.0015 - pr).toFixed(4);
+            parts[2] = (-0.0005 - pr).toFixed(4);
             powerbankOrigin.setAttribute('xyz', parts.join(' '));
         }
 
