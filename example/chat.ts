@@ -1130,12 +1130,15 @@ Use tools to modify the robot. Prefer direct tool calls over lengthy explanation
             });
             this._apikeyBarEl.append(saved, btn);
         } else {
+            const form = document.createElement('form');
+            form.autocomplete = 'off';
             const inp = document.createElement('input');
             inp.type = 'password';
             inp.placeholder = 'sk-ant-… Anthropic API key';
             inp.setAttribute('aria-label', 'Anthropic API key');
+            inp.autocomplete = 'new-password';
             const btn = document.createElement('button');
-            btn.type = 'button';
+            btn.type = 'submit';
             btn.className = 'chat-apikey-save';
             btn.textContent = 'Save';
             const save = () => {
@@ -1144,9 +1147,9 @@ Use tools to modify the robot. Prefer direct tool calls over lengthy explanation
                 localStorage.setItem('urdf-api-key', val);
                 this._updateApiKeyBar();
             };
-            inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') save(); });
-            btn.addEventListener('click', save);
-            this._apikeyBarEl.append(inp, btn);
+            form.addEventListener('submit', (e) => { e.preventDefault(); save(); });
+            form.append(inp, btn);
+            this._apikeyBarEl.append(form);
         }
     }
 
