@@ -35,8 +35,7 @@ const partLabel        = $('part-label');
 const gestureToggleBtn = $<HTMLButtonElement>('gesture-toggle');
 const gestureOverlay   = $<HTMLCanvasElement>('gesture-overlay');
 const gestureVideo     = $<HTMLVideoElement>('gesture-video');
-const gestureSectionEl = $('gesture-section');
-const gestureHeaderEl  = $('gesture-section-header');
+const gestureSectionEl = $<HTMLDetailsElement>('gesture-section');
 
 const editorPanelEl    = $('editor-panel');
 const buildNoticeEl    = $('build-notice');
@@ -466,21 +465,11 @@ gestureToggleBtn.addEventListener('click', async () => {
     gestureCtrl.start()
         .then(() => {
             gestureToggleBtn.classList.add('active');
-            gestureSectionEl.classList.add('open');
-            gestureHeaderEl.setAttribute('aria-expanded', 'true');
+            gestureSectionEl.open = true;
         })
         .catch(() => {
             gestureCtrl = null;
         });
-});
-
-gestureHeaderEl.addEventListener('click', () => {
-    const open = gestureSectionEl.classList.toggle('open');
-    gestureHeaderEl.setAttribute('aria-expanded', String(open));
-});
-
-gestureHeaderEl.addEventListener('keydown', (e: KeyboardEvent) => {
-    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); gestureHeaderEl.click(); }
 });
 
 // ── Init panel (open/close + resize) ─────────────────────────────────────

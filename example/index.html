@@ -22,7 +22,7 @@
     ></div>
     <div class="panel-header">
       <div class="panel-tabs" role="tablist">
-        <button type="button" class="tab-btn" data-tab="robot" id="tab-robot" role="tab" aria-selected="true" aria-label="Inspect" title="Inspect">
+        <button type="button" class="tab-btn" data-tab="inspect" id="tab-robot" role="tab" aria-selected="true" aria-label="Inspect" title="Inspect">
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/>
             <path d="M2 14h2"/><path d="M20 14h2"/>
@@ -45,7 +45,7 @@
       </div>
     </div>
 
-    <div class="tab-body" data-tab="robot">
+    <div class="tab-body" data-tab="inspect">
       <div class="section options-bar">
         <label class="option"><input type="checkbox" id="ignore-limits" /> Ignore limits</label>
         <label class="option"><input type="checkbox" id="show-collision" /> Collision</label>
@@ -60,12 +60,9 @@
         </label>
       </div>
 
-      <div id="gesture-section">
-        <div id="gesture-section-header" role="button" tabindex="0" aria-expanded="false">
-          <span id="gesture-section-label">Gestures</span>
-          <span id="gesture-section-chevron" aria-hidden="true">›</span>
-        </div>
-        <div id="gesture-cheatsheet" role="region">
+      <details id="gesture-section" class="build-section">
+        <summary>Gestures</summary>
+        <div class="build-section-body">
           <div class="gesture-grid">
             <div class="gesture-tile"><span class="gesture-tile-icon">✊</span><span>Orbit</span></div>
             <div class="gesture-tile"><span class="gesture-tile-icon">☝️</span><span>Select</span></div>
@@ -74,7 +71,7 @@
             <div class="gesture-tile"><span class="gesture-tile-icon">🤲</span><span>Zoom</span></div>
           </div>
         </div>
-      </div>
+      </details>
 
       <div id="physics-mode-bar" hidden>
         <div class="physics-mode-toggle">
@@ -156,13 +153,13 @@
       <div class="sidebar-scroll">
         <div id="build-active-header" class="build-active-header" hidden>
           <span id="build-active-name" class="build-active-name"></span>
-          <button type="button" id="build-shortcuts-toggle" class="build-remove-btn" title="Keyboard shortcuts">?</button>
+          <button type="button" id="build-shortcuts-toggle" class="icon-btn" title="Keyboard shortcuts">?</button>
           <button type="button" id="build-clear-custom" class="build-remove-btn" title="Delete saved custom robot" hidden>×</button>
         </div>
         <div id="build-inspector" hidden>
           <div class="build-inspector-header">
             <span id="build-inspector-title" class="build-inspector-title"></span>
-            <button type="button" id="build-inspector-close" class="build-remove-btn" title="Deselect (Escape)">×</button>
+            <button type="button" id="build-inspector-close" class="icon-btn" title="Deselect (Escape)">×</button>
           </div>
           <div id="build-inspector-body"></div>
         </div>
@@ -177,11 +174,11 @@
 
         <div id="build-new-robot">
           <div class="section-label">New Robot</div>
-          <div class="inspector-row" style="margin-bottom: 6px;">
+          <div class="inspector-row build-name-row">
             <label>Name</label>
             <input type="text" id="build-new-name" class="build-text-input" placeholder="my-robot">
           </div>
-          <div style="display: flex; gap: 6px;">
+          <div class="build-new-actions">
             <button type="button" id="build-new-create" class="build-export-btn">Create Robot</button>
             <button type="button" id="build-saved-toggle" class="build-export-btn" hidden title="Saved robots">☰ Saved</button>
           </div>
@@ -316,7 +313,7 @@
         <details class="build-section" id="library-section">
           <summary>Library</summary>
           <div class="build-section-body">
-            <div style="padding: 4px 12px 6px;">
+            <div class="lib-search-wrap">
               <input type="search" id="lib-search" class="lib-search-input"
                      placeholder="Search components…" autocomplete="off" aria-label="Search components">
             </div>
@@ -328,7 +325,7 @@
               <button type="button" class="lib-pill" data-cat="Power">Power</button>
               <button type="button" class="lib-pill" data-cat="Structural">Structural</button>
             </div>
-            <div style="padding: 4px 12px 8px;">
+            <div class="lib-grid-wrap">
               <div class="lib-grid" id="lib-grid"></div>
               <p class="lib-empty" id="lib-empty" hidden>No components match.</p>
             </div>
@@ -340,9 +337,9 @@
       <!-- Sticky footer: always visible, never scrolls away -->
       <div class="build-footer">
         <div class="build-footer-row">
-          <button id="build-undo" class="robot-btn" title="Undo (Ctrl+Z)" disabled>Undo</button>
-          <button id="build-redo" class="robot-btn" title="Redo (Ctrl+Y)" disabled>Redo</button>
-          <button id="build-reset" class="robot-btn" title="Reset to defaults">Reset</button>
+          <button id="build-undo" class="build-action-btn" title="Undo (Ctrl+Z)" disabled>Undo</button>
+          <button id="build-redo" class="build-action-btn" title="Redo (Ctrl+Y)" disabled>Redo</button>
+          <button id="build-reset" class="build-action-btn" title="Reset to defaults">Reset</button>
         </div>
         <div class="build-footer-row">
           <button id="build-export" class="build-export-btn">Download .zip</button>
@@ -395,8 +392,8 @@
       </div>
       <div class="chat-compose-toolbar">
         <button type="button" id="chat-brief-toggle" aria-pressed="false" title="Toggle detailed responses">Detail</button>
-        <span id="chat-tool-count" class="chat-tool-count-btn"
-              aria-label="Active tools" title="Active build tools">0 tools</span>
+        <span id="chat-tool-count" class="chat-tool-count-btn" hidden
+              aria-label="Active tools" title="Active build tools"></span>
       </div>
       <div class="chat-input-area">
         <div id="cmd-ac" class="cmd-ac" hidden role="listbox" aria-label="Commands"></div>

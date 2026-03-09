@@ -146,7 +146,7 @@
       align-items: center;
       border-bottom: 1px solid var(--border);
       flex-shrink: 0;
-      height: 56px;
+      height: 40px;
       padding: 0 6px;
       gap: 2px;
     }
@@ -176,13 +176,13 @@
       line-height: 1;
     }
 
-    .tab-btn[data-tab="robot"] { color: var(--blue-text); background: var(--blue-bg); }
-    body.editor-open .tab-btn[data-tab="robot"]  { color: var(--text-3); background: none; }
-    body.editor-open .tab-btn[data-tab="editor"] { color: var(--blue-text); background: var(--blue-bg); }
-    body.build-open  .tab-btn[data-tab="robot"]  { color: var(--text-3);   background: none; }
-    body.build-open  .tab-btn[data-tab="build"]  { color: var(--blue-text); background: var(--blue-bg); }
-    body.build-open  .tab-body[data-tab="robot"] { display: none; }
-    body.build-open  .tab-body[data-tab="build"] { display: flex; }
+    .tab-btn[data-tab="inspect"] { color: var(--blue-text); background: var(--blue-bg); }
+    body.editor-open .tab-btn[data-tab="inspect"]  { color: var(--text-3); background: none; }
+    body.editor-open .tab-btn[data-tab="editor"]   { color: var(--blue-text); background: var(--blue-bg); }
+    body.build-open  .tab-btn[data-tab="inspect"]  { color: var(--text-3);   background: none; }
+    body.build-open  .tab-btn[data-tab="build"]    { color: var(--blue-text); background: var(--blue-bg); }
+    body.build-open  .tab-body[data-tab="inspect"] { display: none; }
+    body.build-open  .tab-body[data-tab="build"]   { display: flex; }
 
     /* ── Build panel ─────────────────────────────────────────────────────────── */
     .build-notice {
@@ -264,10 +264,13 @@
 
     .build-remove-btn { color: rgba(255, 69, 58, 0.45); }
     .build-dup-btn    { color: var(--text-3); font-size: 12px; }
+    .icon-btn         { color: var(--text-3); }
 
     .build-remove-btn:hover { color: var(--red); background: var(--surface-hover); }
     .build-dup-btn:hover    { color: var(--text-1); background: var(--surface-hover); }
-    .build-remove-btn:focus-visible, .build-dup-btn:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+    .icon-btn:hover         { color: var(--text-1); background: var(--surface-hover); }
+    .build-remove-btn:focus-visible, .build-dup-btn:focus-visible,
+    .icon-btn:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
 
     /* dragging: border + fill; selected: left accent only — visually distinct states */
     .build-component.dragging  { border-color: var(--blue); background: var(--blue-bg); }
@@ -391,6 +394,31 @@
     #build-reset { margin-left: auto; }
     #build-export { flex: 2; }
     #build-copy-urdf { flex: 1; }
+
+    /* ── Build action buttons (undo / redo / reset) ──────────────────────── */
+    .build-action-btn {
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      padding: 4px 12px;
+      font-size: 0.6875rem;
+      font-weight: 500;
+      color: var(--text-2);
+      cursor: pointer;
+      transition: color 0.12s, border-color 0.12s, background 0.12s;
+    }
+    .build-action-btn:hover:not(:disabled) { color: var(--text-1); border-color: var(--text-3); }
+    .build-action-btn:active { transform: scale(0.94); }
+    .build-action-btn:disabled { opacity: 0.35; cursor: default; }
+    .build-action-btn:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+
+    /* ── Build new-robot form layout ─────────────────────────────────────── */
+    .build-name-row  { margin-bottom: 6px; }
+    .build-new-actions { display: flex; gap: 6px; }
+
+    /* ── Library search / grid padding ───────────────────────────────────── */
+    .lib-search-wrap { padding: 4px 12px 6px; }
+    .lib-grid-wrap   { padding: 4px 12px 8px; }
 
     /* ── Parametric accordions ────────────────────────────────────────────── */
     .build-section { border-top: 1px solid var(--border); }
@@ -532,8 +560,8 @@
       overflow: hidden;
     }
 
-    .tab-body[data-tab="robot"] { display: flex; }
-    body.editor-open .tab-body[data-tab="robot"] { display: none; }
+    .tab-body[data-tab="inspect"] { display: flex; }
+    body.editor-open .tab-body[data-tab="inspect"] { display: none; }
     body.editor-open .tab-body[data-tab="editor"] { display: flex; }
 
     /* ── Library tab ────────────────────────────────────────────────────── */
@@ -834,8 +862,6 @@
       transition: border-color 0.12s, background 0.12s;
     }
 
-    .gesture-tile:hover { border-color: var(--text-3); background: var(--surface-hover); }
-
     .gesture-tile-icon { font-size: 1.25rem; line-height: 1; }
 
     /* ── Joint range ticks ──────────────────────────────────────────────── */
@@ -856,8 +882,6 @@
       overflow-y: auto;
       scrollbar-width: thin;
       scrollbar-color: rgba(100, 116, 139, 0.4) transparent;
-      mask-image: linear-gradient(to bottom, black calc(100% - 36px), transparent 100%);
-      -webkit-mask-image: linear-gradient(to bottom, black calc(100% - 36px), transparent 100%);
     }
 
     .sidebar-scroll::-webkit-scrollbar { width: 6px; }
@@ -1064,7 +1088,7 @@
     .inspector-title {
       font-size: 0.6875rem;
       font-weight: 500;
-      color: var(--blue);
+      color: var(--text-2);
       text-transform: uppercase;
       letter-spacing: 0.06em;
     }
@@ -1258,41 +1282,8 @@
 
     /* ── Gesture cheat sheet ─────────────────────────────────────────────── */
 
-    #gesture-section { border-bottom: 1px solid var(--border); }
-
-    #gesture-section-header {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 8px 12px; cursor: pointer; user-select: none; gap: 6px;
-    }
-
-    #gesture-section-header:hover { background: var(--surface-hover); }
-
-    #gesture-section-label {
-      font-size: 0.625rem; font-weight: 700; color: var(--text-3);
-      text-transform: uppercase; letter-spacing: 0.08em; flex: 1;
-    }
-
-    #gesture-section-chevron {
-      font-size: 0.875rem; color: var(--text-3);
-      transition: transform 0.15s; flex-shrink: 0;
-    }
-
-    #gesture-section.open #gesture-section-chevron { transform: rotate(90deg); }
-
-    #gesture-cheatsheet {
-      display: none; padding: 6px 12px 10px;
-      flex-direction: column; gap: 6px;
-    }
-
-    #gesture-section.open #gesture-cheatsheet { display: flex; }
-
-    .gesture-row { display: flex; align-items: flex-start; gap: 8px; }
-
-    .gesture-icon { font-size: 1rem; line-height: 1.4; flex-shrink: 0; width: 20px; text-align: center; }
-
-    .gesture-desc { font-size: 0.6875rem; color: var(--text-2); line-height: 1.5; }
-
-    .gesture-desc strong { color: var(--text-1); font-weight: 500; }
+    /* Override .build-section border direction: gesture section sits above physics bar */
+    #gesture-section { border-top: none; border-bottom: 1px solid var(--border); }
 
     /* ── Editor tab content ──────────────────────────────────────────────── */
 
