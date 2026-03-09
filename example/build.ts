@@ -130,7 +130,7 @@ const BLANK_CHASSIS_XML = `<joint name="chassis_joint" type="fixed">
       <mesh filename="chassis.stl" scale="1.00 1.05 1.00"/>
     </geometry>
     <material name="acrylic">
-      <color rgba="0.72 0.91 1.00 0.50"/>
+      <color rgba="0.85 0.95 1.00 0.25"/>
     </material>
   </visual>
 </link>`;
@@ -498,7 +498,6 @@ export class URDFBuildController {
         this._casterWidth   = CASTER_DEFAULTS.width;
         this._batteryBox    = { ...BATTERY_DEFAULTS };
         this._powerbank     = { ...POWERBANK_DEFAULTS };
-        this._jointZPatches.clear();
         this._components.clear();
         this._compCounters.clear();
 
@@ -507,6 +506,15 @@ export class URDFBuildController {
         this._stlBlobs.clear();
         for (const url of this._meshBlobs.values()) URL.revokeObjectURL(url.split('#')[0]);
         this._meshBlobs.clear();
+
+        // Regenerate STL blobs and re-apply wheel Z patches (mirrors _applySnapshot).
+        // Without this, _reload falls back to this._dir/chassis.stl which may not exist
+        // (e.g. _dir='' for custom builds).
+        this._storeSTLBlob('chassis.stl', generateChassis(this._chassisParams));
+        this._storeSTLBlob('wheel.stl',   generateWheel(this._wheelParams));
+        const wz = WHEEL_DEFAULTS.radius + this._wheelGroundZ;
+        this._jointZPatches.set('wheel_left_joint',  wz);
+        this._jointZPatches.set('wheel_right_joint', wz);
 
         try { localStorage.removeItem(`urdf-build-${this._robotName}`); } catch { /**/ }
 
