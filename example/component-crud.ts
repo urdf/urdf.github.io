@@ -25,9 +25,35 @@ export class ComponentCrudController {
     private _buildSelPartName: string | null = null;
 
     private readonly _opts: ComponentCrudOptions;
+    private _worker: Worker | null = null;
+    private _scriptStatusEls = new Map<string, HTMLElement>();
 
     constructor(opts: ComponentCrudOptions) {
         this._opts = opts;
+    }
+
+    // ── Script Worker ─────────────────────────────────────────────────────────
+    private _getWorker(): Worker {
+        if (!this._worker) {
+            this._worker = new Worker(new URL('./script-worker.ts', import.meta.url), { type: 'module' });
+            this._worker.onmessage = ({ data }: MessageEvent<{ id: string; buf?: ArrayBuffer; error?: string; line?: number }>) => {
+                const { id, buf, error, line } = data;
+                const statusEl = this._scriptStatusEls.get(id);
+                if (buf) {
+                    this._opts.buildCtrl.restoreMeshBlob(id, buf);
+                    if (statusEl) { statusEl.textContent = '✓'; statusEl.className = 'script-status ok'; }
+                } else {
+                    const loc = line != null ? `line ${line}: ` : '';
+                    if (statusEl) { statusEl.textContent = loc + (error ?? 'Unknown error'); statusEl.className = 'script-status err'; }
+                }
+            };
+            this._worker.onerror = (e) => console.warn('[script-worker]', e.message);
+        }
+        return this._worker;
+    }
+
+    runScript(id: string, src: string): void {
+        this._getWorker().postMessage({ id, src });
     }
 
     // ── Context pill ─────────────────────────────────────────────────────────
@@ -164,6 +190,45 @@ export class ComponentCrudController {
         });
         header.append(dot, labelEl, dupBtn, removeBtn);
         item.appendChild(header);
+
+        // ── Inline script editor (script type only) ───────────────────────
+        if (type === 'script') {
+            const section = document.createElement('div');
+            section.className = 'script-editor-section';
+
+            const wrap = document.createElement('div');
+            wrap.className = 'script-editor-wrap';
+
+            const ta = document.createElement('textarea');
+            ta.className = 'script-textarea';
+            ta.spellcheck = false;
+            ta.autocomplete = 'off';
+            ta.setAttribute('wrap', 'off');
+            ta.value = this._opts.buildCtrl.getComponentScript(id) ?? '';
+            wrap.appendChild(ta);
+
+            const statusEl = document.createElement('div');
+            statusEl.className = 'script-status';
+            this._scriptStatusEls.set(id, statusEl);
+
+            section.append(wrap, statusEl);
+            item.appendChild(section);
+
+            let debounce = 0;
+            ta.addEventListener('input', () => {
+                const src = ta.value;
+                this._opts.buildCtrl.setComponentScript(id, src);
+                statusEl.textContent = '…';
+                statusEl.className = 'script-status';
+                clearTimeout(debounce);
+                debounce = window.setTimeout(() => this.runScript(id, src), 600);
+            });
+
+            // Run immediately if there's existing source (e.g. after restore)
+            const initSrc = ta.value;
+            if (initSrc) this.runScript(id, initSrc);
+        }
+
         this._opts.buildComponentsListEl.appendChild(item);
     }
 
@@ -183,7 +248,9 @@ export class ComponentCrudController {
         const dispatchUpdate = (): void => {
             const dims = def.geomType === 'cylinder'
                 ? [parseFloat(inputs['r'].value) || 0.001, parseFloat(inputs['l'].value) || 0.001]
-                : [parseFloat(inputs['w'].value) || 0.001, parseFloat(inputs['d'].value) || 0.001, parseFloat(inputs['h'].value) || 0.001];
+                : type === 'script'
+                    ? (this._opts.buildCtrl.getComponentData(id)?.dims ?? def.defaultDims)
+                    : [parseFloat(inputs['w'].value) || 0.001, parseFloat(inputs['d'].value) || 0.001, parseFloat(inputs['h'].value) || 0.001];
             const jt = selects['jt']?.value ?? 'fixed';
             this._opts.buildCtrl.updateComponent(id, {
                 x:  parseFloat(inputs['x'].value)  || 0,
@@ -252,14 +319,16 @@ export class ComponentCrudController {
         addRow('y',  'axis-y', 'Y', 0.005, saved.y  ?? 0);
         addRow('z',  'axis-z', 'Z', 0.005, saved.z  ?? def.defaultZ);
 
-        addGroupLabel('Size');
-        if (def.geomType === 'cylinder') {
-            addRow('r', 'axis-x', 'R', 0.005, saved.dims[0] ?? def.defaultDims[0]);
-            addRow('l', 'axis-z', 'L', 0.005, saved.dims[1] ?? def.defaultDims[1]);
-        } else {
-            addRow('w', 'axis-x', 'W', 0.005, saved.dims[0] ?? def.defaultDims[0]);
-            addRow('d', 'axis-y', 'D', 0.005, saved.dims[1] ?? def.defaultDims[1]);
-            addRow('h', 'axis-z', 'H', 0.005, saved.dims[2] ?? def.defaultDims[2]);
+        if (type !== 'script') {
+            addGroupLabel('Size');
+            if (def.geomType === 'cylinder') {
+                addRow('r', 'axis-x', 'R', 0.005, saved.dims[0] ?? def.defaultDims[0]);
+                addRow('l', 'axis-z', 'L', 0.005, saved.dims[1] ?? def.defaultDims[1]);
+            } else {
+                addRow('w', 'axis-x', 'W', 0.005, saved.dims[0] ?? def.defaultDims[0]);
+                addRow('d', 'axis-y', 'D', 0.005, saved.dims[1] ?? def.defaultDims[1]);
+                addRow('h', 'axis-z', 'H', 0.005, saved.dims[2] ?? def.defaultDims[2]);
+            }
         }
 
         // ── Advanced section (Rotation, Joint, Axis, Limits, Preview) ─────────
@@ -346,6 +415,7 @@ export class ComponentCrudController {
         const card = this._opts.buildComponentsListEl.querySelector<HTMLElement>(`[data-id="${id}"]`);
         this.componentInputs.delete(id);
         this.componentSelects.delete(id);
+        this._scriptStatusEls.delete(id);
         this.removeOptionFromParentSelects(id);
         if (this._buildSelCompId === id) this.deselectComp();
         card?.remove();

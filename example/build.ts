@@ -15,6 +15,7 @@ interface SavedState {
     powerbank: { radius: number; length: number };
     components: Array<[string, Component]>;
     counters:   Array<[string, number]>;
+    scripts?:   Array<[string, string]>;
 }
 
 interface Snapshot {
@@ -57,6 +58,8 @@ const meshEntries = Object.fromEntries(
 );
 
 export const COMPONENT_CATALOG: Record<string, ComponentDef> = {
+    // Script — user-defined geometry evaluated in a Worker
+    script:        { label: 'Script',       color: '0.40 0.75 0.45 1.00', defaultZ: 0.020, geomType: 'mesh', defaultDims: [0.040, 0.040, 0.020], cssColor: '#44bb66' },
     // Primitives — kept for saved-robot backward compatibility; hidden ones are superseded by Library
     ultrasonic:    { label: 'Ultrasonic',   color: '0.20 0.45 0.90 1.00', defaultZ: 0.015, geomType: 'box',      defaultDims: [0.045, 0.020, 0.015], hidden: true },
     camera:        { label: 'Camera',       color: '0.90 0.20 0.25 1.00', defaultZ: 0.010, geomType: 'box',      defaultDims: [0.025, 0.024, 0.009] },
@@ -226,6 +229,7 @@ export class URDFBuildController {
     private _components   = new Map<string, Component>();
     private _compCounters = new Map<string, number>();
     private _meshBlobs    = new Map<string, string>();   // componentId → blobUrl#id.stl
+    private _scripts      = new Map<string, string>();   // componentId → JS source (script type)
     private _partTemplates = new Map<string, string>(); // fetched real-robot XML templates
     private _isCustom     = false;
 
@@ -262,6 +266,7 @@ export class URDFBuildController {
         this._stlBlobs.clear();
         for (const url of this._meshBlobs.values()) URL.revokeObjectURL(url.split('#')[0]);
         this._meshBlobs.clear();
+        this._scripts.clear();
         this._jointZPatches.clear();
         this._components.clear();
         this._compCounters.clear();
@@ -408,10 +413,20 @@ export class URDFBuildController {
         this._reload();
     }
 
+    addScriptComponent(src: string, stl: ArrayBuffer): string {
+        const id = this.addMeshComponent('script', stl);
+        this._scripts.set(id, src);
+        return id;
+    }
+
+    setComponentScript(id: string, src: string): void { this._scripts.set(id, src); }
+    getComponentScript(id: string): string | undefined { return this._scripts.get(id); }
+
     removeComponent(id: string): void {
         this._pushUndo();
         const meshUrl = this._meshBlobs.get(id);
         if (meshUrl) { URL.revokeObjectURL(meshUrl.split('#')[0]); this._meshBlobs.delete(id); }
+        this._scripts.delete(id);
         this._components.delete(id);
         this._reload();
     }
@@ -484,6 +499,9 @@ export class URDFBuildController {
             axis: [...src.axis] as [number, number, number],
             x: src.x + 0.020, // 20mm offset so it's not hidden behind original
         });
+        // Copy script source so duplicate can be re-evaluated independently
+        const script = this._scripts.get(id);
+        if (script) this._scripts.set(newId, script);
         this._reload();
         return newId;
     }
@@ -500,6 +518,7 @@ export class URDFBuildController {
         this._powerbank     = { ...POWERBANK_DEFAULTS };
         this._components.clear();
         this._compCounters.clear();
+        this._scripts.clear();
 
         // Revoke after param reset to preserve existing ordering
         for (const url of this._stlBlobs.values()) URL.revokeObjectURL(url.split('#')[0]);
@@ -549,6 +568,7 @@ export class URDFBuildController {
         this._powerbank     = saved.powerbank ?? { ...POWERBANK_DEFAULTS };
         this._components    = new Map(saved.components);
         this._compCounters  = new Map(saved.counters);
+        if (saved.scripts) this._scripts = new Map(saved.scripts);
 
         this._chassisParams = { ...saved.chassis };
         this._partMap.set('02-chassis.xml', BLANK_CHASSIS_XML);
@@ -828,6 +848,7 @@ export class URDFBuildController {
                 powerbank:  { ...this._powerbank  },
                 components: [...this._components.entries()],
                 counters:   [...this._compCounters.entries()],
+                scripts:    [...this._scripts.entries()],
             } satisfies SavedState));
             if (this._isCustom) {
                 localStorage.setItem('urdf-build-last-custom', this._robotName);

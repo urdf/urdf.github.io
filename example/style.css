@@ -546,6 +546,45 @@
 
     .build-component-body { display: flex; flex-direction: column; gap: 2px; }
 
+    /* ── Script component inline editor ───────────────────────────────── */
+    .script-editor-section {
+      padding: 4px 0 0;
+      border-top: 1px solid var(--border);
+    }
+    .script-editor-wrap {
+      height: 152px; /* 8 lines × 19px */
+      border-bottom: 1px solid var(--border);
+      overflow: hidden;
+      display: flex;
+    }
+    .script-textarea {
+      flex: 1;
+      background: var(--bg);
+      color: var(--text-1);
+      border: none;
+      outline: none;
+      resize: none;
+      font-family: ui-monospace, monospace;
+      font-size: 0.6875rem;
+      line-height: 19px;
+      padding: 4px 6px;
+      overflow: auto;
+      white-space: pre;
+      tab-size: 2;
+    }
+    .script-status {
+      padding: 2px 6px 4px;
+      font-size: 0.625rem;
+      font-family: ui-monospace, monospace;
+      color: var(--text-3);
+      min-height: 16px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .script-status.ok  { color: #44bb66; }
+    .script-status.err { color: #f66; }
+
     .build-preview-row { padding: 0 0 4px; }
 
     /* Hide new-robot form when a robot is already active */
