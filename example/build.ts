@@ -188,7 +188,7 @@ const BLANK_POWER_XML = `<link name="battery_box">
 <link name="powerbank">
   <visual>
     <geometry><cylinder radius="0.0175" length="0.130"/></geometry>
-    <material name="powerbank_blue"><color rgba="0.15 0.45 0.85 1.00"/></material>
+    <material name="powerbank_blue"><color rgba="0.05 0.12 0.40 1.00"/></material>
   </visual>
 </link>
 <joint name="powerbank_joint" type="fixed">
