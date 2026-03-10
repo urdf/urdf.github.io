@@ -75,14 +75,12 @@ export class GizmoController {
         const joint = this._findJoint(id);
         if (!joint) { this.detach(); return; }
 
+        const buildOpen = document.body.classList.contains('build-open');
         this._attachedId = id;
         this._tc.attach(joint);
         this._tc.setMode(this._mode);
-        this._tc.visible = document.body.classList.contains('build-open');
-
-        const btn = _getModeBtn();
-        btn.style.display = document.body.classList.contains('build-open') ? '' : 'none';
-
+        this._tc.visible = buildOpen;
+        this._showModeBtn(buildOpen);
         this._viewer.redraw();
     }
 
@@ -90,7 +88,7 @@ export class GizmoController {
         this._attachedId = null;
         this._tc.detach();
         this._tc.visible = false;
-        _getModeBtn().style.display = 'none';
+        this._showModeBtn(false);
         this._viewer.redraw();
         // Keep TC in scene while Build tab is open (user may reselect); it will be
         // removed by onBuildClose when the tab switches.
@@ -101,7 +99,7 @@ export class GizmoController {
         this._viewer.scene.add(this._tc);
         if (this._attachedId) {
             this._tc.visible = true;
-            _getModeBtn().style.display = '';
+            this._showModeBtn(true);
         }
         this._viewer.redraw();
     }
@@ -110,11 +108,15 @@ export class GizmoController {
      *  don't block URDFDragControls raycasting on the Inspect tab. */
     onBuildClose(): void {
         this._viewer.scene.remove(this._tc);
-        _getModeBtn().style.display = 'none';
+        this._showModeBtn(false);
         this._viewer.redraw();
     }
 
     // ── Private helpers ────────────────────────────────────────────────────
+
+    private _showModeBtn(visible: boolean): void {
+        _getModeBtn().style.display = visible ? '' : 'none';
+    }
 
     private _findJoint(id: string): import('three').Object3D | null {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
