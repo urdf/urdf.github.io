@@ -42,8 +42,8 @@ export class GizmoController {
 
         this._tc = new TransformControls(viewer.camera, viewer.renderer.domElement);
         this._tc.setSize(0.6);        // subtle — fits small robot scale
-        this._tc.visible = false;
-        viewer.scene.add(this._tc);
+        // Do NOT add to scene here — added/removed in onBuildOpen/onBuildClose so its
+        // invisible picker meshes don't block URDFDragControls raycasting on other tabs.
 
         // Keep the viewer render loop informed of gizmo changes
         this._tc.addEventListener('change', () => viewer.redraw());
@@ -92,10 +92,13 @@ export class GizmoController {
         this._tc.visible = false;
         _getModeBtn().style.display = 'none';
         this._viewer.redraw();
+        // Keep TC in scene while Build tab is open (user may reselect); it will be
+        // removed by onBuildClose when the tab switches.
     }
 
-    /** Call when the Build tab opens — re-show gizmo if something is selected. */
+    /** Call when the Build tab opens — add gizmo to scene and re-show if selected. */
     onBuildOpen(): void {
+        this._viewer.scene.add(this._tc);
         if (this._attachedId) {
             this._tc.visible = true;
             _getModeBtn().style.display = '';
@@ -103,9 +106,10 @@ export class GizmoController {
         this._viewer.redraw();
     }
 
-    /** Call when the Build tab closes — hide gizmo without detaching. */
+    /** Call when the Build tab closes — remove gizmo from scene so its picker meshes
+     *  don't block URDFDragControls raycasting on the Inspect tab. */
     onBuildClose(): void {
-        this._tc.visible = false;
+        this._viewer.scene.remove(this._tc);
         _getModeBtn().style.display = 'none';
         this._viewer.redraw();
     }
