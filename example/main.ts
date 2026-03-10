@@ -6,6 +6,7 @@ import type { ChatCallbacks } from './chat.js';
 import type { GestureController } from './gesture.js';
 import { GridHelper } from 'three';
 import { MuJoCoSimulator } from './simulator.js';
+import { SimController } from './sim-ctrl.js';
 import { initPanel } from './panel.js';
 
 // ── Module imports for extracted concerns ─────────────────────────────────
@@ -21,6 +22,7 @@ import { $ } from './dom-utils.js';
 import { initJointPanel, makeScrubLabel } from './joint-panel.js';
 import { openPanel, openGestureHint } from './float-panel.js';
 import { RobotCarousel } from './robot-carousel.js';
+import { GizmoController } from './gizmo-ctrl.js';
 
 customElements.define('urdf-viewer', URDFManipulator);
 
@@ -124,12 +126,14 @@ function _setActiveTab(id: string): void {
 $('tab-inspect').addEventListener('click', () => {
     editorCtrl.close();
     buildCtrl.close();
+    gizmoCtrl?.onBuildClose();
     _buildGrid.visible = false;
     _viewportGrid.visible = true;
     _setActiveTab('tab-inspect');
 });
 $('tab-editor').addEventListener('click', () => {
     buildCtrl.close();
+    gizmoCtrl?.onBuildClose();
     editorCtrl.open();
     _buildGrid.visible = false;
     _viewportGrid.visible = true;
@@ -139,6 +143,7 @@ $('tab-editor').addEventListener('click', () => {
 $('tab-build').addEventListener('click', () => {
     editorCtrl.close();
     buildCtrl.open();
+    gizmoCtrl?.onBuildOpen();
     _viewportGrid.visible = false;
     _buildGrid.visible = true;
     _buildGrid.position.y = viewer.shadowPlane.position.y;
@@ -151,11 +156,6 @@ const ignoreLimitsEl  = $<HTMLInputElement>('ignore-limits');
 const showCollisionEl = $<HTMLInputElement>('show-collision');
 const displayShadowEl = $<HTMLInputElement>('display-shadow');
 const upAxisEl        = $<HTMLSelectElement>('up-axis');
-const btnKinematic    = $<HTMLButtonElement>('btn-kinematic');
-const btnDynamic      = $<HTMLButtonElement>('btn-dynamic');
-const simStatus       = $('simulate-status');
-const simFloatBase    = $<HTMLInputElement>('sim-float-base');
-const physicsModeOptions = $('physics-mode-options');
 
 let ROBOTS: RobotConfig[] = [];
 // Instantiated after refreshBuildHeader / syncSlidersFromController are defined (see below).
@@ -256,40 +256,16 @@ showCollisionEl.addEventListener('change', () => { viewer.showCollision = showCo
 displayShadowEl.addEventListener('change', () => { viewer.displayShadow = displayShadowEl.checked; });
 upAxisEl.addEventListener('change', () => { viewer.up = upAxisEl.value; });
 
-function stopSimulation(): void {
-    simulator.stop();
-    document.body.classList.remove('simulating');
-    viewer.disableDragging = false;
-    simStatus.textContent = '';
-    physicsModeOptions.hidden = true;
-}
-
-btnKinematic.addEventListener('click', stopSimulation);
-
-btnDynamic.addEventListener('click', async () => {
-    if (document.body.classList.contains('simulating')) return;
-    btnDynamic.disabled = true;
-    physicsModeOptions.hidden = false;
-    simStatus.textContent = 'Loading physics…';
-    try {
-        const src = robotLoader.simSource!;
-        const floatBase = simFloatBase.checked;
-        if (src.kind === 'xml') {
-            await simulator.loadFromXML(src.xml, src.base, '', floatBase);
-        } else {
-            await simulator.load(src.urdfUrl, src.pkgStr, floatBase);
-        }
-        simulator.start(viewer.robot!, () => viewer.redraw());
-        viewer.disableDragging = true;
-        document.body.classList.add('simulating');
-        simStatus.textContent = '';
-    } catch (err) {
-        simStatus.textContent = 'Failed';
-        console.error('[simulator]', err);
-        physicsModeOptions.hidden = true;
-    } finally {
-        btnDynamic.disabled = false;
-    }
+// ── Simulation controller ─────────────────────────────────────────────────
+const simCtrl = new SimController({
+    simulator,
+    viewer,
+    playBtn:     $<HTMLButtonElement>('sim-play-btn'),
+    stopBtn:     $<HTMLButtonElement>('sim-stop-btn'),
+    resetBtn:    $<HTMLButtonElement>('sim-reset-btn'),
+    statusEl:    $('sim-status'),
+    floatBaseEl: $<HTMLInputElement>('sim-float-base'),
+    speedEl:     $<HTMLInputElement>('sim-speed'),
 });
 
 displayShadowEl.checked = viewer.displayShadow;
@@ -321,6 +297,7 @@ const inspectorClose   = $('inspector-close');
 let selectedJoint: string | null = null;
 let hoveredJointName: string | null = null;
 let gestureCtrl: GestureController | null = null;
+let gizmoCtrl: GizmoController | null = null;
 
 function fmt(v: number): string { return v.toFixed(4); }
 
@@ -455,6 +432,9 @@ viewer.addEventListener('urdf-processed', () => {
         const groundY = viewer.shadowPlane.position.y;
         _viewportGrid.position.y = groundY;
         _buildGrid.position.y = groundY;
+        // Re-attach gizmo to newly loaded robot (joint objects are replaced on each reload)
+        const selId = crudCtrl.getBuildSelCompId();
+        if (selId) gizmoCtrl?.attach(selId);
     });
 });
 
@@ -633,7 +613,12 @@ const crudCtrl = new ComponentCrudController({
     makeScrubLabel,
     refreshPaletteCounts:         () => refreshPaletteCounts(),
     regenMeshBlob,
+    onCompSelected:               (id) => gizmoCtrl?.attach(id),
+    onCompDeselected:             () => gizmoCtrl?.detach(),
 });
+
+// ── Init transform gizmo ──────────────────────────────────────────────────
+gizmoCtrl = new GizmoController(viewer, buildCtrl, crudCtrl);
 
 // ── Init component 3D drag ────────────────────────────────────────────────
 initComponentDrag3D(buildCtrl, viewer, buildComponentsListEl, crudCtrl);
@@ -755,7 +740,8 @@ robotCarousel.refreshBuildHeader();
 // ── Robot loader ───────────────────────────────────────────────────────────
 robotLoader = new RobotLoader({
     viewer, buildCtrl, crudCtrl, editorCtrl, simulator,
-    upAxisEl, simStatus, physicsModeOptions, simFloatBase,
+    upAxisEl,
+    onSimSourceChange: (src) => simCtrl.setSource(src),
     syncSlidersFromController,
     refreshPaletteCounts,
     refreshBuildHeader: () => robotCarousel.refreshBuildHeader(),

@@ -552,26 +552,17 @@
       border-top: 1px solid var(--border);
     }
     .script-editor-wrap {
-      height: 152px; /* 8 lines × 19px */
       border-bottom: 1px solid var(--border);
       overflow: hidden;
-      display: flex;
     }
-    .script-textarea {
-      flex: 1;
-      background: var(--bg);
-      color: var(--text-1);
-      border: none;
-      outline: none;
-      resize: none;
-      font-family: ui-monospace, monospace;
+    .script-editor-cm {
+      height: 152px; /* 8 lines × 19px */
+      overflow: hidden;
       font-size: 0.6875rem;
       line-height: 19px;
-      padding: 4px 6px;
-      overflow: auto;
-      white-space: pre;
-      tab-size: 2;
     }
+    .script-editor-cm .cm-editor { height: 100%; }
+    .script-editor-cm .cm-scroller { overflow: auto; font-family: ui-monospace, monospace; font-size: 0.6875rem; line-height: 19px; }
     .script-status {
       padding: 2px 6px 4px;
       font-size: 0.625rem;
@@ -899,54 +890,54 @@
 
     select:focus-visible { outline: none; border-color: var(--blue); }
 
-    /* ── Physics mode toggle (Inspect tab) ─────────────────────────────── */
-    #physics-mode-bar {
-      padding: 10px 12px 10px;
-      border-bottom: 1px solid var(--border);
+    /* ── Simulation section (Inspect tab) ──────────────────────────────── */
+    .sim-controls { padding: 4px 12px 8px; }
+
+    .sim-toolbar {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 0 6px;
+    }
+
+    .sim-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 14px;
+      line-height: 1;
+      padding: 0 3px;
+      border-radius: 3px;
+      color: var(--text-2);
+      transition: color 0.12s, background 0.12s;
+    }
+    .sim-btn:hover { color: var(--text-1); background: var(--surface-hover); }
+    .sim-btn:active { transform: scale(0.9); }
+    .sim-btn:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+    .sim-btn--reset { color: var(--text-3); }
+
+    /* Play button turns blue while simulation is loading or running */
+    body.simulating .sim-btn#sim-stop-btn { color: var(--blue-text); }
+
+    .sim-status {
+      font-size: 0.6875rem;
+      color: var(--text-3);
+      margin-left: 2px;
+    }
+    .sim-status.running { color: var(--green); }
+    .sim-status.error   { color: var(--red); }
+
+    .sim-options {
       display: flex;
       flex-direction: column;
-      gap: 8px;
+      gap: 4px;
     }
 
-    .physics-mode-toggle {
-      display: flex;
-      background: var(--bg);
-      border-radius: 10px;
-      padding: 3px;
-      gap: 3px;
-    }
-
-    .physics-mode-btn {
-      flex: 1; border: 1px solid transparent; border-radius: 7px;
-      padding: 7px 10px; font-size: 0.75rem; font-weight: 500;
-      cursor: pointer; background: transparent; color: var(--text-2);
-      transition: background 0.15s, color 0.15s, border-color 0.15s;
-    }
-    .physics-mode-btn:hover { color: var(--text-1); }
-
-    #btn-kinematic {
-      background: var(--surface); color: var(--text-1);
-      box-shadow: 0 1px 3px rgba(0,0,0,0.3);
-      border-color: var(--border);
-    }
-    body.simulating #btn-kinematic {
-      background: transparent; color: var(--text-2); box-shadow: none; border-color: transparent;
-    }
-    body.simulating #btn-dynamic {
-      background: linear-gradient(135deg, rgba(59,130,246,0.25), rgba(100,60,255,0.2));
-      color: var(--blue-text);
-      border-color: rgba(59,130,246,0.3);
-    }
-    #btn-dynamic:disabled { opacity: 0.45; cursor: default; }
-
-    #physics-mode-options {
-      display: flex; align-items: center; gap: 8px;
-    }
-    #simulate-status { font-size: 0.625rem; color: var(--text-3); white-space: nowrap; }
-    #sim-float-label {
-      font-size: 0.6875rem; color: var(--text-2);
-      display: flex; align-items: center; gap: 4px;
-      white-space: nowrap; cursor: pointer;
+    /* Speed range uses the shared inspector-row range style */
+    .sim-options .inspector-row span {
+      font-size: 0.6875rem;
+      color: var(--text-2);
+      min-width: 54px;
     }
 
     /* Dim joint sliders while physics is running */

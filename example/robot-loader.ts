@@ -51,9 +51,8 @@ export interface RobotLoaderOptions {
     editorCtrl:              URDFEditorController;
     simulator:               MuJoCoSimulator;
     upAxisEl:                HTMLSelectElement;
-    simStatus:               HTMLElement;
-    physicsModeOptions:      HTMLElement;
-    simFloatBase:            HTMLInputElement;
+    /** Called when simSource changes so the sim controller can react. */
+    onSimSourceChange:       (source: SimSource | null) => void;
     syncSlidersFromController: () => void;
     refreshPaletteCounts:    () => void;
     refreshBuildHeader:      () => void;
@@ -81,17 +80,12 @@ export class RobotLoader {
         this._opts.upAxisEl.value = robot.up;
         this._opts.viewer.package = robot.package ?? '';
 
-        this._opts.simulator.stop();
-        document.body.classList.remove('simulating');
-        this._opts.viewer.disableDragging = false;
-        this._opts.simStatus.textContent = '';
-        this._opts.physicsModeOptions.hidden = true;
-
         this._simSource = robot.urdf
             ? { kind: 'url', urdfUrl: robot.urdf, pkgStr: robot.package ?? '' }
             : null;
-        this._opts.simFloatBase.checked = !!robot.parts;
-        $('physics-mode-bar').hidden = !robot.urdf;
+        // Notify SimController; it handles stopping any running simulation.
+        this._opts.onSimSourceChange(robot.urdf ? this._simSource : null);
+        $('sim-section').hidden = !robot.urdf;
 
         const sourceUrl = robot.parts ? `${robot.parts}.urdf` : robot.urdf!;
 
@@ -123,7 +117,8 @@ export class RobotLoader {
         this._opts.viewer.urdf   = this._partsBlobUrl;
 
         this._simSource = { kind: 'xml', xml, base: dir + '/' };
-        $('physics-mode-bar').hidden = false;
+        this._opts.onSimSourceChange(this._simSource);
+        $('sim-section').hidden = false;
 
         this._opts.crudCtrl.clearBuildUI();
         const restored = this._opts.buildCtrl.restore();

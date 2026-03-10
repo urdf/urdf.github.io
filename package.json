@@ -52,5 +52,13 @@
     "vite-plugin-dts": "^4.5.4",
     "vitest": "^3.0.4"
   },
-  "sideEffects": false
+  "sideEffects": false,
+  "dependencies": {
+    "@codemirror/commands": "^6.10.2",
+    "@codemirror/lang-javascript": "^6.2.5",
+    "@codemirror/language": "^6.12.2",
+    "@codemirror/lint": "^6.9.5",
+    "@codemirror/state": "^6.5.4",
+    "@codemirror/view": "^6.39.16"
+  }
 }

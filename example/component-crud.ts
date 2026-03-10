@@ -1,6 +1,12 @@
 import { URDFBuildController, COMPONENT_CATALOG } from './build.js';
 import type { URDFManipulator } from '../src/index.js';
 import { $ } from './dom-utils.js';
+import { EditorView, keymap, lineNumbers } from '@codemirror/view';
+import { EditorState } from '@codemirror/state';
+import { javascript } from '@codemirror/lang-javascript';
+import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
+import { lintGutter, linter, setDiagnostics } from '@codemirror/lint';
+import type { Diagnostic } from '@codemirror/lint';
 
 export interface ContextPillCtx { label: string; color: string; onDismiss: () => void; }
 
@@ -15,6 +21,8 @@ export interface ComponentCrudOptions {
     makeScrubLabel: (label: HTMLElement, input: HTMLInputElement) => void;
     refreshPaletteCounts: () => void;
     regenMeshBlob: (id: string, type: string) => void;
+    onCompSelected?: (id: string) => void;
+    onCompDeselected?: () => void;
 }
 
 export class ComponentCrudController {
@@ -27,6 +35,8 @@ export class ComponentCrudController {
     private readonly _opts: ComponentCrudOptions;
     private _worker: Worker | null = null;
     private _scriptStatusEls = new Map<string, HTMLElement>();
+    private _cmEditors = new Map<string, EditorView>();
+    private _cmDiags   = new Map<string, Diagnostic[]>();
 
     constructor(opts: ComponentCrudOptions) {
         this._opts = opts;
@@ -39,12 +49,25 @@ export class ComponentCrudController {
             this._worker.onmessage = ({ data }: MessageEvent<{ id: string; buf?: ArrayBuffer; error?: string; line?: number }>) => {
                 const { id, buf, error, line } = data;
                 const statusEl = this._scriptStatusEls.get(id);
+                const view = this._cmEditors.get(id);
                 if (buf) {
                     this._opts.buildCtrl.restoreMeshBlob(id, buf);
                     if (statusEl) { statusEl.textContent = '✓'; statusEl.className = 'script-status ok'; }
+                    // Clear any previous diagnostics
+                    this._cmDiags.set(id, []);
+                    if (view) view.dispatch(setDiagnostics(view.state, []));
                 } else {
                     const loc = line != null ? `line ${line}: ` : '';
                     if (statusEl) { statusEl.textContent = loc + (error ?? 'Unknown error'); statusEl.className = 'script-status err'; }
+                    // Surface error as inline diagnostic
+                    if (view && line != null) {
+                        const lineInfo = view.state.doc.line(Math.max(1, Math.min(line, view.state.doc.lines)));
+                        const diag: Diagnostic = { from: lineInfo.from, to: lineInfo.to, severity: 'error', message: error ?? 'Unknown error' };
+                        this._cmDiags.set(id, [diag]);
+                        view.dispatch(setDiagnostics(view.state, [diag]));
+                    } else {
+                        this._cmDiags.set(id, []);
+                    }
                 }
             };
             this._worker.onerror = (e) => console.warn('[script-worker]', e.message);
@@ -106,6 +129,7 @@ export class ComponentCrudController {
         this.componentInputs.clear();
         this.componentSelects.clear();
         this.updateContextPill(null);
+        this._opts.onCompDeselected?.();
     }
 
     clearBuildUI(): void {
@@ -127,6 +151,7 @@ export class ComponentCrudController {
             color:     def?.cssColor ?? '#888',
             onDismiss: () => this.deselectComp(),
         });
+        this._opts.onCompSelected?.(id);
     }
 
     setBuildSelPartName(name: string | null): void {
@@ -199,13 +224,9 @@ export class ComponentCrudController {
             const wrap = document.createElement('div');
             wrap.className = 'script-editor-wrap';
 
-            const ta = document.createElement('textarea');
-            ta.className = 'script-textarea';
-            ta.spellcheck = false;
-            ta.autocomplete = 'off';
-            ta.setAttribute('wrap', 'off');
-            ta.value = this._opts.buildCtrl.getComponentScript(id) ?? '';
-            wrap.appendChild(ta);
+            const cmHost = document.createElement('div');
+            cmHost.className = 'script-editor-cm';
+            wrap.appendChild(cmHost);
 
             const statusEl = document.createElement('div');
             statusEl.className = 'script-status';
@@ -214,18 +235,64 @@ export class ComponentCrudController {
             section.append(wrap, statusEl);
             item.appendChild(section);
 
+            const initSrc = this._opts.buildCtrl.getComponentScript(id) ?? '';
             let debounce = 0;
-            ta.addEventListener('input', () => {
-                const src = ta.value;
-                this._opts.buildCtrl.setComponentScript(id, src);
-                statusEl.textContent = '…';
-                statusEl.className = 'script-status';
-                clearTimeout(debounce);
-                debounce = window.setTimeout(() => this.runScript(id, src), 600);
+
+            // Build linter source referencing the per-component diagnostic store
+            const lintSource = (): Diagnostic[] => this._cmDiags.get(id) ?? [];
+
+            const darkTheme = EditorView.theme({
+                '&': {
+                    background: '#0f172a',
+                    color: '#e2e8f0',
+                    height: '152px',
+                },
+                '.cm-content': { caretColor: '#e2e8f0' },
+                '.cm-cursor': { borderLeftColor: '#e2e8f0' },
+                '.cm-gutters': {
+                    background: '#0d111e',
+                    color: '#4e6074',
+                    border: 'none',
+                    borderRight: '1px solid #334155',
+                },
+                '.cm-activeLineGutter': { background: '#1e293b' },
+                '.cm-activeLine': { background: 'rgba(255,255,255,0.04)' },
+                '.cm-selectionBackground, ::selection': { background: 'rgba(59,130,246,0.25) !important' },
+                '.cm-focused .cm-selectionBackground': { background: 'rgba(59,130,246,0.3) !important' },
+                '.cm-tooltip': { background: '#1e293b', border: '1px solid #334155' },
+                '.cm-lintRange-error': { backgroundImage: 'none', borderBottom: '2px solid #ff453a' },
+                '.cm-diagnostic-error': { borderLeft: '3px solid #ff453a', color: '#e2e8f0' },
+                '.cm-lint-marker-error': { color: '#ff453a' },
+            }, { dark: true });
+
+            const view = new EditorView({
+                state: EditorState.create({
+                    doc: initSrc,
+                    extensions: [
+                        lineNumbers(),
+                        history(),
+                        javascript(),
+                        lintGutter(),
+                        linter(lintSource),
+                        keymap.of([...defaultKeymap, ...historyKeymap]),
+                        darkTheme,
+                        EditorView.updateListener.of((update) => {
+                            if (!update.docChanged) return;
+                            const src = update.state.doc.toString();
+                            this._opts.buildCtrl.setComponentScript(id, src);
+                            statusEl.textContent = '…';
+                            statusEl.className = 'script-status';
+                            clearTimeout(debounce);
+                            debounce = window.setTimeout(() => this.runScript(id, src), 600);
+                        }),
+                    ],
+                }),
+                parent: cmHost,
             });
 
+            this._cmEditors.set(id, view);
+
             // Run immediately if there's existing source (e.g. after restore)
-            const initSrc = ta.value;
             if (initSrc) this.runScript(id, initSrc);
         }
 
@@ -416,6 +483,9 @@ export class ComponentCrudController {
         this.componentInputs.delete(id);
         this.componentSelects.delete(id);
         this._scriptStatusEls.delete(id);
+        const cmView = this._cmEditors.get(id);
+        if (cmView) { cmView.destroy(); this._cmEditors.delete(id); }
+        this._cmDiags.delete(id);
         this.removeOptionFromParentSelects(id);
         if (this._buildSelCompId === id) this.deselectComp();
         card?.remove();
