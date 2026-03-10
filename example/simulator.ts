@@ -46,6 +46,10 @@ export class MuJoCoSimulator {
     private _model: any = null;
     private _data:  any = null;
     private _raf = 0;
+    // Steps per animation frame — 8 ≈ real-time at 60 fps with the 2 ms MuJoCo default timestep.
+    private _stepsPerFrame = 8;
+    private _robot:  URDFRobot | null = null;
+    private _redraw: (() => void) | null = null;
 
     /** Resolve package:// URIs using the viewer's colon-separated package string. */
     private _resolve(path: string, pkgStr: string, urdfBase: string): string | null {
@@ -174,21 +178,43 @@ export class MuJoCoSimulator {
         await this._processAndLoad(mj, xml, baseUrl, pkgStr, floatBase);
     }
 
+    /** Simulation speed multiplier. 1 = real-time (≈8 steps/frame at 60 fps). */
+    set speed(v: number) {
+        this._stepsPerFrame = Math.max(1, Math.round(v * 8));
+    }
+
     start(robot: URDFRobot, redraw: () => void): void {
-        if (!this._model || !this._data || !_mujoco) return;
-        const mj = _mujoco;
-        const { _model: model, _data: data, _floatBase } = this;
+        this._robot  = robot;
+        this._redraw = redraw;
+        this._runLoop();
+    }
+
+    pause(): void {
+        cancelAnimationFrame(this._raf);
+        this._raf = 0;
+    }
+
+    resume(): void {
+        if (!this._robot || !this._redraw) return;
+        this._runLoop();
+    }
+
+    private _runLoop(): void {
+        if (!this._model || !this._data || !_mujoco || !this._robot || !this._redraw) return;
+        const mj     = _mujoco;
+        const model  = this._model;
+        const data   = this._data;
+        const robot  = this._robot;
+        const redraw = this._redraw;
+        const floatBase = this._floatBase;
 
         const loop = () => {
             this._raf = requestAnimationFrame(loop);
-            mj.mj_step(model, data);
+            for (let s = 0; s < this._stepsPerFrame; s++) mj.mj_step(model, data);
 
             // Float base: sync body 1 world pose onto the robot's Three.js object.
-            // robot lives in viewer.world whose local space = URDF space (_applyUp handles
-            // the global transform), so MuJoCo xpos/xquat map directly to robot.position/quaternion.
-            if (_floatBase && data.xpos.length > 5) {
+            if (floatBase && data.xpos.length > 5) {
                 robot.position.set(data.xpos[3], data.xpos[4], data.xpos[5]);
-                // MuJoCo xquat layout: (w, x, y, z) per body; Three.js: (x, y, z, w)
                 robot.quaternion.set(
                     data.xquat[5], data.xquat[6], data.xquat[7], data.xquat[4],
                 );
@@ -196,7 +222,7 @@ export class MuJoCoSimulator {
 
             for (let i = 0; i < model.njnt; i++) {
                 const type = model.jnt_type[i];
-                if (type !== 2 && type !== 3) continue; // slide or hinge only; skip free/ball
+                if (type !== 2 && type !== 3) continue;
                 const name = mj.mj_id2name(model, mj.mjtObj.mjOBJ_JOINT.value, i);
                 if (name && robot.joints[name]) {
                     robot.setJointValue(name, data.qpos[model.jnt_qposadr[i]]);
@@ -209,7 +235,9 @@ export class MuJoCoSimulator {
 
     stop(): void {
         cancelAnimationFrame(this._raf);
-        this._raf = 0;
+        this._raf    = 0;
+        this._robot  = null;
+        this._redraw = null;
         this._model?.delete(); this._model = null;
         this._data?.delete();  this._data  = null;
     }

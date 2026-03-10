@@ -46,30 +46,32 @@
     </div>
 
     <div class="tab-body" data-tab="inspect">
-      <div class="section options-bar">
-        <label class="option"><input type="checkbox" id="ignore-limits" /> Unlock joints</label>
-        <label class="option"><input type="checkbox" id="show-collision" /> Collision</label>
-        <label class="option"><input type="checkbox" id="display-shadow" /> Shadow</label>
-        <label class="option">Up
-          <select id="up-axis">
-            <option value="+Z">+Z</option>
-            <option value="-Z">−Z</option>
-            <option value="+Y">+Y</option>
-            <option value="-Y">−Y</option>
-          </select>
-        </label>
+      <div class="options-bar">
+        <div class="options-row">
+          <label class="option"><input type="checkbox" id="ignore-limits" /> Unlock</label>
+          <label class="option"><input type="checkbox" id="show-collision" /> Collision</label>
+          <label class="option"><input type="checkbox" id="display-shadow" /> Shadow</label>
+          <label class="option option--select">Up
+            <select id="up-axis">
+              <option value="+Z">+Z</option>
+              <option value="-Z">−Z</option>
+              <option value="+Y">+Y</option>
+              <option value="-Y">−Y</option>
+            </select>
+          </label>
+        </div>
       </div>
 
       <details id="gesture-section" class="info-section">
         <summary>Gestures</summary>
         <div class="build-section-body">
-          <div class="gesture-grid">
-            <div class="gesture-tile"><span class="gesture-tile-icon">✊</span><span>Orbit</span></div>
-            <div class="gesture-tile"><span class="gesture-tile-icon">☝️</span><span>Select</span></div>
-            <div class="gesture-tile"><span class="gesture-tile-icon">🤚</span><span>Twist joint</span></div>
-            <div class="gesture-tile"><span class="gesture-tile-icon">🖐️</span><span>Reset</span></div>
-            <div class="gesture-tile"><span class="gesture-tile-icon">🤲</span><span>Zoom</span></div>
-          </div>
+          <ul class="gesture-list" aria-label="Gesture reference">
+            <li><span class="gesture-icon">✊</span><span class="gesture-label">Orbit camera</span></li>
+            <li><span class="gesture-icon">☝️</span><span class="gesture-label">Hover &amp; select joint</span></li>
+            <li><span class="gesture-icon">🤚</span><span class="gesture-label">Twist selected joint</span></li>
+            <li><span class="gesture-icon">🖐️</span><span class="gesture-label">Reset all joints (hold 1 s)</span></li>
+            <li><span class="gesture-icon">🤲</span><span class="gesture-label">Pinch to zoom</span></li>
+          </ul>
         </div>
       </details>
 
@@ -77,9 +79,10 @@
         <summary>Simulate</summary>
         <div class="sim-controls">
           <div class="sim-toolbar">
-            <button type="button" id="sim-play-btn" class="sim-btn" title="Start simulation">&#9654;</button>
-            <button type="button" id="sim-stop-btn" class="sim-btn" title="Stop simulation" hidden>&#9646;&#9646;</button>
-            <button type="button" id="sim-reset-btn" class="sim-btn sim-btn--reset" title="Reset">&#8635;</button>
+            <button type="button" id="sim-play-btn"  class="sim-btn" title="Start simulation">&#9654;</button>
+            <button type="button" id="sim-pause-btn" class="sim-btn" title="Pause simulation" hidden>&#9646;&#9646;</button>
+            <button type="button" id="sim-stop-btn"  class="sim-btn" title="Stop simulation"  hidden>&#9632;</button>
+            <button type="button" id="sim-reset-btn" class="sim-btn sim-btn--reset" title="Reset simulation">&#8635;</button>
             <span id="sim-status" class="sim-status">Ready</span>
           </div>
           <div class="sim-options">
@@ -198,6 +201,34 @@
           <div id="build-saved-list" hidden></div>
         </div>
 
+        <div class="build-palette-header">
+          <span class="section-label">Add Component</span>
+        </div>
+        <div class="component-palette" id="build-palette"></div>
+        <div id="build-components-list"></div>
+
+        <details class="build-section" id="library-section">
+          <summary>Library</summary>
+          <div class="build-section-body">
+            <div class="lib-search-wrap">
+              <input type="search" id="lib-search" class="lib-search-input"
+                     placeholder="Search components…" autocomplete="off" aria-label="Search components">
+            </div>
+            <div class="lib-pills" id="lib-pills" role="group" aria-label="Category filter">
+              <button type="button" class="lib-pill lib-pill--active" data-cat="">All</button>
+              <button type="button" class="lib-pill" data-cat="Sensor">Sensor</button>
+              <button type="button" class="lib-pill" data-cat="Actuator">Actuator</button>
+              <button type="button" class="lib-pill" data-cat="MCU">MCU</button>
+              <button type="button" class="lib-pill" data-cat="Power">Power</button>
+              <button type="button" class="lib-pill" data-cat="Structural">Structural</button>
+            </div>
+            <div class="lib-grid-wrap">
+              <div class="lib-grid" id="lib-grid"></div>
+              <p class="lib-empty" id="lib-empty" hidden>No components match.</p>
+            </div>
+          </div>
+        </details>
+
         <div id="build-parametric">
           <details class="build-section" data-panel="chassis">
             <summary>Chassis <button type="button" class="build-section-detach" title="Open as floating panel">⊡</button></summary>
@@ -313,34 +344,6 @@
             </div>
           </details>
         </div><!-- #build-parametric -->
-
-        <div class="build-palette-header">
-          <span class="section-label">Add Component</span>
-        </div>
-        <div class="component-palette" id="build-palette"></div>
-        <div id="build-components-list"></div>
-
-        <details class="build-section" id="library-section">
-          <summary>Library</summary>
-          <div class="build-section-body">
-            <div class="lib-search-wrap">
-              <input type="search" id="lib-search" class="lib-search-input"
-                     placeholder="Search components…" autocomplete="off" aria-label="Search components">
-            </div>
-            <div class="lib-pills" id="lib-pills" role="group" aria-label="Category filter">
-              <button type="button" class="lib-pill lib-pill--active" data-cat="">All</button>
-              <button type="button" class="lib-pill" data-cat="Sensor">Sensor</button>
-              <button type="button" class="lib-pill" data-cat="Actuator">Actuator</button>
-              <button type="button" class="lib-pill" data-cat="MCU">MCU</button>
-              <button type="button" class="lib-pill" data-cat="Power">Power</button>
-              <button type="button" class="lib-pill" data-cat="Structural">Structural</button>
-            </div>
-            <div class="lib-grid-wrap">
-              <div class="lib-grid" id="lib-grid"></div>
-              <p class="lib-empty" id="lib-empty" hidden>No components match.</p>
-            </div>
-          </div>
-        </details>
 
       </div><!-- .sidebar-scroll -->
 

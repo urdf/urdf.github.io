@@ -5,7 +5,7 @@ import { EditorView, keymap, lineNumbers } from '@codemirror/view';
 import { EditorState } from '@codemirror/state';
 import { javascript } from '@codemirror/lang-javascript';
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
-import { lintGutter, linter, setDiagnostics } from '@codemirror/lint';
+import { lintGutter, setDiagnostics } from '@codemirror/lint';
 import type { Diagnostic } from '@codemirror/lint';
 
 export interface ContextPillCtx { label: string; color: string; onDismiss: () => void; }
@@ -238,32 +238,24 @@ export class ComponentCrudController {
             const initSrc = this._opts.buildCtrl.getComponentScript(id) ?? '';
             let debounce = 0;
 
-            // Build linter source referencing the per-component diagnostic store
-            const lintSource = (): Diagnostic[] => this._cmDiags.get(id) ?? [];
-
-            const darkTheme = EditorView.theme({
-                '&': {
-                    background: '#0f172a',
-                    color: '#e2e8f0',
-                    height: '152px',
-                },
-                '.cm-content': { caretColor: '#e2e8f0' },
-                '.cm-cursor': { borderLeftColor: '#e2e8f0' },
+            const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            const editorTheme = EditorView.theme({
+                '&': { background: 'var(--surface-lo)', color: 'var(--text-1)', height: '152px' },
+                '.cm-content':        { caretColor: 'var(--text-1)' },
+                '.cm-cursor':         { borderLeftColor: 'var(--text-1)' },
                 '.cm-gutters': {
-                    background: '#0d111e',
-                    color: '#4e6074',
-                    border: 'none',
-                    borderRight: '1px solid #334155',
+                    background: 'var(--bg)', color: 'var(--text-3)',
+                    border: 'none', borderRight: '1px solid var(--border)',
                 },
-                '.cm-activeLineGutter': { background: '#1e293b' },
-                '.cm-activeLine': { background: 'rgba(255,255,255,0.04)' },
-                '.cm-selectionBackground, ::selection': { background: 'rgba(59,130,246,0.25) !important' },
-                '.cm-focused .cm-selectionBackground': { background: 'rgba(59,130,246,0.3) !important' },
-                '.cm-tooltip': { background: '#1e293b', border: '1px solid #334155' },
-                '.cm-lintRange-error': { backgroundImage: 'none', borderBottom: '2px solid #ff453a' },
-                '.cm-diagnostic-error': { borderLeft: '3px solid #ff453a', color: '#e2e8f0' },
-                '.cm-lint-marker-error': { color: '#ff453a' },
-            }, { dark: true });
+                '.cm-activeLineGutter':              { background: 'var(--surface-hover)' },
+                '.cm-activeLine':                    { background: 'rgba(128,128,128,0.06)' },
+                '.cm-selectionBackground, ::selection': { background: 'var(--blue-bg) !important' },
+                '.cm-focused .cm-selectionBackground':  { background: 'var(--blue-bg) !important' },
+                '.cm-tooltip':        { background: 'var(--surface)', border: '1px solid var(--border)' },
+                '.cm-lintRange-error':  { backgroundImage: 'none', borderBottom: '2px solid var(--red)' },
+                '.cm-diagnostic-error': { borderLeft: '3px solid var(--red)', color: 'var(--text-1)' },
+                '.cm-lint-marker-error': { color: 'var(--red)' },
+            }, { dark: isDark });
 
             const view = new EditorView({
                 state: EditorState.create({
@@ -273,9 +265,13 @@ export class ComponentCrudController {
                         history(),
                         javascript(),
                         lintGutter(),
-                        linter(lintSource),
-                        keymap.of([...defaultKeymap, ...historyKeymap]),
-                        darkTheme,
+                        keymap.of([
+                            ...defaultKeymap,
+                            ...historyKeymap,
+                            // Escape releases focus so Tab can navigate away
+                            { key: 'Escape', run: (v) => { v.contentDOM.blur(); return false; } },
+                        ]),
+                        editorTheme,
                         EditorView.updateListener.of((update) => {
                             if (!update.docChanged) return;
                             const src = update.state.doc.toString();

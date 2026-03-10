@@ -13,25 +13,8 @@ function _getModeBtn(): HTMLButtonElement {
     btn.id = 'gizmo-mode-btn';
     btn.title = 'Toggle gizmo mode (translate / rotate)';
     btn.textContent = 'T';
-    Object.assign(btn.style, {
-        position:    'absolute',
-        bottom:      '8px',
-        right:       '8px',
-        zIndex:      '20',
-        padding:     '2px 6px',
-        fontSize:    '0.625rem',
-        fontFamily:  'var(--font-mono, monospace)',
-        fontWeight:  '600',
-        letterSpacing: '0.05em',
-        textTransform: 'uppercase',
-        background:  'var(--surface-2, #2a2a2a)',
-        color:       'var(--text-1, #e8e8e8)',
-        border:      '1px solid var(--border, #3a3a3a)',
-        borderRadius: '3px',
-        cursor:      'pointer',
-        lineHeight:  '1.4',
-        display:     'none',
-    });
+    btn.className = 'gizmo-mode-btn';
+    btn.style.display = 'none';
     document.querySelector('main')?.appendChild(btn);
     _modeBtn = btn;
     return btn;
@@ -141,27 +124,34 @@ export class GizmoController {
         const joint = this._findJoint(id);
         if (!joint) return;
 
-        // joint.position is in URDF coordinate space (parent-local, before world rotation)
-        // because the +Z up-axis rotation is applied at the world container level above the robot.
-        const p = joint.position;
-        const x = p.x;
-        const y = p.y;
-        const z = p.z;
-
-        // Snap to 1 mm grid (matches the drag-3d SNAP constant)
-        const SNAP = 0.001;
-        const sx = Math.round(x / SNAP) * SNAP;
-        const sy = Math.round(y / SNAP) * SNAP;
-        const sz = Math.round(z / SNAP) * SNAP;
-
-        this._buildCtrl.finishComponentDrag(id, sx, sy, sz);
-
-        // Sync the inspector number inputs
         const inp = this._crudCtrl.componentInputs.get(id);
-        if (inp) {
-            inp['x'].value = sx.toFixed(4);
-            inp['y'].value = sy.toFixed(4);
-            inp['z'].value = sz.toFixed(4);
+
+        if (this._mode === 'translate') {
+            // joint.position is in URDF coordinate space (parent-local, before world rotation)
+            const p = joint.position;
+            const SNAP = 0.001;
+            const sx = Math.round(p.x / SNAP) * SNAP;
+            const sy = Math.round(p.y / SNAP) * SNAP;
+            const sz = Math.round(p.z / SNAP) * SNAP;
+            this._buildCtrl.finishComponentDrag(id, sx, sy, sz);
+            if (inp) {
+                inp['x'].value = sx.toFixed(4);
+                inp['y'].value = sy.toFixed(4);
+                inp['z'].value = sz.toFixed(4);
+            }
+        } else {
+            // Rotate mode: read the Euler angles and commit them to the build state
+            const r = joint.rotation;
+            const rx = parseFloat(r.x.toFixed(4));
+            const ry = parseFloat(r.y.toFixed(4));
+            const rz = parseFloat(r.z.toFixed(4));
+            const data = this._buildCtrl.getComponentData(id);
+            if (data) this._buildCtrl.updateComponent(id, { ...data, rx, ry, rz });
+            if (inp) {
+                if (inp['rx']) inp['rx'].value = rx.toFixed(4);
+                if (inp['ry']) inp['ry'].value = ry.toFixed(4);
+                if (inp['rz']) inp['rz'].value = rz.toFixed(4);
+            }
         }
     }
 }

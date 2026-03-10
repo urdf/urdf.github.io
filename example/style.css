@@ -581,6 +581,28 @@
     /* Hide new-robot form when a robot is already active */
     #build-active-header:not([hidden]) ~ #build-new-robot { display: none; }
 
+    /* ── Gizmo mode toggle ──────────────────────────────────────────────── */
+    .gizmo-mode-btn {
+      position: absolute;
+      bottom: 8px;
+      right: 8px;
+      z-index: 20;
+      padding: 2px 6px;
+      font-size: 0.625rem;
+      font-family: ui-monospace, monospace;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      background: var(--surface-lo);
+      color: var(--text-1);
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      cursor: pointer;
+      line-height: 1.4;
+    }
+    .gizmo-mode-btn:hover { background: var(--surface-hover); }
+    .gizmo-mode-btn:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+
     #build-hover-tip {
       position: fixed;
       padding: 3px 8px;
@@ -823,11 +845,20 @@
     }
 
     .options-bar {
-      flex-direction: row;
+      padding: 7px 12px 6px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .options-row {
+      display: flex;
       flex-wrap: wrap;
       align-items: center;
-      gap: 6px 14px;
-      padding: 8px 12px;
+      gap: 6px 12px;
+    }
+
+    /* Up axis select sits inline with the toggles */
+    .option--select {
+      margin-left: auto;
     }
 
     .options-bar select {
@@ -925,6 +956,7 @@
       margin-left: 2px;
     }
     .sim-status.running { color: var(--green); }
+    .sim-status.paused  { color: var(--warning); }
     .sim-status.error   { color: var(--red); }
 
     .sim-options {
@@ -943,23 +975,24 @@
     /* Dim joint sliders while physics is running */
     body.simulating .joints input { pointer-events: none; opacity: 0.4; }
 
-    /* ── Gesture tiles ──────────────────────────────────────────────────── */
-    .gesture-grid {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 6px;
-      padding: 8px 12px 10px;
+    /* ── Gesture reference list (read-only, not interactive) ───────────── */
+    .gesture-list {
+      list-style: none;
+      margin: 0;
+      padding: 6px 12px 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
     }
 
-    .gesture-tile {
-      display: flex; flex-direction: column; align-items: center;
-      gap: 4px; padding: 8px 4px 6px;
-      background: none; border: none;
-      border-radius: 8px; font-size: 9px; line-height: 1.2;
-      color: var(--label); text-align: center;
+    .gesture-list li {
+      display: flex;
+      align-items: center;
+      gap: 10px;
     }
 
-    .gesture-tile-icon { font-size: 1.25rem; line-height: 1; }
+    .gesture-icon  { font-size: 1rem; line-height: 1; flex-shrink: 0; width: 20px; text-align: center; }
+    .gesture-label { font-size: 0.6875rem; color: var(--text-2); }
 
     /* ── Joint range ticks ──────────────────────────────────────────────── */
     .joint-ticks {

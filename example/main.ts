@@ -204,11 +204,8 @@ document.addEventListener('keydown', (e: KeyboardEvent) => {
             const el = document.activeElement as HTMLElement;
             if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable) return;
             e.preventDefault();
-            const card = buildComponentsListEl.querySelector<HTMLElement>(`[data-id="${selId}"]`);
             buildCtrl.removeComponent(selId);
-            crudCtrl.deselectComp();
-            crudCtrl.removeOptionFromParentSelects(selId);
-            card?.remove();
+            crudCtrl.removeComponentItem(selId);
             refreshPaletteCounts();
             return;
         }
@@ -261,6 +258,7 @@ const simCtrl = new SimController({
     simulator,
     viewer,
     playBtn:     $<HTMLButtonElement>('sim-play-btn'),
+    pauseBtn:    $<HTMLButtonElement>('sim-pause-btn'),
     stopBtn:     $<HTMLButtonElement>('sim-stop-btn'),
     resetBtn:    $<HTMLButtonElement>('sim-reset-btn'),
     statusEl:    $('sim-status'),
