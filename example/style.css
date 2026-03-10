@@ -2363,3 +2363,9 @@
     .build-section > summary:hover .build-section-detach,
     .build-section > summary:focus-within .build-section-detach { opacity: 1; color: var(--text-2); }
     .build-section-detach:hover { color: var(--text-1); background: var(--surface-hover); }
+
+    /* ── Utility: initial hidden state for elements toggled by JS ─────────── */
+    #chat-empty-state { display: none; }
+    #resize-tooltip   { display: none; }
+    #inspector        { display: none; }
+    .hidden           { display: none !important; }

@@ -14,7 +14,7 @@ import { BuildSlidersController } from './build-sliders.js';
 import { InspectorController } from './inspector.js';
 import { ComponentCrudController } from './component-crud.js';
 import { initComponentDrag3D } from './component-drag-3d.js';
-import { LibraryTabController } from './library-tab.js';
+import { LibraryTabController, refreshPaletteCounts as _refreshPaletteCounts } from './library-tab.js';
 import { LIBRARY } from '../src/generators/components/index.js';
 import { RobotLoader, catalogToConfig } from './robot-loader.js';
 import type { RobotConfig, CatalogEntry } from './robot-loader.js';
@@ -23,6 +23,9 @@ import { initJointPanel, makeScrubLabel } from './joint-panel.js';
 import { openPanel, openGestureHint } from './float-panel.js';
 import { RobotCarousel } from './robot-carousel.js';
 import { GizmoController } from './gizmo-ctrl.js';
+import { initTabSwitching } from './tab-ctrl.js';
+import { initKeyboardHandler } from './keyboard-ctrl.js';
+import { fmt, toLabel, linkNameFor } from './inspector-helpers.js';
 
 customElements.define('urdf-viewer', URDFManipulator);
 
@@ -118,39 +121,8 @@ _buildGrid.raycast = () => {};
 requestAnimationFrame(() => { viewer.scene.add(_viewportGrid); viewer.scene.add(_buildGrid); });
 
 const chatInput = $<HTMLTextAreaElement>('chat-input');
-function _setActiveTab(id: string): void {
-    for (const btn of document.querySelectorAll<HTMLButtonElement>('.tab-btn'))
-        btn.setAttribute('aria-selected', btn.id === id ? 'true' : 'false');
-}
 
-$('tab-inspect').addEventListener('click', () => {
-    editorCtrl.close();
-    buildCtrl.close();
-    gizmoCtrl?.onBuildClose();
-    _buildGrid.visible = false;
-    _viewportGrid.visible = true;
-    _setActiveTab('tab-inspect');
-});
-$('tab-editor').addEventListener('click', () => {
-    buildCtrl.close();
-    gizmoCtrl?.onBuildClose();
-    editorCtrl.open();
-    _buildGrid.visible = false;
-    _viewportGrid.visible = true;
-    chatInput.placeholder = 'Ask AI to edit this URDF…';
-    _setActiveTab('tab-editor');
-});
-$('tab-build').addEventListener('click', () => {
-    editorCtrl.close();
-    buildCtrl.open();
-    gizmoCtrl?.onBuildOpen();
-    _viewportGrid.visible = false;
-    _buildGrid.visible = true;
-    _buildGrid.position.y = viewer.shadowPlane.position.y;
-    chatInput.placeholder = 'Ask AI to add or modify components…';
-    libTabCtrl.buildLibraryGrid();
-    _setActiveTab('tab-build');
-});
+// Tab switching is initialized after libTabCtrl is defined (see below).
 
 const ignoreLimitsEl  = $<HTMLInputElement>('ignore-limits');
 const showCollisionEl = $<HTMLInputElement>('show-collision');
@@ -158,95 +130,8 @@ const displayShadowEl = $<HTMLInputElement>('display-shadow');
 const upAxisEl        = $<HTMLSelectElement>('up-axis');
 
 let ROBOTS: RobotConfig[] = [];
-// Instantiated after refreshBuildHeader / syncSlidersFromController are defined (see below).
-// eslint-disable-next-line prefer-const
-let robotLoader: RobotLoader;
 
 const robotTrackSlider = $('robot-track-slider');
-// robotCarousel instantiated later (after buildCtrl / crudCtrl / helpers are ready).
-// eslint-disable-next-line prefer-const
-let robotCarousel: RobotCarousel;
-
-robotTrackSlider.style.transition = 'none';
-fetch('/robots/catalog.json')
-    .then(r => r.ok ? r.json() as Promise<{ version: number; robots: CatalogEntry[] }> : Promise.reject())
-    .then(catalog => { ROBOTS = catalog.robots.map(catalogToConfig); })
-    .catch(() => {
-        ROBOTS = [
-            { id: 'robot-car',         name: 'Robot Car',          label: 'Car',      parts: '/robots/robot-car/robot-car',                                         up: '+Z' },
-            { id: 'T12',               name: 'T12',                label: 'T12',      urdf: '/robots/T12/urdf/T12.URDF',                                            up: '-Z' },
-            { id: 'TriATHLETE',        name: 'TriATHLETE',         label: 'Tri',      urdf: '/robots/TriATHLETE/urdf/TriATHLETE.URDF',                              up: '-Z' },
-            { id: 'laikago',           name: 'Laikago',            label: 'Laikago',  urdf: '/robots/laikago/urdf/laikago.urdf',                                    up: '+Z' },
-            { id: 'open_manipulator_x',name: 'Open Manipulator X', label: 'OM-X',     urdf: '/robots/open_manipulator_x/open_manipulator_x.urdf', package: 'open_manipulator_description: /robots/open_manipulator_x', up: '+Z' },
-            { id: 'so_arm100',         name: 'SO-ARM100',          label: 'SO-100',   urdf: '/robots/so_arm100/so100.urdf',                                         up: '+Z' },
-            { id: 'simple_humanoid',   name: 'Simple Humanoid',    label: 'Humanoid', urdf: '/robots/simple_humanoid/simple_humanoid.urdf',                         up: '+Z' },
-            { id: 'spryped',           name: 'Spryped',            label: 'Spryped',  urdf: '/robots/spryped/urdf/spryped.urdf', package: 'spryped_urdf_rev06: /robots/spryped', up: '+Z' },
-        ];
-    })
-    .finally(() => {
-        robotCarousel.buildRobotButtons(ROBOTS);
-        const paramId = new URLSearchParams(location.search).get('robot');
-        const startIdx = paramId ? Math.max(0, ROBOTS.findIndex(r => r.id === paramId)) : 0;
-        robotLoader.load(ROBOTS[startIdx], startIdx);
-        requestAnimationFrame(() => requestAnimationFrame(() => {
-            robotTrackSlider.style.transition = '';
-        }));
-    });
-
-document.addEventListener('keydown', (e: KeyboardEvent) => {
-    // ── Build-mode keys ───────────────────────────────────────────────────
-    if (buildCtrl.isActive) {
-        if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) { e.preventDefault(); buildCtrl.undo(); }
-        if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) { e.preventDefault(); buildCtrl.redo(); }
-
-        const selId = crudCtrl.getBuildSelCompId();
-        if (selId && (e.key === 'Delete' || e.key === 'Backspace') && !e.ctrlKey && !e.metaKey) {
-            const el = document.activeElement as HTMLElement;
-            if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable) return;
-            e.preventDefault();
-            buildCtrl.removeComponent(selId);
-            crudCtrl.removeComponentItem(selId);
-            refreshPaletteCounts();
-            return;
-        }
-
-        if (e.key === 'Escape' && crudCtrl.getBuildSelCompId()) {
-            const el = document.activeElement as HTMLElement;
-            if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') return;
-            crudCtrl.deselectComp();
-            return;
-        }
-
-        if (selId && ['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.key) && !e.ctrlKey && !e.metaKey) {
-            e.preventDefault();
-            const c = buildCtrl.getComponentData(selId);
-            if (!c) return;
-            const d = 0.001;
-            let { x, y, z } = c;
-            if (e.shiftKey) {
-                if (e.key === 'ArrowUp')   z += d;
-                if (e.key === 'ArrowDown') z -= d;
-            } else {
-                if (e.key === 'ArrowLeft')  y += d;
-                if (e.key === 'ArrowRight') y -= d;
-                if (e.key === 'ArrowUp')    x -= d;
-                if (e.key === 'ArrowDown')  x += d;
-            }
-            buildCtrl.updateComponent(selId, { x, y, z });
-            const inp = crudCtrl.componentInputs.get(selId);
-            if (inp) { inp['x'].value = x.toFixed(4); inp['y'].value = y.toFixed(4); inp['z'].value = z.toFixed(4); }
-            return;
-        }
-    }
-
-    // ── Robot carousel navigation (ArrowLeft / ArrowRight) ────────────────
-    if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
-    const el = document.activeElement as HTMLElement;
-    if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable) return;
-    const dir = e.key === 'ArrowRight' ? 1 : -1;
-    const idx = (robotLoader.currentRobotIndex + dir + ROBOTS.length) % ROBOTS.length;
-    robotLoader.load(ROBOTS[idx], idx);
-});
 
 ignoreLimitsEl.addEventListener('change', () => { viewer.ignoreLimits = ignoreLimitsEl.checked; });
 showCollisionEl.addEventListener('change', () => { viewer.showCollision = showCollisionEl.checked; });
@@ -269,16 +154,6 @@ const simCtrl = new SimController({
 displayShadowEl.checked = viewer.displayShadow;
 upAxisEl.value = viewer.up;
 
-function toLabel(jointName: string): string {
-    return jointName
-        .replace(/_joint$/, '')
-        .replace(/_/g, ' ')
-        .replace(/\b\w/g, c => c.toUpperCase());
-}
-
-function linkNameFor(jointName: string): string {
-    return jointName.replace(/_joint$/, '');
-}
 
 const inspectorEl      = $('inspector');
 const inspectorName    = $('inspector-name');
@@ -296,8 +171,6 @@ let selectedJoint: string | null = null;
 let hoveredJointName: string | null = null;
 let gestureCtrl: GestureController | null = null;
 let gizmoCtrl: GizmoController | null = null;
-
-function fmt(v: number): string { return v.toFixed(4); }
 
 function refreshSnippet(): void {
     if (!selectedJoint || !viewer.robot) return;
@@ -343,7 +216,7 @@ function applyInspector(): void {
 function selectPart(jointName: string | null): void {
     selectedJoint = jointName;
     const joint = jointName ? viewer.robot?.joints[jointName] : null;
-    if (!joint) {
+    if (!joint || !jointName) {
         inspectorEl.style.display = 'none';
         if (crudCtrl.getBuildSelPartName()) { crudCtrl.setBuildSelPartName(null); crudCtrl.updateContextPill(null); }
         return;
@@ -628,6 +501,18 @@ const libTabCtrl = new LibraryTabController(buildCtrl, (id, type) => {
     refreshPaletteCounts();
 });
 
+// ── Init tab switching ─────────────────────────────────────────────────────
+initTabSwitching({
+    editorCtrl,
+    buildCtrl,
+    getGizmoCtrl: () => gizmoCtrl,
+    libTabCtrl,
+    viewer,
+    viewportGrid: _viewportGrid,
+    buildGrid:    _buildGrid,
+    chatInput,
+});
+
 buildUndoBtn.addEventListener('click',  () => buildCtrl.undo());
 buildRedoBtn.addEventListener('click',  () => buildCtrl.redo());
 buildResetBtn.addEventListener('click', () => {
@@ -702,23 +587,11 @@ const paletteBadges
  = new Map<string, HTMLSpanElement>();
 
 function refreshPaletteCounts(): void {
-    const counts = new Map<string, number>();
-    const entries = buildCtrl.getComponentEntries();
-    for (const { type } of entries) {
-        counts.set(type, (counts.get(type) ?? 0) + 1);
-    }
-    for (const [type, badge] of paletteBadges) {
-        const n = counts.get(type) ?? 0;
-        badge.textContent = n > 0 ? String(n) : '';
-        badge.style.display = n > 0 ? 'inline' : 'none';
-    }
-    const total = entries.length;
-    if (buildCompCountEl) buildCompCountEl.textContent = total > 0 ? `${total} added` : '';
-    if (buildCompEmptyEl) buildCompEmptyEl.hidden = total > 0 || !buildCtrl.isCatalogActive;
+    _refreshPaletteCounts(buildCtrl, paletteBadges, buildCompCountEl, buildCompEmptyEl);
 }
 
 // ── Robot carousel ─────────────────────────────────────────────────────────
-robotCarousel = new RobotCarousel({
+const robotCarousel = new RobotCarousel({
     robotsPanel,
     robotTrackSlider,
     buildCtrl,
@@ -736,7 +609,7 @@ robotCarousel.refreshSavedList();
 robotCarousel.refreshBuildHeader();
 
 // ── Robot loader ───────────────────────────────────────────────────────────
-robotLoader = new RobotLoader({
+const robotLoader = new RobotLoader({
     viewer, buildCtrl, crudCtrl, editorCtrl, simulator,
     upAxisEl,
     onSimSourceChange: (src) => simCtrl.setSource(src),
@@ -751,6 +624,42 @@ robotLoader = new RobotLoader({
         if (btn) { btn.classList.add('active'); robotCarousel.moveSliderTo(btn); }
     },
 });
+
+// ── Keyboard handler ──────────────────────────────────────────────────────
+initKeyboardHandler({
+    buildCtrl,
+    crudCtrl,
+    refreshPaletteCounts,
+    getRobotLoader: () => robotLoader,
+    getRobots:      () => ROBOTS,
+});
+
+// ── Load robot catalog and start initial robot ─────────────────────────────
+robotTrackSlider.style.transition = 'none';
+fetch('/robots/catalog.json')
+    .then(r => r.ok ? r.json() as Promise<{ version: number; robots: CatalogEntry[] }> : Promise.reject())
+    .then(catalog => { ROBOTS = catalog.robots.map(catalogToConfig); })
+    .catch(() => {
+        ROBOTS = [
+            { id: 'robot-car',         name: 'Robot Car',          label: 'Car',      parts: '/robots/robot-car/robot-car',                                         up: '+Z' },
+            { id: 'T12',               name: 'T12',                label: 'T12',      urdf: '/robots/T12/urdf/T12.URDF',                                            up: '-Z' },
+            { id: 'TriATHLETE',        name: 'TriATHLETE',         label: 'Tri',      urdf: '/robots/TriATHLETE/urdf/TriATHLETE.URDF',                              up: '-Z' },
+            { id: 'laikago',           name: 'Laikago',            label: 'Laikago',  urdf: '/robots/laikago/urdf/laikago.urdf',                                    up: '+Z' },
+            { id: 'open_manipulator_x',name: 'Open Manipulator X', label: 'OM-X',     urdf: '/robots/open_manipulator_x/open_manipulator_x.urdf', package: 'open_manipulator_description: /robots/open_manipulator_x', up: '+Z' },
+            { id: 'so_arm100',         name: 'SO-ARM100',          label: 'SO-100',   urdf: '/robots/so_arm100/so100.urdf',                                         up: '+Z' },
+            { id: 'simple_humanoid',   name: 'Simple Humanoid',    label: 'Humanoid', urdf: '/robots/simple_humanoid/simple_humanoid.urdf',                         up: '+Z' },
+            { id: 'spryped',           name: 'Spryped',            label: 'Spryped',  urdf: '/robots/spryped/urdf/spryped.urdf', package: 'spryped_urdf_rev06: /robots/spryped', up: '+Z' },
+        ];
+    })
+    .finally(() => {
+        robotCarousel.buildRobotButtons(ROBOTS);
+        const paramId = new URLSearchParams(location.search).get('robot');
+        const startIdx = paramId ? Math.max(0, ROBOTS.findIndex(r => r.id === paramId)) : 0;
+        robotLoader.load(ROBOTS[startIdx], startIdx);
+        requestAnimationFrame(() => requestAnimationFrame(() => {
+            robotTrackSlider.style.transition = '';
+        }));
+    });
 
 for (const [type, def] of Object.entries(COMPONENT_CATALOG)) {
     if ((def.geomType === 'mesh' && type !== 'script') || def.hidden) continue;

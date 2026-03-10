@@ -3,23 +3,6 @@ import type { URDFManipulator } from '../src/index.js';
 import type { URDFBuildController } from './build.js';
 import type { ComponentCrudController } from './component-crud.js';
 
-// ── Gizmo mode toggle button ───────────────────────────────────────────────
-let _modeBtn: HTMLButtonElement | null = null;
-
-function _getModeBtn(): HTMLButtonElement {
-    if (_modeBtn) return _modeBtn;
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.id = 'gizmo-mode-btn';
-    btn.title = 'Toggle gizmo mode (translate / rotate)';
-    btn.textContent = 'T';
-    btn.className = 'gizmo-mode-btn';
-    btn.style.display = 'none';
-    document.querySelector('main')?.appendChild(btn);
-    _modeBtn = btn;
-    return btn;
-}
-
 // ── GizmoController ────────────────────────────────────────────────────────
 
 export class GizmoController {
@@ -27,6 +10,8 @@ export class GizmoController {
     private readonly _viewer: URDFManipulator;
     private readonly _buildCtrl: URDFBuildController;
     private readonly _crudCtrl: ComponentCrudController;
+
+    #modeBtn: HTMLButtonElement | null = null;
 
     private _attachedId: string | null = null;
     private _mode: 'translate' | 'rotate' = 'translate';
@@ -61,7 +46,7 @@ export class GizmoController {
         });
 
         // Mode toggle button
-        const btn = _getModeBtn();
+        const btn = this._getModeBtn();
         btn.addEventListener('click', () => {
             this._mode = this._mode === 'translate' ? 'rotate' : 'translate';
             this._tc.setMode(this._mode);
@@ -114,8 +99,22 @@ export class GizmoController {
 
     // ── Private helpers ────────────────────────────────────────────────────
 
+    private _getModeBtn(): HTMLButtonElement {
+        if (this.#modeBtn) return this.#modeBtn;
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.id = 'gizmo-mode-btn';
+        btn.title = 'Toggle gizmo mode (translate / rotate)';
+        btn.textContent = 'T';
+        btn.className = 'gizmo-mode-btn';
+        btn.style.display = 'none';
+        document.querySelector('main')?.appendChild(btn);
+        this.#modeBtn = btn;
+        return btn;
+    }
+
     private _showModeBtn(visible: boolean): void {
-        _getModeBtn().style.display = visible ? '' : 'none';
+        this._getModeBtn().style.display = visible ? '' : 'none';
     }
 
     private _findJoint(id: string): import('three').Object3D | null {

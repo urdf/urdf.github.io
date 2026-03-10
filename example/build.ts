@@ -41,7 +41,6 @@ export interface ComponentDef {
     defaultDims: number[];            // [w,d,h] for box · [r,l] for cylinder · bounding box for mesh
     category?:   string;
     cssColor?:   string;
-    hidden?:     boolean;            // true = exclude from Build palette (superseded by Library)
 }
 
 // Mesh entries are derived from LIBRARY — single source of truth for label, color, dims, etc.
@@ -60,13 +59,13 @@ const meshEntries = Object.fromEntries(
 export const COMPONENT_CATALOG: Record<string, ComponentDef> = {
     // Script — user-defined geometry evaluated in a Worker
     script:        { label: 'Script',       color: '0.40 0.75 0.45 1.00', defaultZ: 0.020, geomType: 'mesh', defaultDims: [0.040, 0.040, 0.020], cssColor: '#44bb66' },
-    // Primitives — kept for saved-robot backward compatibility; hidden ones are superseded by Library
-    ultrasonic:    { label: 'Ultrasonic',   color: '0.20 0.45 0.90 1.00', defaultZ: 0.015, geomType: 'box',      defaultDims: [0.045, 0.020, 0.015], hidden: true },
+    // Primitives — kept for saved-robot backward compatibility
+    ultrasonic:    { label: 'Ultrasonic',   color: '0.20 0.45 0.90 1.00', defaultZ: 0.015, geomType: 'box',      defaultDims: [0.045, 0.020, 0.015] },
     camera:        { label: 'Camera',       color: '0.90 0.20 0.25 1.00', defaultZ: 0.010, geomType: 'box',      defaultDims: [0.025, 0.024, 0.009] },
     lidar:         { label: 'LIDAR',        color: '0.20 0.80 0.45 1.00', defaultZ: 0.035, geomType: 'cylinder', defaultDims: [0.035, 0.040] },
-    imu:           { label: 'IMU',          color: '0.55 0.35 0.80 1.00', defaultZ: 0.008, geomType: 'box',      defaultDims: [0.020, 0.020, 0.008], hidden: true },
-    servo:         { label: 'Servo',        color: '0.90 0.50 0.15 1.00', defaultZ: 0.020, geomType: 'box',      defaultDims: [0.022, 0.012, 0.030], hidden: true },
-    arduino:       { label: 'Arduino',      color: '0.00 0.45 0.20 1.00', defaultZ: 0.008, geomType: 'box',      defaultDims: [0.044, 0.018, 0.008], hidden: true },
+    imu:           { label: 'IMU',          color: '0.55 0.35 0.80 1.00', defaultZ: 0.008, geomType: 'box',      defaultDims: [0.020, 0.020, 0.008] },
+    servo:         { label: 'Servo',        color: '0.90 0.50 0.15 1.00', defaultZ: 0.020, geomType: 'box',      defaultDims: [0.022, 0.012, 0.030] },
+    arduino:       { label: 'Arduino',      color: '0.00 0.45 0.20 1.00', defaultZ: 0.008, geomType: 'box',      defaultDims: [0.044, 0.018, 0.008] },
     raspberry_pi:  { label: 'Raspberry Pi', color: '0.70 0.10 0.20 1.00', defaultZ: 0.017, geomType: 'box',      defaultDims: [0.086, 0.056, 0.017] },
     gps:           { label: 'GPS',          color: '0.20 0.70 0.35 1.00', defaultZ: 0.010, geomType: 'box',      defaultDims: [0.025, 0.025, 0.010] },
     buck_converter: { label: 'Buck Conv.',  color: '0.85 0.60 0.00 1.00', defaultZ: 0.011, geomType: 'box',      defaultDims: [0.023, 0.017, 0.011] },

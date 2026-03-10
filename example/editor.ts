@@ -3,6 +3,7 @@ import type { TextBlock, ToolUseBlock, ToolResBlock, ContentBlock, Msg } from '.
 import { renderMd } from './ai-types.js';
 import { assembleURDF } from './urdf-assemble.js';
 import { parseSSE, appendUserBubble, appendAssistantBubble, appendSpinner, appendToolCard } from './ai-chat-ui.js';
+import { $ } from './dom-utils.js';
 
 const LOCAL_PROXY        = 'http://127.0.0.1:7337/claude';
 const MODEL              = 'claude-sonnet-4-6';
@@ -125,12 +126,12 @@ export class URDFEditorController {
         this._panelEl      = panelEl;
         this._textareaEl   = panelEl.querySelector<HTMLTextAreaElement>('#editor-textarea')!;
         this._lineNumsEl   = panelEl.querySelector<HTMLElement>('#editor-line-nums')!;
-        this._chatMsgsEl   = document.getElementById('chat-messages') as HTMLElement;
-        this._sendBtn      = document.getElementById('chat-send') as HTMLButtonElement;
-        this._abortBtn     = document.getElementById('chat-abort') as HTMLButtonElement;
-        this._briefBtn     = document.getElementById('chat-brief-toggle') as HTMLButtonElement;
+        this._chatMsgsEl   = $('chat-messages');
+        this._sendBtn      = $<HTMLButtonElement>('chat-send');
+        this._abortBtn     = $<HTMLButtonElement>('chat-abort');
+        this._briefBtn     = $<HTMLButtonElement>('chat-brief-toggle');
         this._partSelEl    = panelEl.querySelector<HTMLSelectElement>('#part-select')!;
-        this._tabsEl       = document.getElementById('editor-tabs') as HTMLElement;
+        this._tabsEl       = $('editor-tabs');
         this._resetBtn     = panelEl.querySelector<HTMLButtonElement>('#part-reset')!;
         this._resetBtn.addEventListener('click', () => this._resetParts());
 

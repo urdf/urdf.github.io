@@ -1,16 +1,18 @@
 // Panel open/close, backdrop, and resize logic.
 
+import { $ } from './dom-utils.js';
+
 function isDesktop(): boolean { return window.innerWidth > 768; }
 
 export function initPanel(): void {
 
-const ctrlPanel  = document.getElementById('control-panel')!;
-const chatPanel  = document.getElementById('chat-panel')!;
-const backdrop   = document.getElementById('sidebar-backdrop')!;
-const ctrlToggle = document.getElementById('control-panel-toggle')!;
-const chatToggle = document.getElementById('chat-panel-toggle')!;
-const ctrlClose  = document.getElementById('control-panel-close')!;
-const chatClose  = document.getElementById('chat-panel-close')!;
+const ctrlPanel  = $('control-panel');
+const chatPanel  = $('chat-panel');
+const backdrop   = $('sidebar-backdrop');
+const ctrlToggle = $('control-panel-toggle');
+const chatToggle = $('chat-panel-toggle');
+const ctrlClose  = $('control-panel-close');
+const chatClose  = $('chat-panel-close');
 const mainEl     = document.querySelector('main')!;
 
 let _mobilePanel: HTMLElement | null = null;
@@ -132,7 +134,7 @@ function makeResizeHandle(opts: ResizeHandleOptions): void {
 
 if (isDesktop()) openSidePanel(ctrlPanel);
 
-const resizeTooltip = document.getElementById('resize-tooltip')!;
+const resizeTooltip = $('resize-tooltip');
 
 makeResizeHandle({
     handle:     ctrlPanel.querySelector<HTMLElement>('.panel-resize-handle')!,
