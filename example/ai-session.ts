@@ -92,6 +92,7 @@ export abstract class AISession {
             const stream  = await this._callAPI();
             const result  = await this._processStream(stream, spinner);
             this._history.push({ role: 'assistant', content: result.content });
+            this._saveHistory();
             if (!result.toolCalls.length) break;
             const { noFollowUp } = await this._executeTools(result.toolCalls, result.toolCards);
             if (noFollowUp) break;
