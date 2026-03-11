@@ -150,6 +150,14 @@
     }
     .robot-picker-btn:hover { background: var(--surface-hover); }
     .robot-picker-name { color: var(--text-1); }
+    .status-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 999px;
+      background: var(--green);
+      box-shadow: 0 0 6px color-mix(in srgb, var(--green) 80%, transparent);
+      flex-shrink: 0;
+    }
 
     .tb-sep {
       width: 1px;
@@ -162,14 +170,14 @@
       display: flex;
       align-items: center;
       gap: 5px;
-      padding: 3px 10px;
+      padding: 3px 9px;
       border-radius: 20px;
       background: var(--surface-lo);
-      border: 1px solid var(--border);
+      border: 1px solid var(--border-lo);
     }
     .model-chip-dot {
-      width: 6px;
-      height: 6px;
+      width: 5px;
+      height: 5px;
       border-radius: 50%;
       background: var(--blue);
       flex-shrink: 0;
@@ -198,7 +206,8 @@
       font-size: 0.75rem;
       color: var(--text-2);
       cursor: pointer;
-      transition: background 0.1s, color 0.1s;
+      transition: background 0.1s, color 0.1s, border-color 0.1s;
+      white-space: nowrap;
     }
     .tb-btn:hover { background: var(--surface-hover); color: var(--text-1); }
     .tb-btn.active, .tb-btn.on {
@@ -484,19 +493,48 @@
     @media (max-width: 768px) { .adv-panel-resize-handle { display: none; } }
 
     .adv-hd {
-      height: 48px;
       display: flex;
       align-items: center;
-      padding: 0 14px 0 0;
+      justify-content: space-between;
+      padding: 0 10px 0 14px;
+      min-height: 48px;
       border-bottom: 1px solid var(--border);
       flex-shrink: 0;
-      gap: 0;
+      gap: 12px;
+      background: color-mix(in srgb, var(--surface) 88%, var(--surface-lo));
+    }
+
+    .adv-head-copy {
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      padding: 10px 0 9px;
+    }
+
+    .adv-title {
+      font-size: 0.5625rem;
+      font-weight: 700;
+      letter-spacing: 0.09em;
+      text-transform: uppercase;
+      color: var(--text-3);
+    }
+
+    .adv-context {
+      font-size: 0.8125rem;
+      font-weight: 600;
+      color: var(--text-1);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
     .adv-tabs {
       display: flex;
-      flex: 1;
-      height: 100%;
+      flex-shrink: 0;
+      height: 40px;
+      border-bottom: 1px solid var(--border);
+      background: color-mix(in srgb, var(--surface) 92%, var(--surface-lo));
     }
 
     .adv-tab {
@@ -536,6 +574,10 @@
       cursor: pointer;
     }
     .adv-close:hover { background: var(--surface-hover); color: var(--text-1); }
+    .adv-close:focus-visible {
+      outline: 2px solid hsl(220 100% 65% / .45);
+      outline-offset: 2px;
+    }
 
     /* ── Tab bodies (adv-panel) ───────────────────────────────────────────── */
     /* Visibility driven by body class signals set in editor.ts / build.ts.   */

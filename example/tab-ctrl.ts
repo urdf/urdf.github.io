@@ -24,6 +24,16 @@ export interface TabCtrlOptions {
 function _setActiveTab(tab: string): void {
     for (const btn of document.querySelectorAll<HTMLButtonElement>('.tab-btn'))
         btn.setAttribute('aria-selected', btn.dataset.tab === tab ? 'true' : 'false');
+    const advContext = document.getElementById('adv-context');
+    if (advContext) {
+        const titles: Record<string, string> = {
+            inspect: 'Control',
+            build: 'Build',
+            editor: 'XML',
+            meshes: 'Mesh Files',
+        };
+        advContext.textContent = titles[tab] ?? 'Advanced';
+    }
 }
 
 export function initTabSwitching(opts: TabCtrlOptions): void {
@@ -94,4 +104,6 @@ export function initTabSwitching(opts: TabCtrlOptions): void {
         openAdvPanelIfClosed();
         _setActiveTab('meshes');
     });
+
+    _setActiveTab('inspect');
 }
