@@ -22,6 +22,7 @@
       --green:         hsl(142, 65%, 55%);
       --warning:       hsl(38, 90%, 60%);
       --purple:        hsl(248, 100%, 62%);
+      --on-accent:     hsl(0, 0%, 100%);
       --shadow:        hsl(0 0% 0% / 0.6);
       --toggle-bg:     hsl(220 30% 17% / 0.88);
       --loading-bg:    hsl(222 47% 11% / 0.65);
@@ -55,6 +56,7 @@
         --red:           #ff3b30;
         --green:         #30d158;
         --warning:       #92400e;
+        --on-accent:     hsl(0, 0%, 100%);
         --shadow:        rgba(0, 0, 0, 0.12);
         --toggle-bg:     rgba(255, 255, 255, 0.85);
         --loading-bg:    rgba(242, 242, 247, 0.6);
@@ -322,7 +324,7 @@
       width: 100%;
       padding: 8px 0;
       background: var(--blue);
-      color: #fff;
+      color: var(--on-accent);
       border: none;
       border-radius: 6px;
       font-size: 12px;
@@ -737,7 +739,7 @@
 
     .lib-card-add {
       margin-top: 4px; width: 100%; background: var(--blue); border: none; border-radius: 4px;
-      color: #fff; font-size: 10px; font-weight: 600; padding: 5px 0;
+      color: var(--on-accent); font-size: 10px; font-weight: 600; padding: 5px 0;
       transition: background 0.1s; cursor: pointer;
     }
     .lib-card-add:hover   { background: var(--blue-hover); }
@@ -836,7 +838,7 @@
 
     .robot-btn:hover { color: var(--text-1); }
     .robot-btn:active { transform: scale(0.94); }
-    .robot-btn.active { color: #fff; font-weight: 600; }
+    .robot-btn.active { color: var(--on-accent); font-weight: 600; }
     .robot-btn:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
 
     /* ── Checkboxes ──────────────────────────────────────────────────────── */
@@ -911,7 +913,7 @@
       top: 1px;
       width: 5px;
       height: 8px;
-      border: 2px solid #fff;
+      border: 2px solid var(--on-accent);
       border-width: 0 2px 2px 0;
       transform: rotate(45deg);
     }
@@ -1127,7 +1129,7 @@
       display: none;
       position: fixed;
       inset: 0;
-      background: color-mix(in srgb, #000 45%, transparent);
+      background: hsl(0 0% 0% / 0.45);
       z-index: 150;
     }
 
@@ -1195,7 +1197,7 @@
       max-width: 480px;
       width: calc(100% - 24px);
       background: color-mix(in srgb, var(--red) 92%, transparent);
-      color: #fff;
+      color: var(--on-accent);
       padding: 8px 10px 8px 12px;
       border-radius: 6px;
       font-size: 11px;
@@ -1205,7 +1207,7 @@
       gap: 8px;
       z-index: 300;
       backdrop-filter: blur(4px);
-      box-shadow: 0 2px 12px color-mix(in srgb, #000 40%, transparent);
+      box-shadow: 0 2px 12px hsl(0 0% 0% / 0.4);
     }
 
     #urdf-error-banner.visible { display: flex; }
@@ -1823,7 +1825,7 @@
       border: 1px solid color-mix(in srgb, var(--blue) 40%, transparent);
       border-radius: 8px;
       background: var(--blue);
-      color: #fff;
+      color: var(--on-accent);
       font-size: 0.6875rem;
       font-weight: 500;
       min-height: 28px;
@@ -1980,13 +1982,13 @@
       transition: background 0.12s, transform 0.1s;
     }
 
-    .chat-send-btn { background: var(--blue); color: #fff; }
+    .chat-send-btn { background: var(--blue); color: var(--on-accent); }
     .chat-send-btn:hover { background: var(--blue-hover); }
     .chat-send-btn:active { transform: translateY(-50%) scale(0.88); }
     .chat-send-btn:disabled { opacity: 0.3; cursor: not-allowed; }
 
     .chat-abort-btn { background: var(--surface-hover); color: var(--text-2); }
-    .chat-abort-btn:hover { background: color-mix(in srgb, var(--red) 80%, transparent); color: #fff; }
+    .chat-abort-btn:hover { background: color-mix(in srgb, var(--red) 80%, transparent); color: var(--on-accent); }
     .chat-abort-btn:active { transform: translateY(-50%) scale(0.88); }
 
     /* ── Editor file tabs ─────────────────────────────────────────────────── */
@@ -2253,7 +2255,7 @@
 
     .chat-continue-btn {
       width: 100%; padding: 10px; border-radius: 8px;
-      background: var(--blue); color: #fff; border: none;
+      background: var(--blue); color: var(--on-accent); border: none;
       font-size: 0.875rem; font-weight: 500; cursor: pointer;
       transition: background 0.15s; margin-top: 4px;
     }
