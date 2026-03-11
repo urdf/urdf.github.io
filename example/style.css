@@ -102,11 +102,10 @@
       position: fixed; left: 0; top: 0; height: 100dvh;
       width: var(--panel-w, 320px); z-index: 200;
       background: var(--surface); border-right: 1px solid var(--border);
-      box-shadow: 2px 0 12px rgba(0,0,0,0.4);
+      box-shadow: 4px 0 32px var(--shadow);
       display: flex; flex-direction: column; overflow: hidden;
       transform: translateX(-100%);
       transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-      box-shadow: 4px 0 32px var(--shadow);
     }
     #control-panel.open { transform: translateX(0); }
 
@@ -116,11 +115,10 @@
       position: fixed; right: 0; top: 0; height: 100dvh;
       width: var(--chat-w, 320px); z-index: 200;
       background: var(--surface); border-left: 1px solid var(--border);
-      box-shadow: -2px 0 12px rgba(0,0,0,0.4);
+      box-shadow: -4px 0 32px var(--shadow);
       display: flex; flex-direction: column; overflow: hidden;
       transform: translateX(100%);
       transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-      box-shadow: -4px 0 32px var(--shadow);
     }
     #chat-panel.open { transform: translateX(0); }
 

@@ -84,7 +84,7 @@ export class LibraryTabController {
 
         const thumb = document.createElement('div');
         thumb.className = 'lib-thumb';
-        thumb.style.background = entry.cssColor + '33';
+        thumb.style.background = `color-mix(in srgb, ${entry.cssColor} 20%, transparent)`;
         thumb.style.borderBottom = `2px solid ${entry.cssColor}`;
         thumb.textContent = CATEGORY_ICON[entry.category] ?? '📦';
 

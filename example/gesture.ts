@@ -134,6 +134,9 @@ export class GestureController {
     private _overRobot = false;
     private _dragCtrl: { enabled: boolean; raycaster: THREE.Raycaster; update(): void } | null = null;
 
+    private _cssBlue = '';
+    private _cssText1 = '';
+
     constructor(opts: GestureControllerOptions) {
         this.viewer = opts.viewer;
         this.canvas = opts.overlayCanvas;
@@ -143,6 +146,10 @@ export class GestureController {
         this.onPointerLeave = opts.onPointerLeave;
         this.onThumbsUp = opts.onThumbsUp;
         this.onStop = opts.onStop;
+        // Cache design tokens once — Canvas 2D cannot reference CSS custom properties directly
+        const style = getComputedStyle(document.documentElement);
+        this._cssBlue  = style.getPropertyValue('--blue').trim()  || 'hsl(220,100%,65%)';
+        this._cssText1 = style.getPropertyValue('--text-1').trim() || '#fff';
     }
 
     async start(): Promise<void> {
@@ -410,7 +417,7 @@ export class GestureController {
 
         ctx.beginPath();
         ctx.arc(screenX, screenY, 8, 0, 2 * Math.PI);
-        ctx.strokeStyle = overTarget ? 'rgba(0,122,255,0.9)' : 'rgba(255,255,255,0.3)';
+        ctx.strokeStyle = overTarget ? this._cssBlue : `color-mix(in srgb, ${this._cssText1} 30%, transparent)`;
         ctx.lineWidth = 2;
         ctx.stroke();
 
@@ -566,7 +573,7 @@ export class GestureController {
     private _drawHand(ctx: CanvasRenderingContext2D, lms: NormalizedLandmark[]): void {
         const sw = this.canvas.width, sh = this.canvas.height;
 
-        ctx.strokeStyle = 'rgba(0,122,255,0.7)';
+        ctx.strokeStyle = `color-mix(in srgb, ${this._cssBlue} 70%, transparent)`;
         ctx.lineWidth = 2;
         for (const [a, b] of HAND_CONNECTIONS) {
             ctx.beginPath();
@@ -575,7 +582,7 @@ export class GestureController {
             ctx.stroke();
         }
 
-        ctx.fillStyle = '#ffffff';
+        ctx.fillStyle = this._cssText1;
         for (const lm of lms) {
             ctx.beginPath();
             ctx.arc((1 - lm.x) * sw, lm.y * sh, 3, 0, 2 * Math.PI);
@@ -593,13 +600,13 @@ export class GestureController {
 
         ctx.beginPath();
         ctx.arc(cx, cy, r, 0, 2 * Math.PI);
-        ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+        ctx.strokeStyle = `color-mix(in srgb, ${this._cssText1} 20%, transparent)`;
         ctx.lineWidth = 3;
         ctx.stroke();
 
         ctx.beginPath();
         ctx.arc(cx, cy, r, -Math.PI / 2, -Math.PI / 2 + progress * 2 * Math.PI);
-        ctx.strokeStyle = 'rgba(0,122,255,0.9)';
+        ctx.strokeStyle = `color-mix(in srgb, ${this._cssBlue} 90%, transparent)`;
         ctx.lineWidth = 3;
         ctx.stroke();
     }

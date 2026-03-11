@@ -248,7 +248,7 @@ export class ComponentCrudController {
                     border: 'none', borderRight: '1px solid var(--border)',
                 },
                 '.cm-activeLineGutter':              { background: 'var(--surface-hover)' },
-                '.cm-activeLine':                    { background: 'rgba(30, 33, 46, 0.8)' },
+                '.cm-activeLine':                    { background: 'var(--surface-hover)' },
                 '.cm-selectionBackground, ::selection': { background: 'var(--blue-bg) !important' },
                 '.cm-focused .cm-selectionBackground':  { background: 'var(--blue-bg) !important' },
                 '.cm-tooltip':        { background: 'var(--surface)', border: '1px solid var(--border)' },
