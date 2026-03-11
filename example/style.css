@@ -18,14 +18,14 @@
       --blue-hover:    hsl(220, 100%, 55%);
       --blue-bg:       hsla(220, 100%, 65%, 0.12);
       --blue-text:     hsl(220, 80%, 75%);
-      --red:           #ff453a;
-      --green:         #34c759;
-      --warning:       #fbbf24;
-      --purple:        #643cff;
-      --shadow:        rgba(0, 0, 0, 0.6);
-      --toggle-bg:     rgba(30, 41, 59, 0.88);
-      --loading-bg:    rgba(15, 23, 42, 0.65);
-      --tooltip-bg:    rgba(15, 23, 42, 0.95);
+      --red:           hsl(3, 100%, 61%);
+      --green:         hsl(142, 65%, 55%);
+      --warning:       hsl(38, 90%, 60%);
+      --purple:        hsl(248, 100%, 62%);
+      --shadow:        hsl(0 0% 0% / 0.6);
+      --toggle-bg:     hsl(220 30% 17% / 0.88);
+      --loading-bg:    hsl(222 47% 11% / 0.65);
+      --tooltip-bg:    hsl(222 47% 11% / 0.95);
       /* Joint type semantic colors */
       --jt-fixed:      hsl(220, 10%, 42%);
       --jt-revolute:   hsl(248, 80%, 72%);
@@ -1180,6 +1180,9 @@
       filter: drop-shadow(0 0 6px color-mix(in srgb, var(--blue) 40%, transparent));
     }
 
+    /* Bind spinner gradient to the blue design token */
+    #spinGrad stop { stop-color: var(--blue); }
+
     @keyframes spin { to { transform: rotate(360deg); } }
 
     /* ── URDF error banner ───────────────────────────────────────────────── */
@@ -1302,13 +1305,13 @@
       touch-action: none;
       text-decoration: underline;
       text-decoration-style: dotted;
-      text-decoration-color: transparent;
+      text-decoration-color: color-mix(in srgb, var(--text-3) 30%, transparent);
       text-underline-offset: 2px;
       transition: text-decoration-color 0.1s;
     }
 
     .inspector-row label:hover {
-      text-decoration-color: var(--text-3);
+      text-decoration-color: var(--text-2);
     }
 
     @media (hover: none) {
@@ -1316,6 +1319,11 @@
         text-decoration-color: var(--text-3);
       }
     }
+
+    /* Spatial axis labels: X=red, Y=green, Z=blue (3D standard) */
+    .inspector-row label.axis-x { color: color-mix(in srgb, var(--red) 85%, var(--text-1)); }
+    .inspector-row label.axis-y { color: color-mix(in srgb, var(--green) 85%, var(--text-1)); }
+    .inspector-row label.axis-z { color: var(--blue-text); }
 
     .inspector-row input[type=number],
     .inspector-row input[type=range] {
