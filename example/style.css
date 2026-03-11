@@ -297,7 +297,7 @@
       mask-image: radial-gradient(ellipse 80% 80% at 50% 52%, black 20%, transparent 100%);
       -webkit-mask-image: radial-gradient(ellipse 80% 80% at 50% 52%, black 20%, transparent 100%);
       pointer-events: none;
-      z-index: 0;
+      z-index: -1;
     }
     @media (prefers-color-scheme: light) {
       .viewport::before { display: none; }
