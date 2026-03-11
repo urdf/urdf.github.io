@@ -5,12 +5,9 @@ import { executeTool } from './chat-tool-executor.js';
 import type { TextBlock, ToolUseBlock, ToolResBlock, ContentBlock, Msg } from './ai-types.js';
 import { renderMd } from './ai-types.js';
 import { appendUserBubble, appendAssistantBubble, appendSpinner } from './ai-chat-ui.js';
-import { AISession } from './ai-session.js';
+import { AISession, LOCAL_PROXY, MODEL } from './ai-session.js';
 import type { ToolCardHandle } from './ai-session.js';
 import { $ } from './dom-utils.js';
-
-const LOCAL_PROXY = 'http://127.0.0.1:7337/claude'; // claude-local-proxy (npm i -g claude-local-proxy)
-const MODEL       = 'claude-sonnet-4-6';
 
 type GitHubAuth = { username: string; token: string };
 type Provider   = 'anthropic' | 'github';
