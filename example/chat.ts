@@ -4,7 +4,7 @@ import { buildTools } from './chat-tools.js';
 import { executeTool } from './chat-tool-executor.js';
 import type { TextBlock, ToolUseBlock, ToolResBlock, ContentBlock, Msg } from './ai-types.js';
 import { renderMd } from './ai-types.js';
-import { appendUserBubble, appendAssistantBubble, appendSpinner } from './ai-chat-ui.js';
+import { appendUserBubble, appendAssistantBubble, appendSpinner, appendAcceptedBubble, appendStlNote } from './ai-chat-ui.js';
 import { AISession, LOCAL_PROXY, MODEL } from './ai-session.js';
 import type { ToolCardHandle } from './ai-session.js';
 import { $ } from './dom-utils.js';
@@ -594,6 +594,7 @@ Use tools to modify the robot. Prefer direct tool calls over lengthy explanation
                 for (const block of msg.content as ContentBlock[]) {
                     if (block.type === 'text' && block.text) {
                         appendAssistantBubble(this._messagesEl, block.text);
+                        // History replay: no action buttons needed for past turns
                     } else if (block.type === 'tool_use') {
                         const nextMsg = this._history[i + 1];
                         let result: unknown = { ok: true };
@@ -886,7 +887,24 @@ Use tools to modify the robot. Prefer direct tool calls over lengthy explanation
 
             if (delta.content) {
                 removeSpinner();
-                if (!curMsgEl) { curMsgEl = appendAssistantBubble(this._messagesEl, ''); curText = ''; }
+                if (!curMsgEl) {
+                    curMsgEl = appendAssistantBubble(this._messagesEl, '', {
+                        onAccept: () => {
+                            const wrapper = curMsgEl?.parentElement;
+                            if (!wrapper) return;
+                            const summary = curText.slice(0, 80).replace(/\s+/g, ' ').trim();
+                            wrapper.className = 'msg accepted';
+                            wrapper.innerHTML = `<span class="acc-check">✓</span>${summary}`;
+                        },
+                        onUndo: () => {
+                            console.log('[chat] undo not yet implemented');
+                        },
+                        onAdjust: () => {
+                            this._inputEl.focus();
+                        },
+                    });
+                    curText = '';
+                }
                 curText += delta.content;
                 if (!rafPending) {
                     rafPending = true;
@@ -909,7 +927,12 @@ Use tools to modify the robot. Prefer direct tool calls over lengthy explanation
             }
         }
 
-        if (curMsgEl && curText) curMsgEl.innerHTML = renderMd(curText);
+        if (curMsgEl && curText) {
+            curMsgEl.innerHTML = renderMd(curText);
+            if (/width|radius|length|scale|STL|stl|mesh/i.test(curText)) {
+                appendStlNote(curMsgEl, 'chassis.stl will regenerate on next export — changes are URDF-only until then.');
+            }
+        }
         removeSpinner();
         const content: ContentBlock[] = [];
         if (curText) content.push({ type: 'text', text: curText });

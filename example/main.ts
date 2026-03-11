@@ -96,17 +96,23 @@ displayShadowEl.checked = viewer.displayShadow;
 upAxisEl.value = viewer.up;
 
 
-const inspectorEl      = $('inspector');
-const inspectorName    = $('inspector-name');
-const inspectorX       = $<HTMLInputElement>('inspector-x');
-const inspectorY       = $<HTMLInputElement>('inspector-y');
-const inspectorZ       = $<HTMLInputElement>('inspector-z');
-const inspectorScaleX  = $<HTMLInputElement>('inspector-scale-x');
-const inspectorScaleY  = $<HTMLInputElement>('inspector-scale-y');
-const inspectorScaleZ  = $<HTMLInputElement>('inspector-scale-z');
-const inspectorSnippet = $('inspector-snippet');
-const inspectorCopy    = $<HTMLButtonElement>('inspector-copy');
-const inspectorClose   = $('inspector-close');
+const inspectorEl          = $('inspector');
+const inspectorName        = $('inspector-name');
+const inspectorJointBadge  = $<HTMLSpanElement>('inspector-joint-badge');
+const inspectorGeomBadge   = $<HTMLSpanElement>('inspector-geom-badge');
+const inspectorProps       = $('inspector-props');
+const inspectorJointSection = $('inspector-joint-section');
+const inspectorJointVal    = $('inspector-joint-val');
+const inspectorJointSldr   = $<HTMLInputElement>('inspector-joint-sldr');
+const inspectorX           = $<HTMLInputElement>('inspector-x');
+const inspectorY           = $<HTMLInputElement>('inspector-y');
+const inspectorZ           = $<HTMLInputElement>('inspector-z');
+const inspectorScaleX      = $<HTMLInputElement>('inspector-scale-x');
+const inspectorScaleY      = $<HTMLInputElement>('inspector-scale-y');
+const inspectorScaleZ      = $<HTMLInputElement>('inspector-scale-z');
+const inspectorSnippet     = $('inspector-snippet');
+const inspectorCopy        = $<HTMLButtonElement>('inspector-copy');
+const inspectorClose       = $('inspector-close');
 
 let selectedJoint: string | null = null;
 let hoveredJointName: string | null = null;
@@ -154,6 +160,14 @@ function applyInspector(): void {
     _snippetDebounce = window.setTimeout(refreshSnippet, 150);
 }
 
+// ── Joint type badge config ────────────────────────────────────────────────
+const JOINT_BADGE: Record<string, { cls: string; text: string }> = {
+    continuous: { cls: 'badge-cont',  text: 'continuous' },
+    revolute:   { cls: 'badge-rev',   text: 'revolute'   },
+    prismatic:  { cls: 'badge-pris',  text: 'prismatic'  },
+    fixed:      { cls: 'badge-fixed', text: 'fixed'      },
+};
+
 function selectPart(jointName: string | null): void {
     selectedJoint = jointName;
     const joint = jointName ? viewer.robot?.joints[jointName] : null;
@@ -166,12 +180,87 @@ function selectPart(jointName: string | null): void {
     inspectorEl.style.display = '';
     inspectorName.textContent = toLabel(jointName);
 
+    // ── Joint type badge ────────────────────────────────────────────────────
+    const jointType = (joint as { jointType?: string }).jointType ?? 'fixed';
+    const badgeCfg = JOINT_BADGE[jointType] ?? { cls: '', text: jointType };
+    inspectorJointBadge.className = `pc-badge ${badgeCfg.cls}`;
+    inspectorJointBadge.textContent = badgeCfg.text;
+    inspectorJointBadge.hidden = false;
+
     const p = joint.position;
+
+    // ── Properties list (mm display) ────────────────────────────────────────
+    const fmm = (v: number) => `${(v * 1000).toFixed(1)} mm`;
+    let propsHtml =
+        `<div class="pc-prop"><span class="pc-prop-lbl">X offset</span><span class="pc-prop-val">${fmm(p.x)}</span></div>` +
+        `<div class="pc-prop"><span class="pc-prop-lbl">Y offset</span><span class="pc-prop-val">${fmm(p.y)}</span></div>` +
+        `<div class="pc-prop"><span class="pc-prop-lbl">Z offset</span><span class="pc-prop-val">${fmm(p.z)}</span></div>`;
+
+    // Cylinder geometry extras
+    const link = viewer.robot!.links[linkNameFor(jointName)];
+    if (link) {
+        const cylGeom = link.traverse ? (() => {
+            let cyl: { parameters?: { radiusTop?: number; height?: number } } | null = null;
+            link.traverse((obj: { geometry?: { parameters?: { radiusTop?: number; height?: number }; type?: string } }) => {
+                if (!cyl && obj.geometry?.type === 'CylinderGeometry') cyl = obj.geometry as { parameters?: { radiusTop?: number; height?: number } };
+            });
+            return cyl as { parameters?: { radiusTop?: number; height?: number } } | null;
+        })() : null;
+        if (cylGeom?.parameters) {
+            const r = cylGeom.parameters.radiusTop ?? 0;
+            const h = cylGeom.parameters.height    ?? 0;
+            propsHtml +=
+                `<div class="pc-prop"><span class="pc-prop-lbl">Radius</span><span class="pc-prop-val">${fmm(r)}</span></div>` +
+                `<div class="pc-prop"><span class="pc-prop-lbl">Width</span><span class="pc-prop-val">${fmm(h)}</span></div>`;
+        }
+    }
+    inspectorProps.innerHTML = propsHtml;
+
+    // ── Joint slider for non-fixed joints ───────────────────────────────────
+    const isMovable = jointType !== 'fixed';
+    inspectorJointSection.hidden = !isMovable;
+    if (isMovable) {
+        const lim = (joint as { limit?: { lower?: number; upper?: number } }).limit ?? {};
+        const lower = lim.lower ?? -Math.PI;
+        const upper = lim.upper ??  Math.PI;
+        const isPrismatic = jointType === 'prismatic';
+        const toDisplay = (rad: number) => isPrismatic ? rad * 1000 : rad * (180 / Math.PI);
+        const sldrMin = isPrismatic ? lower * 1000 : lower * (180 / Math.PI);
+        const sldrMax = isPrismatic ? upper * 1000 : upper * (180 / Math.PI);
+        inspectorJointSldr.min   = String(sldrMin);
+        inspectorJointSldr.max   = String(sldrMax);
+        const currentAngle = (joint as { angle?: number }).angle ?? 0;
+        inspectorJointSldr.value = String(toDisplay(currentAngle));
+        inspectorJointVal.textContent = isPrismatic
+            ? `${(currentAngle * 1000).toFixed(1)} mm`
+            : `${(currentAngle * 180 / Math.PI).toFixed(1)}°`;
+
+        // Replace slider listener (clone to remove old listeners)
+        const newSldr = inspectorJointSldr.cloneNode(true) as HTMLInputElement;
+        newSldr.min   = inspectorJointSldr.min;
+        newSldr.max   = inspectorJointSldr.max;
+        newSldr.value = inspectorJointSldr.value;
+        inspectorJointSldr.replaceWith(newSldr);
+        // Re-assign reference via DOM lookup (const ref can't be reassigned)
+        const liveSldr = document.getElementById('inspector-joint-sldr') as HTMLInputElement;
+        liveSldr.addEventListener('input', () => {
+            const raw = parseFloat(liveSldr.value);
+            const rad = isPrismatic ? raw / 1000 : raw * (Math.PI / 180);
+            if (viewer.robot && jointName) {
+                (viewer.robot.joints[jointName] as { setJointValue?: (v: number) => void }).setJointValue?.(rad);
+                viewer.redraw();
+            }
+            inspectorJointVal.textContent = isPrismatic
+                ? `${raw.toFixed(1)} mm`
+                : `${raw.toFixed(1)}°`;
+        });
+    }
+
+    // ── Legacy hidden inputs (keep working for applyInspector / refreshSnippet) ──
     inspectorX.value = fmt(p.x);
     inspectorY.value = fmt(p.y);
     inspectorZ.value = fmt(p.z);
 
-    const link = viewer.robot!.links[linkNameFor(jointName)];
     inspectorScaleX.value = String(link ? link.scale.x : 1);
     inspectorScaleY.value = String(link ? link.scale.y : 1);
     inspectorScaleZ.value = String(link ? link.scale.z : 1);
@@ -204,6 +293,27 @@ for (const input of [inspectorX, inspectorY, inspectorZ, inspectorScaleX, inspec
 }
 
 inspectorClose.addEventListener('click', () => selectPart(null));
+
+// ── New POC inspector action buttons ──────────────────────────────────────
+document.getElementById('inspector-close-2')?.addEventListener('click', () => selectPart(null));
+
+document.getElementById('inspector-details-btn')?.addEventListener('click', () => {
+    const advPanel = document.getElementById('adv-panel');
+    if (advPanel && !advPanel.classList.contains('open')) {
+        document.getElementById('adv-toggle')?.click();
+    }
+    (document.getElementById('adv-tab-inspect') as HTMLButtonElement | null)?.click();
+});
+
+document.getElementById('inspector-copy-btn')?.addEventListener('click', () => {
+    navigator.clipboard.writeText(inspectorSnippet.textContent ?? '');
+    const btn = document.getElementById('inspector-copy-btn') as HTMLButtonElement | null;
+    if (btn) {
+        const orig = btn.textContent;
+        btn.textContent = 'Copied!';
+        setTimeout(() => { btn.textContent = orig; }, 1500);
+    }
+});
 
 inspectorCopy.addEventListener('click', () => {
     navigator.clipboard.writeText(inspectorSnippet.textContent ?? '');
@@ -387,6 +497,27 @@ initPanel();
         });
         document.addEventListener('click', () => { exportMenu.hidden = true; });
     }
+
+    // Bundle: same as main export button
+    document.getElementById('build-export-bundle')?.addEventListener('click', () => {
+        if (exportMenu) exportMenu.hidden = true;
+        void buildCtrl.exportZip(buildExportBtn);
+    });
+
+    // STL-only export stub
+    document.getElementById('build-export-stl')?.addEventListener('click', () => {
+        if (exportMenu) exportMenu.hidden = true;
+        alert('STL export — coming soon');
+    });
+
+    // Share link
+    document.getElementById('build-share-link')?.addEventListener('click', () => {
+        if (exportMenu) exportMenu.hidden = true;
+        const url = window.location.href;
+        navigator.clipboard.writeText(url)
+            .then(() => alert('Link copied to clipboard!'))
+            .catch(() => alert(`Share this link:\n${url}`));
+    });
 }
 
 // ── Robot picker button: scrolls the carousel visible on mobile ───────────

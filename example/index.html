@@ -77,11 +77,32 @@
       </button>
       <button type="button" id="export-caret" class="export-caret" aria-label="Export options">▾</button>
       <div class="export-menu" id="export-menu" hidden>
+        <button type="button" class="export-item" id="build-export-bundle">
+          <span class="export-item-icon">📦</span>
+          <span class="export-item-text">
+            <span class="export-item-name">URDF + STL bundle</span>
+            <span class="export-item-desc">For ROS, Gazebo, Isaac Sim. Includes all mesh files.</span>
+          </span>
+        </button>
         <button type="button" class="export-item" id="build-copy-urdf">
           <span class="export-item-icon">📋</span>
           <span class="export-item-text">
             <span class="export-item-name">Copy URDF</span>
             <span class="export-item-desc">Copy URDF XML to clipboard</span>
+          </span>
+        </button>
+        <button type="button" class="export-item" id="build-export-stl">
+          <span class="export-item-icon">🖨</span>
+          <span class="export-item-text">
+            <span class="export-item-name">STL files for printing</span>
+            <span class="export-item-desc">Visual geometry only, watertight check applied.</span>
+          </span>
+        </button>
+        <button type="button" class="export-item" id="build-share-link">
+          <span class="export-item-icon">🔗</span>
+          <span class="export-item-text">
+            <span class="export-item-name">Share link</span>
+            <span class="export-item-desc">Generate a read-only URL to this robot configuration.</span>
           </span>
         </button>
       </div>
@@ -118,39 +139,35 @@
       <div id="inspector" class="part-card" style="display:none">
         <div class="pc-hd">
           <span id="inspector-name" class="pc-name"></span>
+          <span id="inspector-joint-badge" class="pc-badge" hidden></span>
+          <span id="inspector-geom-badge" class="pc-badge badge-prim" hidden></span>
           <button type="button" class="pc-close" id="inspector-close" aria-label="Deselect part">✕</button>
         </div>
-        <div class="inspector-fields pc-fields">
-          <div class="inspector-group-label">Position</div>
-          <div class="inspector-row">
-            <label class="axis-x">X</label>
-            <input type="number" id="inspector-x" step="0.001"/>
-          </div>
-          <div class="inspector-row">
-            <label class="axis-y">Y</label>
-            <input type="number" id="inspector-y" step="0.001"/>
-          </div>
-          <div class="inspector-row">
-            <label class="axis-z">Z</label>
-            <input type="number" id="inspector-z" step="0.001"/>
-          </div>
-          <div class="inspector-group-label">Scale</div>
-          <div class="inspector-row">
-            <label class="axis-x">X</label>
-            <input type="number" id="inspector-scale-x" step="0.01" min="0.01" value="1"/>
-          </div>
-          <div class="inspector-row">
-            <label class="axis-y">Y</label>
-            <input type="number" id="inspector-scale-y" step="0.01" min="0.01" value="1"/>
-          </div>
-          <div class="inspector-row">
-            <label class="axis-z">Z</label>
-            <input type="number" id="inspector-scale-z" step="0.01" min="0.01" value="1"/>
-          </div>
+        <div class="pc-props" id="inspector-props">
+          <!-- populated by JS -->
         </div>
-        <div class="inspector-snippet-wrap">
-          <code class="inspector-snippet" id="inspector-snippet"></code>
-          <button type="button" class="inspector-copy" id="inspector-copy">Copy</button>
+        <div class="pc-joint" id="inspector-joint-section" hidden>
+          <div class="pc-joint-top">
+            <span class="pc-joint-lbl">Drive angle</span>
+            <span class="pc-joint-val" id="inspector-joint-val">0°</span>
+          </div>
+          <input type="range" class="joint-sldr" id="inspector-joint-sldr" min="-180" max="180" value="0">
+        </div>
+        <!-- Keep hidden legacy inputs for programmatic access by main.ts -->
+        <div style="display:none" aria-hidden="true">
+          <input type="number" id="inspector-x" step="0.001"/>
+          <input type="number" id="inspector-y" step="0.001"/>
+          <input type="number" id="inspector-z" step="0.001"/>
+          <input type="number" id="inspector-scale-x" step="0.01" min="0.01" value="1"/>
+          <input type="number" id="inspector-scale-y" step="0.01" min="0.01" value="1"/>
+          <input type="number" id="inspector-scale-z" step="0.01" min="0.01" value="1"/>
+          <code id="inspector-snippet"></code>
+          <button id="inspector-copy">Copy</button>
+        </div>
+        <div class="pc-actions">
+          <button type="button" class="pc-action details" id="inspector-details-btn">Details ›</button>
+          <button type="button" class="pc-action" id="inspector-copy-btn">Copy</button>
+          <button type="button" class="pc-action danger" id="inspector-close-2" aria-label="Deselect">✕</button>
         </div>
       </div>
 
@@ -237,6 +254,14 @@
               <path d="m18 16 4-4-4-4"/><path d="m6 8-4 4 4 4"/><path d="m14.5 4-5 16"/>
             </svg>
             <span class="tab-label">XML</span>
+          </button>
+          <button type="button" class="adv-tab tab-btn" data-tab="meshes" id="adv-tab-meshes"
+                  role="tab" aria-selected="false" title="Mesh files">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+            </svg>
+            <span class="tab-label">Mesh</span>
           </button>
         </div>
         <button type="button" class="adv-close" id="adv-close" aria-label="Close advanced panel">
@@ -521,6 +546,29 @@
         </div>
       </div>
 
+      <!-- Meshes tab -->
+      <div class="tab-body" data-tab="meshes" id="meshes-panel">
+        <div class="sidebar-scroll">
+          <div class="section-label">Mesh Files</div>
+          <div id="mesh-file-list">
+            <!-- Populated by JS when robot loads -->
+            <div class="mesh-row">
+              <span class="m-name">chassis.stl</span>
+              <button type="button" class="m-btn">↓ Download</button>
+              <button type="button" class="m-btn" id="mesh-regen-chassis">Regenerate</button>
+            </div>
+          </div>
+
+          <div class="section-label" style="margin-top: 12px;">Upload Custom Mesh</div>
+          <label class="upload-zone" for="mesh-upload-input">
+            <span class="upload-zone-icon">📎</span>
+            <span class="upload-zone-label">Drop STL or click to browse</span>
+            <span class="upload-zone-sub">Supported: .stl, .dae, .obj</span>
+          </label>
+          <input type="file" id="mesh-upload-input" accept=".stl,.dae,.obj" style="display:none">
+        </div>
+      </div>
+
     </aside>
 
   </div><!-- .main -->
@@ -548,6 +596,13 @@
           aria-label="Chat with AI"
           rows="1"
         ></textarea>
+        <label for="chat-stl-upload" class="upload-btn" title="Attach STL mesh" aria-label="Upload STL file">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
+               stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
+          </svg>
+        </label>
+        <input type="file" id="chat-stl-upload" accept=".stl" style="display:none">
         <button type="button" id="chat-send" class="chat-send-btn" aria-label="Send message" title="Send (Enter)">
           <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
             <path d="M8 13V3M3.5 7.5L8 3l4.5 4.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
