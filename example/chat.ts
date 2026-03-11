@@ -91,6 +91,7 @@ export class URDFChatController extends AISession {
     private _provider: Provider = 'anthropic';
     private _model = MODEL;
     private _githubAuth: GitHubAuth | null = null;
+    private _attachedStl: { name: string; url: string } | null = null;
 
     // DOM refs set in init() — _messagesEl, _sendBtn, _abortBtn are inherited from AISession
     private _emptyStateEl!:  HTMLElement;
@@ -250,6 +251,10 @@ export class URDFChatController extends AISession {
         this._pauseResolve?.(false);
     }
 
+    attachStlFile(name: string, url: string): void {
+        this._attachedStl = { name, url };
+    }
+
     private _showContinueButton(): void {
         this._inputEl.disabled   = true;
         this._sendBtn.hidden     = true;
@@ -347,7 +352,12 @@ export class URDFChatController extends AISession {
             void this._executeSlashCommand(text);
             return;
         }
-        void this._runConversation(text);
+        let message = text;
+        if (this._attachedStl) {
+            message = `[Attached STL: ${this._attachedStl.name}]\n${text}`;
+            this._attachedStl = null;
+        }
+        void this._runConversation(message);
     }
 
     // ── Slash commands ────────────────────────────────────────────────────────

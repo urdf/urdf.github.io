@@ -45,6 +45,7 @@ export function initTabSwitching(opts: TabCtrlOptions): void {
         getGizmoCtrl()?.onBuildClose();
         buildGrid.visible    = false;
         viewportGrid.visible = true;
+        document.body.classList.remove('meshes-open');
         _setActiveTab('inspect');
     });
 
@@ -55,6 +56,7 @@ export function initTabSwitching(opts: TabCtrlOptions): void {
         buildGrid.visible    = false;
         viewportGrid.visible = true;
         chatInput.placeholder = 'Ask AI to edit this URDF…';
+        document.body.classList.remove('meshes-open');
         openAdvPanelIfClosed();
         _setActiveTab('editor');
     });
@@ -68,6 +70,7 @@ export function initTabSwitching(opts: TabCtrlOptions): void {
         buildGrid.position.y = viewer.shadowPlane.position.y;
         chatInput.placeholder = 'Ask AI to add or modify components…';
         libTabCtrl.buildLibraryGrid();
+        document.body.classList.remove('meshes-open');
         openAdvPanelIfClosed();
         _setActiveTab('build');
     });
@@ -79,4 +82,16 @@ export function initTabSwitching(opts: TabCtrlOptions): void {
         document.getElementById('tab-editor')?.click());
     document.getElementById('adv-tab-build')?.addEventListener('click', () =>
         document.getElementById('tab-build')?.click());
+
+    // Meshes tab — adv-panel only (no mode-pill button)
+    document.getElementById('adv-tab-meshes')?.addEventListener('click', () => {
+        editorCtrl.close();
+        buildCtrl.close();
+        getGizmoCtrl()?.onBuildClose();
+        buildGrid.visible    = false;
+        viewportGrid.visible = true;
+        document.body.classList.add('meshes-open');
+        openAdvPanelIfClosed();
+        _setActiveTab('meshes');
+    });
 }

@@ -48,6 +48,7 @@
       --purple-bg:    hsl(248 100% 62% / .1);
       --shadow-md:    0 4px 24px hsl(0 0% 0% / .45);
       --shadow-lg:    0 12px 48px hsl(0 0% 0% / .55);
+      --border-lo:    hsl(228, 12%, 16%);
     }
 
     @media (prefers-color-scheme: light) {
@@ -549,7 +550,7 @@
     }
 
     /* Control/inspect tab: visible when no other tab is active */
-    body:not(.editor-open):not(.build-open) .tab-body[data-tab="inspect"] { display: flex; }
+    body:not(.editor-open):not(.build-open):not(.meshes-open) .tab-body[data-tab="inspect"] { display: flex; }
 
     /* Build tab */
     body.build-open .tab-body[data-tab="build"] { display: flex; flex-direction: column; }
@@ -3018,3 +3019,13 @@
     .upload-zone-icon { font-size: 20px; line-height: 1; }
     .upload-zone-label { font-size: 0.75rem; font-weight: 500; color: var(--text-2); }
     .upload-zone-sub { font-size: 0.625rem; color: var(--text-3); }
+
+    /* Meshes tab visibility */
+    body.meshes-open .tab-body[data-tab="meshes"] { display: flex; flex-direction: column; }
+
+    /* Upload button inside chat-input-wrap: sits to the left of the send/abort button */
+    .input-bar .chat-input-wrap .upload-btn {
+      position: absolute;
+      bottom: 6px; right: 38px;
+    }
+    .input-bar .chat-input-wrap #chat-input { padding-right: 76px; }
