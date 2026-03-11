@@ -6,42 +6,37 @@ function isDesktop(): boolean { return window.innerWidth > 768; }
 
 export function initPanel(): void {
 
-const ctrlPanel  = $('control-panel');
-const chatPanel  = $('chat-panel');
-const backdrop   = $('sidebar-backdrop');
-const ctrlToggle = $('control-panel-toggle');
-const chatToggle = $('chat-panel-toggle');
-const ctrlClose  = $('control-panel-close');
-const chatClose  = $('chat-panel-close');
-const mainEl     = document.querySelector('main')!;
+const advPanel  = $('adv-panel');
+const backdrop  = $('sidebar-backdrop');
+const advToggle = $<HTMLButtonElement>('adv-toggle');
+const advClose  = $('adv-close');
 
 let _mobilePanel: HTMLElement | null = null;
 
-function openSidePanel(panel: HTMLElement): void {
-    panel.classList.add('open');
-    if (isDesktop()) { panel.classList.add('pinned'); }
-    else { backdrop.classList.add('visible'); _mobilePanel = panel; }
+function openAdvPanel(): void {
+    advPanel.classList.add('open');
+    advToggle.classList.add('on');
+    if (isDesktop()) { advPanel.classList.add('pinned'); }
+    else { backdrop.classList.add('visible'); _mobilePanel = advPanel; }
 }
-function closeSidePanel(panel: HTMLElement): void {
-    panel.classList.remove('open', 'pinned');
+function closeAdvPanel(): void {
+    advPanel.classList.remove('open', 'pinned');
+    advToggle.classList.remove('on');
     backdrop.classList.remove('visible');
     _mobilePanel = null;
 }
 
-ctrlToggle.addEventListener('click', () =>
-    ctrlPanel.classList.contains('open') ? closeSidePanel(ctrlPanel) : openSidePanel(ctrlPanel));
-chatToggle.addEventListener('click', () =>
-    chatPanel.classList.contains('open') ? closeSidePanel(chatPanel) : openSidePanel(chatPanel));
-ctrlClose.addEventListener('click', () => closeSidePanel(ctrlPanel));
-chatClose.addEventListener('click', () => closeSidePanel(chatPanel));
-backdrop.addEventListener('click', () => { if (_mobilePanel) closeSidePanel(_mobilePanel); });
+advToggle.addEventListener('click', () =>
+    advPanel.classList.contains('open') ? closeAdvPanel() : openAdvPanel());
+advClose.addEventListener('click', () => closeAdvPanel());
+backdrop.addEventListener('click', () => { if (_mobilePanel) closeAdvPanel(); });
 
-// ── Resize handle factory (Pattern 6 — extracted from two identical blocks) ──
+// ── Resize handle factory ─────────────────────────────────────────────────
 
 interface ResizeHandleOptions {
     handle:       HTMLElement;
     panel:        HTMLElement;
-    cssVar:       string;       // e.g. '--panel-w'
+    cssVar:       string;       // e.g. '--adv-w'
     storageKey:   string;
     defaultW:     number;
     minW:         number;
@@ -76,7 +71,6 @@ function makeResizeHandle(opts: ResizeHandleOptions): void {
         const startW = opts.panel.offsetWidth;
         opts.handle.setPointerCapture(e.pointerId);
         opts.handle.classList.add('dragging');
-        mainEl.style.transition = 'none';
 
         function onMove(ev: PointerEvent): void {
             let w = startW + opts.dirSign * (ev.clientX - startX);
@@ -89,7 +83,6 @@ function makeResizeHandle(opts: ResizeHandleOptions): void {
         }
         function onUp(): void {
             opts.handle.classList.remove('dragging');
-            mainEl.style.transition = '';
             opts.tooltip.style.display = 'none';
             opts.handle.removeEventListener('pointermove', onMove);
             opts.handle.removeEventListener('pointerup', onUp);
@@ -130,34 +123,20 @@ function makeResizeHandle(opts: ResizeHandleOptions): void {
     });
 }
 
-// ── Left panel (control panel) ────────────────────────────────────────────
+// ── Adv panel (slides from right) ────────────────────────────────────────
 
-if (isDesktop()) openSidePanel(ctrlPanel);
+if (isDesktop()) openAdvPanel();
 
 const resizeTooltip = $('resize-tooltip');
 
 makeResizeHandle({
-    handle:     ctrlPanel.querySelector<HTMLElement>('.panel-resize-handle')!,
-    panel:      ctrlPanel,
-    cssVar:     '--panel-w',
-    storageKey: 'urdf-panel-w',
+    handle:     advPanel.querySelector<HTMLElement>('.adv-panel-resize-handle')!,
+    panel:      advPanel,
+    cssVar:     '--adv-w',
+    storageKey: 'urdf-adv-w',
     defaultW:   320,
     minW:       260,
     maxW:       () => Math.min(700, window.innerWidth * 0.6),
-    dirSign:    1,
-    tooltip:    resizeTooltip,
-});
-
-// ── Right panel (chat panel) ──────────────────────────────────────────────
-
-makeResizeHandle({
-    handle:     chatPanel.querySelector<HTMLElement>('.panel-resize-handle')!,
-    panel:      chatPanel,
-    cssVar:     '--chat-w',
-    storageKey: 'urdf-chat-w',
-    defaultW:   320,
-    minW:       260,
-    maxW:       () => Math.min(600, window.innerWidth * 0.6),
     dirSign:    -1,
     tooltip:    resizeTooltip,
 });

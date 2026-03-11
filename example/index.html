@@ -3,488 +3,572 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>URDF Viewer</title>
+  <title>URDF Studio</title>
   <link rel="icon" href="/favicon.ico" sizes="any">
   <link rel="preload" href="https://cdn.jsdelivr.net/npm/marked@15/marked.min.js" as="script">
   <link rel="preload" href="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js" as="script">
   <link rel="stylesheet" href="./style.css">
 </head>
 <body>
-  <aside id="control-panel" aria-label="Controls">
-    <div class="panel-resize-handle"
-      role="separator"
-      aria-label="Resize panel"
-      aria-orientation="vertical"
-      aria-valuenow="320"
-      aria-valuemin="260"
-      aria-valuemax="700"
-      tabindex="0"
-    ></div>
-    <div class="panel-header">
-      <div class="panel-tabs" role="tablist">
-        <button type="button" class="tab-btn" data-tab="inspect" id="tab-inspect" role="tab" aria-selected="true" aria-label="Control" title="Control">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <line x1="21" x2="14" y1="4" y2="4"/><line x1="10" x2="3" y1="4" y2="4"/>
-            <line x1="21" x2="12" y1="12" y2="12"/><line x1="8" x2="3" y1="12" y2="12"/>
-            <line x1="21" x2="16" y1="20" y2="20"/><line x1="12" x2="3" y1="20" y2="20"/>
-            <line x1="14" x2="14" y1="2" y2="6"/><line x1="8" x2="8" y1="10" y2="14"/>
-            <line x1="16" x2="16" y1="18" y2="22"/>
-          </svg>
-          <span class="tab-label">Control</span>
-        </button>
-        <button type="button" class="tab-btn" data-tab="build" id="tab-build" role="tab" aria-selected="false" aria-label="Build" title="Build">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/>
-          </svg>
-          <span class="tab-label">Build</span>
-        </button>
-        <button type="button" class="tab-btn" data-tab="editor" id="tab-editor" role="tab" aria-selected="false" aria-label="Edit" title="Edit">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="m18 16 4-4-4-4"/><path d="m6 8-4 4 4 4"/><path d="m14.5 4-5 16"/>
-          </svg>
-          <span class="tab-label">Edit</span>
-        </button>
-      </div>
-    </div>
 
-    <div class="tab-body" data-tab="inspect">
-      <div class="options-bar">
-        <div class="options-row">
-          <label class="option"><input type="checkbox" id="ignore-limits" /> Unlock</label>
-          <label class="option"><input type="checkbox" id="show-collision" /> Collision</label>
-          <label class="option"><input type="checkbox" id="display-shadow" /> Shadow</label>
-          <label class="option option--select">Up
-            <select id="up-axis">
-              <option value="+Z">+Z</option>
-              <option value="-Z">−Z</option>
-              <option value="+Y">+Y</option>
-              <option value="-Y">−Y</option>
-            </select>
-          </label>
-        </div>
-      </div>
-
-      <details id="gesture-section" class="info-section">
-        <summary>Gestures</summary>
-        <div class="build-section-body">
-          <ul class="gesture-list" aria-label="Gesture reference">
-            <li><span class="gesture-icon">✊</span><span class="gesture-label">Orbit camera</span></li>
-            <li><span class="gesture-icon">☝️</span><span class="gesture-label">Hover &amp; select joint</span></li>
-            <li><span class="gesture-icon">🤚</span><span class="gesture-label">Twist selected joint</span></li>
-            <li><span class="gesture-icon">🖐️</span><span class="gesture-label">Reset all joints (hold 1 s)</span></li>
-            <li><span class="gesture-icon">🤲</span><span class="gesture-label">Pinch to zoom</span></li>
-          </ul>
-        </div>
-      </details>
-
-      <details id="sim-section" class="info-section" hidden>
-        <summary>Simulate</summary>
-        <div class="sim-controls">
-          <div class="sim-toolbar">
-            <button type="button" id="sim-play-btn"  class="sim-btn" title="Start simulation">&#9654;</button>
-            <button type="button" id="sim-pause-btn" class="sim-btn" title="Pause simulation" hidden>&#9646;&#9646;</button>
-            <button type="button" id="sim-stop-btn"  class="sim-btn" title="Stop simulation"  hidden>&#9632;</button>
-            <button type="button" id="sim-reset-btn" class="sim-btn sim-btn--reset" title="Reset simulation">&#8635;</button>
-            <span id="sim-status" class="sim-status">Ready</span>
-          </div>
-          <div class="sim-options">
-            <label class="inspector-row">
-              <span>Float base</span>
-              <input type="checkbox" id="sim-float-base"/>
-            </label>
-            <label class="inspector-row">
-              <span>Speed</span>
-              <input type="range" id="sim-speed" min="0.1" max="4" step="0.1" value="1"/>
-            </label>
-          </div>
-        </div>
-      </details>
-
-      <div class="sidebar-scroll">
-        <div class="section-label">Joints</div>
-        <div class="joints" id="joints"></div>
-
-        <div id="inspector">
-          <div class="inspector-header">
-            <span class="inspector-title">Inspector</span>
-            <button type="button" class="inspector-close" id="inspector-close" aria-label="Deselect part">✕</button>
-          </div>
-          <div class="inspector-part-name" id="inspector-name"></div>
-          <div class="inspector-fields">
-            <div class="inspector-group-label">Position</div>
-            <div class="inspector-row">
-              <label class="axis-x">X</label>
-              <input type="number" id="inspector-x" step="0.001"/>
-            </div>
-            <div class="inspector-row">
-              <label class="axis-y">Y</label>
-              <input type="number" id="inspector-y" step="0.001"/>
-            </div>
-            <div class="inspector-row">
-              <label class="axis-z">Z</label>
-              <input type="number" id="inspector-z" step="0.001"/>
-            </div>
-            <div class="inspector-group-label">Scale</div>
-            <div class="inspector-row">
-              <label class="axis-x">X</label>
-              <input type="number" id="inspector-scale-x" step="0.01" min="0.01" value="1"/>
-            </div>
-            <div class="inspector-row">
-              <label class="axis-y">Y</label>
-              <input type="number" id="inspector-scale-y" step="0.01" min="0.01" value="1"/>
-            </div>
-            <div class="inspector-row">
-              <label class="axis-z">Z</label>
-              <input type="number" id="inspector-scale-z" step="0.01" min="0.01" value="1"/>
-            </div>
-          </div>
-          <div class="inspector-snippet-wrap">
-            <code class="inspector-snippet" id="inspector-snippet"></code>
-            <button type="button" class="inspector-copy" id="inspector-copy">Copy</button>
-          </div>
-        </div>
-      </div>
-
-    </div>
-
-    <div class="tab-body" data-tab="editor" id="editor-panel">
-      <div class="editor-part-bar">
-        <select id="part-select" hidden aria-label="Edit part file"></select>
-        <button id="part-reset" hidden disabled title="Reset all parts to their original version">↺ Reset</button>
-      </div>
-      <div class="editor-tabs" id="editor-tabs"></div>
-      <div class="editor-pane">
-        <div class="editor-line-nums" id="editor-line-nums" aria-hidden="true"></div>
-        <textarea
-          id="editor-textarea"
-          spellcheck="false"
-          autocomplete="off"
-          autocorrect="off"
-          autocapitalize="off"
-          wrap="off"
-          aria-label="URDF source code"
-        ></textarea>
-      </div>
-    </div>
-
-    <div class="tab-body" data-tab="build" id="build-panel">
-      <div class="sidebar-scroll">
-        <div id="build-active-header" class="build-active-header" hidden>
-          <span id="build-active-name" class="build-active-name"></span>
-          <button type="button" id="build-shortcuts-toggle" class="icon-btn" title="Keyboard shortcuts">?</button>
-          <button type="button" id="build-clear-custom" class="build-danger-btn" title="Delete saved custom robot" hidden>🗑</button>
-        </div>
-        <div id="build-inspector" hidden>
-          <div class="build-inspector-header">
-            <span id="build-inspector-title" class="build-inspector-title"></span>
-            <button type="button" id="build-inspector-close" class="icon-btn" title="Deselect (Escape)">×</button>
-          </div>
-          <div id="build-inspector-body"></div>
-        </div>
-        <div id="build-shortcuts" class="build-shortcuts" hidden>
-          <span class="key">Drag</span> component → move X/Y &nbsp;|&nbsp; <span class="key">Shift+drag</span> → move Z<br>
-          <span class="key">Click</span> component → select + expand card<br>
-          <span class="key">Arrow keys</span> → nudge X/Y 1mm &nbsp;|&nbsp; <span class="key">Shift+↑↓</span> → nudge Z<br>
-          <span class="key">Delete</span> → remove selected component<br>
-          <span class="key">Ctrl+Z / Ctrl+Y</span> → undo / redo
-        </div>
-        <p class="build-notice" id="build-notice" hidden>Load Robot Car to use the full builder, or create a new robot below.</p>
-
-        <div id="build-new-robot">
-          <div class="section-label">New Robot</div>
-          <div class="inspector-row build-name-row">
-            <label>Name</label>
-            <input type="text" id="build-new-name" class="build-text-input" placeholder="my-robot">
-          </div>
-          <div class="build-new-actions">
-            <button type="button" id="build-new-create" class="build-export-btn">Create Robot</button>
-            <button type="button" id="build-saved-toggle" class="build-secondary-btn" hidden title="Saved robots" aria-expanded="false">☰ Saved</button>
-          </div>
-          <div id="build-saved-list" hidden></div>
-        </div>
-
-        <div class="build-palette-header">
-          <span class="section-label">Add Component</span>
-        </div>
-        <div class="component-palette" id="build-palette"></div>
-        <div id="build-components-list"></div>
-
-        <details class="build-section" id="library-section">
-          <summary>Library</summary>
-          <div class="build-section-body">
-            <div class="lib-search-wrap">
-              <input type="search" id="lib-search" class="lib-search-input"
-                     placeholder="Search components…" autocomplete="off" aria-label="Search components">
-            </div>
-            <div class="lib-pills" id="lib-pills" role="group" aria-label="Category filter">
-              <button type="button" class="lib-pill lib-pill--active" data-cat="">All</button>
-              <button type="button" class="lib-pill" data-cat="Sensor">Sensor</button>
-              <button type="button" class="lib-pill" data-cat="Actuator">Actuator</button>
-              <button type="button" class="lib-pill" data-cat="MCU">MCU</button>
-              <button type="button" class="lib-pill" data-cat="Power">Power</button>
-              <button type="button" class="lib-pill" data-cat="Structural">Structural</button>
-            </div>
-            <div class="lib-grid-wrap">
-              <div class="lib-grid" id="lib-grid"></div>
-              <p class="lib-empty" id="lib-empty" hidden>No components match.</p>
-            </div>
-          </div>
-        </details>
-
-        <div id="build-parametric">
-          <details class="build-section" data-panel="chassis">
-            <summary>Chassis <button type="button" class="build-section-detach" title="Open as floating panel">⊡</button></summary>
-            <div class="build-section-body">
-              <div class="build-param">
-                <div class="joint-name">Thickness <span class="unit">mm</span></div>
-                <div class="joint-row">
-                  <input type="range"  id="build-chassis-thickness" min="1" max="10" step="0.5" value="3">
-                  <input type="number" id="build-chassis-thickness-num" min="1" max="10" step="0.5" value="3">
-                </div>
-              </div>
-              <div class="build-param">
-                <div class="joint-name">Body half-width <span class="unit">mm</span></div>
-                <div class="joint-row">
-                  <input type="range"  id="build-chassis-body-hw" min="40" max="90" step="1" value="62">
-                  <input type="number" id="build-chassis-body-hw-num" min="40" max="90" step="1" value="62">
-                </div>
-              </div>
-              <div class="build-param">
-                <div class="joint-name">Rear half-width <span class="unit">mm</span></div>
-                <div class="joint-row">
-                  <input type="range"  id="build-chassis-rear-hw" min="85" max="130" step="1" value="95">
-                  <input type="number" id="build-chassis-rear-hw-num" min="85" max="130" step="1" value="95">
-                </div>
-              </div>
-            </div>
-          </details>
-
-          <details class="build-section" data-panel="wheels">
-            <summary>Wheels <button type="button" class="build-section-detach" title="Open as floating panel">⊡</button></summary>
-            <div class="build-section-body">
-              <div class="build-param">
-                <div class="joint-name">Radius <span class="unit">mm</span></div>
-                <div class="joint-row">
-                  <input type="range"  id="build-wheel-radius" min="20" max="50" step="0.5" value="32.5">
-                  <input type="number" id="build-wheel-radius-num" min="20" max="50" step="0.5" value="32.5">
-                </div>
-              </div>
-              <div class="build-param">
-                <div class="joint-name">Width <span class="unit">mm</span></div>
-                <div class="joint-row">
-                  <input type="range"  id="build-wheel-width" min="8" max="30" step="1" value="26">
-                  <input type="number" id="build-wheel-width-num" min="8" max="30" step="1" value="26">
-                </div>
-              </div>
-            </div>
-          </details>
-
-          <details class="build-section" data-panel="caster">
-            <summary>Caster <button type="button" class="build-section-detach" title="Open as floating panel">⊡</button></summary>
-            <div class="build-section-body">
-              <div class="build-param">
-                <div class="joint-name">Radius <span class="unit">mm</span></div>
-                <div class="joint-row">
-                  <input type="range"  id="build-caster-radius" min="8" max="25" step="0.5" value="14.6">
-                  <input type="number" id="build-caster-radius-num" min="8" max="25" step="0.5" value="14.6">
-                </div>
-              </div>
-              <div class="build-param">
-                <div class="joint-name">Width <span class="unit">mm</span></div>
-                <div class="joint-row">
-                  <input type="range"  id="build-caster-width" min="5" max="25" step="0.5" value="14.5">
-                  <input type="number" id="build-caster-width-num" min="5" max="25" step="0.5" value="14.5">
-                </div>
-              </div>
-            </div>
-          </details>
-
-          <details class="build-section" data-panel="battery">
-            <summary>Battery Box <button type="button" class="build-section-detach" title="Open as floating panel">⊡</button></summary>
-            <div class="build-section-body">
-              <div class="build-param">
-                <div class="joint-name">Length <span class="unit">mm</span></div>
-                <div class="joint-row">
-                  <input type="range"  id="build-battery-l" min="40" max="120" step="1" value="80.6">
-                  <input type="number" id="build-battery-l-num" min="40" max="120" step="1" value="80.6">
-                </div>
-              </div>
-              <div class="build-param">
-                <div class="joint-name">Width <span class="unit">mm</span></div>
-                <div class="joint-row">
-                  <input type="range"  id="build-battery-w" min="25" max="80" step="1" value="44.2">
-                  <input type="number" id="build-battery-w-num" min="25" max="80" step="1" value="44.2">
-                </div>
-              </div>
-              <div class="build-param">
-                <div class="joint-name">Height <span class="unit">mm</span></div>
-                <div class="joint-row">
-                  <input type="range"  id="build-battery-h" min="15" max="50" step="1" value="22">
-                  <input type="number" id="build-battery-h-num" min="15" max="50" step="1" value="22">
-                </div>
-              </div>
-            </div>
-          </details>
-
-          <details class="build-section" data-panel="powerbank">
-            <summary>Power Bank <button type="button" class="build-section-detach" title="Open as floating panel">⊡</button></summary>
-            <div class="build-section-body">
-              <div class="build-param">
-                <div class="joint-name">Radius <span class="unit">mm</span></div>
-                <div class="joint-row">
-                  <input type="range"  id="build-powerbank-r" min="8" max="25" step="0.5" value="11.5">
-                  <input type="number" id="build-powerbank-r-num" min="8" max="25" step="0.5" value="11.5">
-                </div>
-              </div>
-              <div class="build-param">
-                <div class="joint-name">Length <span class="unit">mm</span></div>
-                <div class="joint-row">
-                  <input type="range"  id="build-powerbank-l" min="50" max="200" step="1" value="119.9">
-                  <input type="number" id="build-powerbank-l-num" min="50" max="200" step="1" value="119.9">
-                </div>
-              </div>
-            </div>
-          </details>
-        </div><!-- #build-parametric -->
-
-      </div><!-- .sidebar-scroll -->
-
-      <!-- Sticky footer: always visible, never scrolls away -->
-      <div class="build-footer">
-        <div class="build-footer-row">
-          <button id="build-undo" class="build-action-btn" title="Undo (Ctrl+Z)" disabled>Undo</button>
-          <button id="build-redo" class="build-action-btn" title="Redo (Ctrl+Y)" disabled>Redo</button>
-          <button id="build-reset" class="build-action-btn build-reset-btn" title="Reset to defaults">Reset</button>
-        </div>
-        <div class="build-footer-row">
-          <button id="build-export" class="build-export-btn">Download .zip</button>
-          <button id="build-copy-urdf" class="build-export-btn" title="Copy URDF XML to clipboard">Copy URDF</button>
-        </div>
-      </div>
-    </div>
-
-  </aside>
-  <button type="button" class="panel-edge-tab" id="control-panel-close" aria-label="Collapse panel">‹</button>
-
-  <aside id="chat-panel" aria-label="AI Chat">
-    <div class="panel-resize-handle" role="separator" aria-label="Resize chat panel"
-         aria-orientation="vertical" aria-valuenow="320" aria-valuemin="260"
-         aria-valuemax="600" tabindex="0"></div>
-    <div class="chat-header">
-      <div class="chat-model-wrap">
-        <select id="chat-model-select" class="chat-model-select" aria-label="AI model">
-          <option value="anthropic:claude-sonnet-4-6">Claude Sonnet 4.6</option>
-          <option value="github:openai/gpt-4.1">GitHub · GPT-4.1</option>
-          <option value="github:openai/gpt-4.1-mini">GitHub · GPT-4.1 mini</option>
-          <option value="github:openai/gpt-4.1-nano">GitHub · GPT-4.1 nano</option>
-          <option value="github:openai/gpt-5">GitHub · GPT-5</option>
-          <option value="github:openai/gpt-5-mini">GitHub · GPT-5 mini</option>
-        </select>
-        <span class="chat-model-arrow" aria-hidden="true">▾</span>
-      </div>
-    </div>
-    <div id="chat-github-bar" class="chat-github-bar" hidden></div>
-    <div id="chat-proxy-bar" class="chat-proxy-bar" hidden>Local proxy active · no API key needed<button type="button" class="chat-proxy-dismiss" aria-label="Dismiss" onclick="this.parentElement.hidden=true">×</button></div>
-    <div id="chat-apikey-bar" class="chat-apikey-bar" hidden></div>
-    <div id="chat-context-bar" hidden></div>
-    <div class="chat-pane">
-      <div class="chat-messages" id="chat-messages" aria-live="polite" aria-label="AI conversation"></div>
-      <div id="chat-empty-state" class="chat-empty-state" aria-hidden="true">
-        <button type="button" class="chat-guide-card" id="chat-guide-start">
-          <span class="chat-guide-card-title">Guided Assembly</span>
-          <span class="chat-guide-card-desc">Step-by-step build with 3D highlights</span>
-        </button>
-      </div>
-      <div class="chat-compose-toolbar">
-        <button type="button" id="chat-brief-toggle" aria-pressed="false" title="Toggle detailed responses">Detail</button>
-        <span id="chat-tool-count" class="chat-tool-count-btn" hidden
-              aria-label="Active tools" title="Active build tools"></span>
-      </div>
-      <div class="chat-input-area">
-        <div id="cmd-ac" class="cmd-ac" hidden role="listbox" aria-label="Commands"></div>
-        <div class="chat-input-wrap">
-          <textarea
-            id="chat-input"
-            placeholder="Ask AI to edit this URDF…"
-            aria-label="Chat with AI"
-            rows="1"
-          ></textarea>
-          <button type="button" id="chat-send" class="chat-send-btn" aria-label="Send message" title="Send (Enter)">
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-              <path d="M8 13V3M3.5 7.5L8 3l4.5 4.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-          </button>
-          <button type="button" id="chat-abort" class="chat-abort-btn" hidden aria-label="Stop generating" title="Stop">
-            <svg width="10" height="10" viewBox="0 0 11 11" aria-hidden="true">
-              <rect width="11" height="11" rx="2" fill="currentColor"/>
-            </svg>
-          </button>
-        </div>
-        <button type="button" id="chat-continue" hidden class="chat-continue-btn"
-                aria-label="Continue to next step">Continue →</button>
-      </div>
-    </div>
-  </aside>
-  <button type="button" class="panel-edge-tab" id="chat-panel-close" aria-label="Collapse chat">›</button>
-
-  <main>
-    <div id="float-panels" aria-live="polite"></div>
-    <div id="gesture-hint-host" aria-live="polite"></div>
-    <button type="button" class="fab" id="control-panel-toggle" aria-label="Toggle controls">
-      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <rect width="18" height="18" x="3" y="3" rx="2"/>
-        <path d="M9 3v18"/>
+  <!-- ── Topbar ─────────────────────────────────────────────────────────── -->
+  <header class="topbar">
+    <button type="button" class="robot-picker-btn" id="robot-picker-btn" aria-label="Switch robot">
+      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
+           stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <rect x="2" y="7" width="20" height="14" rx="2"/>
+        <path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/>
+        <line x1="12" y1="12" x2="12" y2="16"/><line x1="10" y1="14" x2="14" y2="14"/>
+      </svg>
+      <span class="robot-picker-name" id="robot-picker-name">Robot</span>
+      <svg class="tb-caret" xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24"
+           fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <polyline points="6 9 12 15 18 9"/>
       </svg>
     </button>
-    <button type="button" class="fab" id="chat-panel-toggle" aria-label="Toggle AI chat">
-      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/>
-        <path d="M2 14h2"/><path d="M20 14h2"/>
-        <path d="M15 13v2"/><path d="M9 13v2"/>
-      </svg>
-    </button>
-    <button type="button" class="fab" id="gesture-toggle" aria-label="Toggle gesture mode" title="Gesture mode">
-      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+
+    <div class="tb-sep" aria-hidden="true"></div>
+
+    <div class="model-chip-wrap">
+      <span class="model-chip-dot" aria-hidden="true"></span>
+      <select id="chat-model-select" class="chat-model-select" aria-label="AI model">
+        <option value="anthropic:claude-sonnet-4-6">Claude Sonnet 4.6</option>
+        <option value="github:openai/gpt-4.1">GitHub · GPT-4.1</option>
+        <option value="github:openai/gpt-4.1-mini">GitHub · GPT-4.1 mini</option>
+        <option value="github:openai/gpt-4.1-nano">GitHub · GPT-4.1 nano</option>
+        <option value="github:openai/gpt-5">GitHub · GPT-5</option>
+        <option value="github:openai/gpt-5-mini">GitHub · GPT-5 mini</option>
+      </select>
+    </div>
+
+    <div class="tb-spacer"></div>
+
+    <button type="button" class="tb-btn" id="gesture-toggle" aria-label="Toggle gesture mode" title="Gesture mode">
+      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
+           stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
         <path d="M18 11V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2"/>
         <path d="M14 10V4a2 2 0 0 0-2-2a2 2 0 0 0-2 2v2"/>
         <path d="M10 10.5V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2v8"/>
         <path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"/>
       </svg>
+      Gesture
     </button>
-    <a id="credit" href="https://github.com/jonasneves" target="_blank" rel="noopener">By Jonas Neves</a>
-    <div class="robot-shell">
-      <div class="robot-track" id="robots" data-gesture-track>
-        <div class="robot-track-slider" id="robot-track-slider"></div>
+
+    <button type="button" class="tb-btn" id="adv-toggle" aria-label="Open advanced panel" title="Advanced">
+      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
+           stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <line x1="21" x2="14" y1="4" y2="4"/><line x1="10" x2="3" y1="4" y2="4"/>
+        <line x1="21" x2="12" y1="12" y2="12"/><line x1="8" x2="3" y1="12" y2="12"/>
+        <line x1="21" x2="16" y1="20" y2="20"/><line x1="12" x2="3" y1="20" y2="20"/>
+        <line x1="14" x2="14" y1="2" y2="6"/><line x1="8" x2="8" y1="10" y2="14"/>
+        <line x1="16" x2="16" y1="18" y2="22"/>
+      </svg>
+      Advanced
+    </button>
+
+    <div class="export-wrap">
+      <button type="button" id="build-export" class="export-main">
+        <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+        </svg>
+        Export
+      </button>
+      <button type="button" id="export-caret" class="export-caret" aria-label="Export options">▾</button>
+      <div class="export-menu" id="export-menu" hidden>
+        <button type="button" class="export-item" id="build-copy-urdf">
+          <span class="export-item-icon">📋</span>
+          <span class="export-item-text">
+            <span class="export-item-name">Copy URDF</span>
+            <span class="export-item-desc">Copy URDF XML to clipboard</span>
+          </span>
+        </button>
       </div>
     </div>
-    <urdf-viewer id="viewer" up="-Z" display-shadow ambient-color="#8ea0a8"></urdf-viewer>
-    <div id="build-hover-tip"></div>
-    <div class="loading" id="loading">
-      <svg class="spinner" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <defs>
-          <linearGradient id="spinGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%"   stop-opacity="1" />
-            <stop offset="70%"  stop-opacity="0.4" />
-            <stop offset="100%" stop-opacity="0" />
-          </linearGradient>
-        </defs>
-        <circle cx="18" cy="18" r="15" stroke="url(#spinGrad)" stroke-width="3"
-                stroke-linecap="round" pathLength="100" stroke-dasharray="75 25" />
-      </svg>
+  </header>
+
+  <!-- ── Main area ──────────────────────────────────────────────────────── -->
+  <div class="main">
+
+    <!-- Viewport -->
+    <div class="viewport">
+
+      <!-- Robot carousel track -->
+      <div class="robot-shell">
+        <div class="robot-track" id="robots" data-gesture-track>
+          <div class="robot-track-slider" id="robot-track-slider"></div>
+        </div>
+      </div>
+
+      <!-- Mode / tab pill -->
+      <div class="mode-pill" role="tablist" aria-label="View mode">
+        <button type="button" class="mode-btn tab-btn" id="tab-inspect" data-tab="inspect"
+                role="tab" aria-selected="true" title="Control">Control</button>
+        <button type="button" class="mode-btn tab-btn" id="tab-build" data-tab="build"
+                role="tab" aria-selected="false" title="Build">Build</button>
+        <button type="button" class="mode-btn tab-btn" id="tab-editor" data-tab="editor"
+                role="tab" aria-selected="false" title="Edit XML">XML</button>
+      </div>
+
+      <!-- 3D viewer -->
+      <urdf-viewer id="viewer" up="-Z" display-shadow ambient-color="#8ea0a8"></urdf-viewer>
+
+      <!-- Floating part inspector card (replaces sidebar inspector) -->
+      <div id="inspector" class="part-card" style="display:none">
+        <div class="pc-hd">
+          <span id="inspector-name" class="pc-name"></span>
+          <button type="button" class="pc-close" id="inspector-close" aria-label="Deselect part">✕</button>
+        </div>
+        <div class="inspector-fields pc-fields">
+          <div class="inspector-group-label">Position</div>
+          <div class="inspector-row">
+            <label class="axis-x">X</label>
+            <input type="number" id="inspector-x" step="0.001"/>
+          </div>
+          <div class="inspector-row">
+            <label class="axis-y">Y</label>
+            <input type="number" id="inspector-y" step="0.001"/>
+          </div>
+          <div class="inspector-row">
+            <label class="axis-z">Z</label>
+            <input type="number" id="inspector-z" step="0.001"/>
+          </div>
+          <div class="inspector-group-label">Scale</div>
+          <div class="inspector-row">
+            <label class="axis-x">X</label>
+            <input type="number" id="inspector-scale-x" step="0.01" min="0.01" value="1"/>
+          </div>
+          <div class="inspector-row">
+            <label class="axis-y">Y</label>
+            <input type="number" id="inspector-scale-y" step="0.01" min="0.01" value="1"/>
+          </div>
+          <div class="inspector-row">
+            <label class="axis-z">Z</label>
+            <input type="number" id="inspector-scale-z" step="0.01" min="0.01" value="1"/>
+          </div>
+        </div>
+        <div class="inspector-snippet-wrap">
+          <code class="inspector-snippet" id="inspector-snippet"></code>
+          <button type="button" class="inspector-copy" id="inspector-copy">Copy</button>
+        </div>
+      </div>
+
+      <!-- Conversation overlay -->
+      <div class="convo-wrap" id="convo-wrap">
+        <div class="chat-pane">
+          <div class="chat-messages" id="chat-messages" aria-live="polite" aria-label="AI conversation"></div>
+          <div id="chat-empty-state" class="chat-empty-state" aria-hidden="true">
+            <button type="button" class="chat-guide-card" id="chat-guide-start">
+              <span class="chat-guide-card-title">Guided Assembly</span>
+              <span class="chat-guide-card-desc">Step-by-step build with 3D highlights</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Float / overlay layers -->
+      <div id="float-panels" aria-live="polite"></div>
+      <div id="gesture-hint-host" aria-live="polite"></div>
+      <div id="build-hover-tip"></div>
+
+      <div class="loading" id="loading">
+        <svg class="spinner" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="spinGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%"   stop-opacity="1" />
+              <stop offset="70%"  stop-opacity="0.4" />
+              <stop offset="100%" stop-opacity="0" />
+            </linearGradient>
+          </defs>
+          <circle cx="18" cy="18" r="15" stroke="url(#spinGrad)" stroke-width="3"
+                  stroke-linecap="round" pathLength="100" stroke-dasharray="75 25" />
+        </svg>
+      </div>
+
+      <div id="urdf-error-banner" role="status">
+        <span id="urdf-error-text" style="flex:1;word-break:break-word;"></span>
+        <button id="urdf-error-close" title="Dismiss">×</button>
+      </div>
+
+      <canvas id="gesture-overlay"></canvas>
+      <video id="gesture-video" playsinline muted></video>
+
+      <a id="credit" href="https://github.com/jonasneves" target="_blank" rel="noopener">By Jonas Neves</a>
     </div>
 
-    <div id="urdf-error-banner" role="status">
-      <span id="urdf-error-text" style="flex:1;word-break:break-word;"></span>
-      <button id="urdf-error-close" title="Dismiss">×</button>
+    <!-- ── Advanced panel (slides in from right) ──────────────────────── -->
+    <aside class="adv-panel" id="adv-panel" aria-label="Advanced">
+      <div class="adv-panel-resize-handle"
+        role="separator"
+        aria-label="Resize advanced panel"
+        aria-orientation="vertical"
+        aria-valuenow="320"
+        aria-valuemin="260"
+        aria-valuemax="700"
+        tabindex="0"
+      ></div>
+
+      <div class="adv-hd">
+        <div class="panel-tabs adv-tabs" role="tablist">
+          <button type="button" class="adv-tab tab-btn" data-tab="inspect" id="adv-tab-inspect"
+                  role="tab" aria-selected="true" title="Control">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <line x1="21" x2="14" y1="4" y2="4"/><line x1="10" x2="3" y1="4" y2="4"/>
+              <line x1="21" x2="12" y1="12" y2="12"/><line x1="8" x2="3" y1="12" y2="12"/>
+              <line x1="21" x2="16" y1="20" y2="20"/><line x1="12" x2="3" y1="20" y2="20"/>
+              <line x1="14" x2="14" y1="2" y2="6"/><line x1="8" x2="8" y1="10" y2="14"/>
+              <line x1="16" x2="16" y1="18" y2="22"/>
+            </svg>
+            <span class="tab-label">Control</span>
+          </button>
+          <button type="button" class="adv-tab tab-btn" data-tab="build" id="adv-tab-build"
+                  role="tab" aria-selected="false" title="Build">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/>
+            </svg>
+            <span class="tab-label">Build</span>
+          </button>
+          <button type="button" class="adv-tab tab-btn" data-tab="editor" id="adv-tab-editor"
+                  role="tab" aria-selected="false" title="Edit XML">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="m18 16 4-4-4-4"/><path d="m6 8-4 4 4 4"/><path d="m14.5 4-5 16"/>
+            </svg>
+            <span class="tab-label">XML</span>
+          </button>
+        </div>
+        <button type="button" class="adv-close" id="adv-close" aria-label="Close advanced panel">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
+               stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Control tab -->
+      <div class="tab-body" data-tab="inspect">
+        <div class="options-bar">
+          <div class="options-row">
+            <label class="option"><input type="checkbox" id="ignore-limits" /> Unlock</label>
+            <label class="option"><input type="checkbox" id="show-collision" /> Collision</label>
+            <label class="option"><input type="checkbox" id="display-shadow" /> Shadow</label>
+            <label class="option option--select">Up
+              <select id="up-axis">
+                <option value="+Z">+Z</option>
+                <option value="-Z">−Z</option>
+                <option value="+Y">+Y</option>
+                <option value="-Y">−Y</option>
+              </select>
+            </label>
+          </div>
+        </div>
+
+        <details id="gesture-section" class="info-section">
+          <summary>Gestures</summary>
+          <div class="build-section-body">
+            <ul class="gesture-list" aria-label="Gesture reference">
+              <li><span class="gesture-icon">✊</span><span class="gesture-label">Orbit camera</span></li>
+              <li><span class="gesture-icon">☝️</span><span class="gesture-label">Hover &amp; select joint</span></li>
+              <li><span class="gesture-icon">🤚</span><span class="gesture-label">Twist selected joint</span></li>
+              <li><span class="gesture-icon">🖐️</span><span class="gesture-label">Reset all joints (hold 1 s)</span></li>
+              <li><span class="gesture-icon">🤲</span><span class="gesture-label">Pinch to zoom</span></li>
+            </ul>
+          </div>
+        </details>
+
+        <details id="sim-section" class="info-section" hidden>
+          <summary>Simulate</summary>
+          <div class="sim-controls">
+            <div class="sim-toolbar">
+              <button type="button" id="sim-play-btn"  class="sim-btn" title="Start simulation">&#9654;</button>
+              <button type="button" id="sim-pause-btn" class="sim-btn" title="Pause simulation" hidden>&#9646;&#9646;</button>
+              <button type="button" id="sim-stop-btn"  class="sim-btn" title="Stop simulation"  hidden>&#9632;</button>
+              <button type="button" id="sim-reset-btn" class="sim-btn sim-btn--reset" title="Reset simulation">&#8635;</button>
+              <span id="sim-status" class="sim-status">Ready</span>
+            </div>
+            <div class="sim-options">
+              <label class="inspector-row">
+                <span>Float base</span>
+                <input type="checkbox" id="sim-float-base"/>
+              </label>
+              <label class="inspector-row">
+                <span>Speed</span>
+                <input type="range" id="sim-speed" min="0.1" max="4" step="0.1" value="1"/>
+              </label>
+            </div>
+          </div>
+        </details>
+
+        <div class="sidebar-scroll">
+          <div class="section-label">Joints</div>
+          <div class="joints" id="joints"></div>
+        </div>
+      </div>
+
+      <!-- Build tab -->
+      <div class="tab-body" data-tab="build" id="build-panel">
+        <div class="sidebar-scroll">
+          <div id="build-active-header" class="build-active-header" hidden>
+            <span id="build-active-name" class="build-active-name"></span>
+            <button type="button" id="build-shortcuts-toggle" class="icon-btn" title="Keyboard shortcuts">?</button>
+            <button type="button" id="build-clear-custom" class="build-danger-btn" title="Delete saved custom robot" hidden>🗑</button>
+          </div>
+          <div id="build-inspector" hidden>
+            <div class="build-inspector-header">
+              <span id="build-inspector-title" class="build-inspector-title"></span>
+              <button type="button" id="build-inspector-close" class="icon-btn" title="Deselect (Escape)">×</button>
+            </div>
+            <div id="build-inspector-body"></div>
+          </div>
+          <div id="build-shortcuts" class="build-shortcuts" hidden>
+            <span class="key">Drag</span> component → move X/Y &nbsp;|&nbsp; <span class="key">Shift+drag</span> → move Z<br>
+            <span class="key">Click</span> component → select + expand card<br>
+            <span class="key">Arrow keys</span> → nudge X/Y 1mm &nbsp;|&nbsp; <span class="key">Shift+↑↓</span> → nudge Z<br>
+            <span class="key">Delete</span> → remove selected component<br>
+            <span class="key">Ctrl+Z / Ctrl+Y</span> → undo / redo
+          </div>
+          <p class="build-notice" id="build-notice" hidden>Load Robot Car to use the full builder, or create a new robot below.</p>
+
+          <div id="build-new-robot">
+            <div class="section-label">New Robot</div>
+            <div class="inspector-row build-name-row">
+              <label>Name</label>
+              <input type="text" id="build-new-name" class="build-text-input" placeholder="my-robot">
+            </div>
+            <div class="build-new-actions">
+              <button type="button" id="build-new-create" class="build-export-btn">Create Robot</button>
+              <button type="button" id="build-saved-toggle" class="build-secondary-btn" hidden title="Saved robots" aria-expanded="false">☰ Saved</button>
+            </div>
+            <div id="build-saved-list" hidden></div>
+          </div>
+
+          <div class="build-palette-header">
+            <span class="section-label">Add Component</span>
+          </div>
+          <div class="component-palette" id="build-palette"></div>
+          <div id="build-components-list"></div>
+
+          <details class="build-section" id="library-section">
+            <summary>Library</summary>
+            <div class="build-section-body">
+              <div class="lib-search-wrap">
+                <input type="search" id="lib-search" class="lib-search-input"
+                       placeholder="Search components…" autocomplete="off" aria-label="Search components">
+              </div>
+              <div class="lib-pills" id="lib-pills" role="group" aria-label="Category filter">
+                <button type="button" class="lib-pill lib-pill--active" data-cat="">All</button>
+                <button type="button" class="lib-pill" data-cat="Sensor">Sensor</button>
+                <button type="button" class="lib-pill" data-cat="Actuator">Actuator</button>
+                <button type="button" class="lib-pill" data-cat="MCU">MCU</button>
+                <button type="button" class="lib-pill" data-cat="Power">Power</button>
+                <button type="button" class="lib-pill" data-cat="Structural">Structural</button>
+              </div>
+              <div class="lib-grid-wrap">
+                <div class="lib-grid" id="lib-grid"></div>
+                <p class="lib-empty" id="lib-empty" hidden>No components match.</p>
+              </div>
+            </div>
+          </details>
+
+          <div id="build-parametric">
+            <details class="build-section" data-panel="chassis">
+              <summary>Chassis <button type="button" class="build-section-detach" title="Open as floating panel">⊡</button></summary>
+              <div class="build-section-body">
+                <div class="build-param">
+                  <div class="joint-name">Thickness <span class="unit">mm</span></div>
+                  <div class="joint-row">
+                    <input type="range"  id="build-chassis-thickness" min="1" max="10" step="0.5" value="3">
+                    <input type="number" id="build-chassis-thickness-num" min="1" max="10" step="0.5" value="3">
+                  </div>
+                </div>
+                <div class="build-param">
+                  <div class="joint-name">Body half-width <span class="unit">mm</span></div>
+                  <div class="joint-row">
+                    <input type="range"  id="build-chassis-body-hw" min="40" max="90" step="1" value="62">
+                    <input type="number" id="build-chassis-body-hw-num" min="40" max="90" step="1" value="62">
+                  </div>
+                </div>
+                <div class="build-param">
+                  <div class="joint-name">Rear half-width <span class="unit">mm</span></div>
+                  <div class="joint-row">
+                    <input type="range"  id="build-chassis-rear-hw" min="85" max="130" step="1" value="95">
+                    <input type="number" id="build-chassis-rear-hw-num" min="85" max="130" step="1" value="95">
+                  </div>
+                </div>
+              </div>
+            </details>
+
+            <details class="build-section" data-panel="wheels">
+              <summary>Wheels <button type="button" class="build-section-detach" title="Open as floating panel">⊡</button></summary>
+              <div class="build-section-body">
+                <div class="build-param">
+                  <div class="joint-name">Radius <span class="unit">mm</span></div>
+                  <div class="joint-row">
+                    <input type="range"  id="build-wheel-radius" min="20" max="50" step="0.5" value="32.5">
+                    <input type="number" id="build-wheel-radius-num" min="20" max="50" step="0.5" value="32.5">
+                  </div>
+                </div>
+                <div class="build-param">
+                  <div class="joint-name">Width <span class="unit">mm</span></div>
+                  <div class="joint-row">
+                    <input type="range"  id="build-wheel-width" min="8" max="30" step="1" value="26">
+                    <input type="number" id="build-wheel-width-num" min="8" max="30" step="1" value="26">
+                  </div>
+                </div>
+              </div>
+            </details>
+
+            <details class="build-section" data-panel="caster">
+              <summary>Caster <button type="button" class="build-section-detach" title="Open as floating panel">⊡</button></summary>
+              <div class="build-section-body">
+                <div class="build-param">
+                  <div class="joint-name">Radius <span class="unit">mm</span></div>
+                  <div class="joint-row">
+                    <input type="range"  id="build-caster-radius" min="8" max="25" step="0.5" value="14.6">
+                    <input type="number" id="build-caster-radius-num" min="8" max="25" step="0.5" value="14.6">
+                  </div>
+                </div>
+                <div class="build-param">
+                  <div class="joint-name">Width <span class="unit">mm</span></div>
+                  <div class="joint-row">
+                    <input type="range"  id="build-caster-width" min="5" max="25" step="0.5" value="14.5">
+                    <input type="number" id="build-caster-width-num" min="5" max="25" step="0.5" value="14.5">
+                  </div>
+                </div>
+              </div>
+            </details>
+
+            <details class="build-section" data-panel="battery">
+              <summary>Battery Box <button type="button" class="build-section-detach" title="Open as floating panel">⊡</button></summary>
+              <div class="build-section-body">
+                <div class="build-param">
+                  <div class="joint-name">Length <span class="unit">mm</span></div>
+                  <div class="joint-row">
+                    <input type="range"  id="build-battery-l" min="40" max="120" step="1" value="80.6">
+                    <input type="number" id="build-battery-l-num" min="40" max="120" step="1" value="80.6">
+                  </div>
+                </div>
+                <div class="build-param">
+                  <div class="joint-name">Width <span class="unit">mm</span></div>
+                  <div class="joint-row">
+                    <input type="range"  id="build-battery-w" min="25" max="80" step="1" value="44.2">
+                    <input type="number" id="build-battery-w-num" min="25" max="80" step="1" value="44.2">
+                  </div>
+                </div>
+                <div class="build-param">
+                  <div class="joint-name">Height <span class="unit">mm</span></div>
+                  <div class="joint-row">
+                    <input type="range"  id="build-battery-h" min="15" max="50" step="1" value="22">
+                    <input type="number" id="build-battery-h-num" min="15" max="50" step="1" value="22">
+                  </div>
+                </div>
+              </div>
+            </details>
+
+            <details class="build-section" data-panel="powerbank">
+              <summary>Power Bank <button type="button" class="build-section-detach" title="Open as floating panel">⊡</button></summary>
+              <div class="build-section-body">
+                <div class="build-param">
+                  <div class="joint-name">Radius <span class="unit">mm</span></div>
+                  <div class="joint-row">
+                    <input type="range"  id="build-powerbank-r" min="8" max="25" step="0.5" value="11.5">
+                    <input type="number" id="build-powerbank-r-num" min="8" max="25" step="0.5" value="11.5">
+                  </div>
+                </div>
+                <div class="build-param">
+                  <div class="joint-name">Length <span class="unit">mm</span></div>
+                  <div class="joint-row">
+                    <input type="range"  id="build-powerbank-l" min="50" max="200" step="1" value="119.9">
+                    <input type="number" id="build-powerbank-l-num" min="50" max="200" step="1" value="119.9">
+                  </div>
+                </div>
+              </div>
+            </details>
+          </div><!-- #build-parametric -->
+
+        </div><!-- .sidebar-scroll -->
+
+        <!-- Sticky footer -->
+        <div class="build-footer">
+          <div class="build-footer-row">
+            <button id="build-undo" class="build-action-btn" title="Undo (Ctrl+Z)" disabled>Undo</button>
+            <button id="build-redo" class="build-action-btn" title="Redo (Ctrl+Y)" disabled>Redo</button>
+            <button id="build-reset" class="build-action-btn build-reset-btn" title="Reset to defaults">Reset</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- XML Editor tab -->
+      <div class="tab-body" data-tab="editor" id="editor-panel">
+        <div class="editor-part-bar">
+          <select id="part-select" hidden aria-label="Edit part file"></select>
+          <button id="part-reset" hidden disabled title="Reset all parts to their original version">↺ Reset</button>
+        </div>
+        <div class="editor-tabs" id="editor-tabs"></div>
+        <div class="editor-pane">
+          <div class="editor-line-nums" id="editor-line-nums" aria-hidden="true"></div>
+          <textarea
+            id="editor-textarea"
+            spellcheck="false"
+            autocomplete="off"
+            autocorrect="off"
+            autocapitalize="off"
+            wrap="off"
+            aria-label="URDF source code"
+          ></textarea>
+        </div>
+      </div>
+
+    </aside>
+
+  </div><!-- .main -->
+
+  <!-- ── Input bar ─────────────────────────────────────────────────────── -->
+  <div class="input-bar" id="input-bar">
+    <div id="chat-github-bar" class="chat-github-bar" hidden></div>
+    <div id="chat-proxy-bar" class="chat-proxy-bar" hidden>
+      Local proxy active · no API key needed
+      <button type="button" class="chat-proxy-dismiss" aria-label="Dismiss" onclick="this.parentElement.hidden=true">×</button>
     </div>
+    <div id="chat-apikey-bar" class="chat-apikey-bar" hidden></div>
+    <div id="chat-context-bar" hidden></div>
+    <div class="chat-compose-toolbar">
+      <button type="button" id="chat-brief-toggle" aria-pressed="false" title="Toggle detailed responses">Detail</button>
+      <span id="chat-tool-count" class="chat-tool-count-btn" hidden
+            aria-label="Active tools" title="Active build tools"></span>
+    </div>
+    <div class="chat-input-area">
+      <div id="cmd-ac" class="cmd-ac" hidden role="listbox" aria-label="Commands"></div>
+      <div class="chat-input-wrap">
+        <textarea
+          id="chat-input"
+          placeholder="Ask AI to build or edit your robot…"
+          aria-label="Chat with AI"
+          rows="1"
+        ></textarea>
+        <button type="button" id="chat-send" class="chat-send-btn" aria-label="Send message" title="Send (Enter)">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+            <path d="M8 13V3M3.5 7.5L8 3l4.5 4.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+        <button type="button" id="chat-abort" class="chat-abort-btn" hidden aria-label="Stop generating" title="Stop">
+          <svg width="10" height="10" viewBox="0 0 11 11" aria-hidden="true">
+            <rect width="11" height="11" rx="2" fill="currentColor"/>
+          </svg>
+        </button>
+      </div>
+      <button type="button" id="chat-continue" hidden class="chat-continue-btn"
+              aria-label="Continue to next step">Continue →</button>
+    </div>
+  </div>
 
-    <canvas id="gesture-overlay"></canvas>
-    <video id="gesture-video" playsinline muted></video>
-  </main>
-
+  <!-- ── Misc ──────────────────────────────────────────────────────────── -->
   <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
   <div class="part-label" id="part-label"></div>
-  <!-- resize-tooltip is used exclusively by panel.ts during panel resize drags -->
+  <!-- resize-tooltip is used by panel.ts during panel resize drags -->
   <div class="part-label" id="resize-tooltip"></div>
 
   <script src="https://cdn.jsdelivr.net/npm/marked@15/marked.min.js"></script>

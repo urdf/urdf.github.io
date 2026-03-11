@@ -21,13 +21,22 @@ export interface TabCtrlOptions {
     chatInput:       HTMLTextAreaElement;
 }
 
-function _setActiveTab(id: string): void {
+function _setActiveTab(tab: string): void {
     for (const btn of document.querySelectorAll<HTMLButtonElement>('.tab-btn'))
-        btn.setAttribute('aria-selected', btn.id === id ? 'true' : 'false');
+        btn.setAttribute('aria-selected', btn.dataset.tab === tab ? 'true' : 'false');
 }
 
 export function initTabSwitching(opts: TabCtrlOptions): void {
     const { editorCtrl, buildCtrl, getGizmoCtrl, libTabCtrl, viewer, viewportGrid, buildGrid, chatInput } = opts;
+
+    const advPanel = document.getElementById('adv-panel');
+
+    function openAdvPanelIfClosed(): void {
+        if (advPanel && !advPanel.classList.contains('open')) {
+            advPanel.classList.add('open', 'pinned');
+            document.getElementById('adv-toggle')?.classList.add('on');
+        }
+    }
 
     document.getElementById('tab-inspect')?.addEventListener('click', () => {
         editorCtrl.close();
@@ -35,7 +44,7 @@ export function initTabSwitching(opts: TabCtrlOptions): void {
         getGizmoCtrl()?.onBuildClose();
         buildGrid.visible    = false;
         viewportGrid.visible = true;
-        _setActiveTab('tab-inspect');
+        _setActiveTab('inspect');
     });
 
     document.getElementById('tab-editor')?.addEventListener('click', () => {
@@ -45,7 +54,8 @@ export function initTabSwitching(opts: TabCtrlOptions): void {
         buildGrid.visible    = false;
         viewportGrid.visible = true;
         chatInput.placeholder = 'Ask AI to edit this URDF…';
-        _setActiveTab('tab-editor');
+        openAdvPanelIfClosed();
+        _setActiveTab('editor');
     });
 
     document.getElementById('tab-build')?.addEventListener('click', () => {
@@ -57,6 +67,15 @@ export function initTabSwitching(opts: TabCtrlOptions): void {
         buildGrid.position.y = viewer.shadowPlane.position.y;
         chatInput.placeholder = 'Ask AI to add or modify components…';
         libTabCtrl.buildLibraryGrid();
-        _setActiveTab('tab-build');
+        openAdvPanelIfClosed();
+        _setActiveTab('build');
     });
+
+    // Adv-panel tab buttons mirror the mode pill buttons
+    document.getElementById('adv-tab-inspect')?.addEventListener('click', () =>
+        document.getElementById('tab-inspect')?.click());
+    document.getElementById('adv-tab-editor')?.addEventListener('click', () =>
+        document.getElementById('tab-editor')?.click());
+    document.getElementById('adv-tab-build')?.addEventListener('click', () =>
+        document.getElementById('tab-build')?.click());
 }

@@ -210,8 +210,6 @@ export class URDFChatController extends AISession {
         // Global keydown — double-Escape to clear, single key to focus chat
         let _lastEsc = 0;
         document.addEventListener('keydown', (e) => {
-            const aside = this._messagesEl.closest('aside');
-            if (!aside?.classList.contains('open')) return;
             if (document.body.classList.contains('editor-open')) return;
             const active = document.activeElement as HTMLElement | null;
 

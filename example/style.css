@@ -83,14 +83,17 @@
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     [hidden] { display: none !important; }
 
+    html, body { height: 100%; overflow: hidden; }
+
     body {
-      font-family: system-ui, sans-serif;
+      display: flex;
+      flex-direction: column;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      font-size: 14px;
       -webkit-font-smoothing: antialiased;
       -moz-osx-font-smoothing: grayscale;
       background: var(--bg);
       color: var(--text-1);
-      height: 100dvh;
-      overflow: hidden;
       user-select: none;
       -webkit-user-select: none;
     }
@@ -98,124 +101,430 @@
     input, textarea, select,
     .chat-msg-user, .chat-msg-assistant { user-select: text; -webkit-user-select: text; }
 
-    /* ── Left control panel ──────────────────────────────────────────────── */
+    /* ── Top bar ─────────────────────────────────────────────────────────── */
 
-    #control-panel {
-      position: fixed; left: 0; top: 0; height: 100dvh;
-      width: var(--panel-w, 320px); z-index: 200;
-      background: var(--surface); border-right: 1px solid var(--border);
-      box-shadow: 4px 0 32px var(--shadow);
-      display: flex; flex-direction: column; overflow: hidden;
-      transform: translateX(-100%);
-      transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    .topbar {
+      height: 48px;
+      display: flex;
+      align-items: center;
+      padding: 0 16px;
+      gap: 8px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+      z-index: 20;
     }
-    #control-panel.open { transform: translateX(0); }
 
-    /* ── Right chat panel ────────────────────────────────────────────────── */
+    .robot-picker-btn {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 10px;
+      border-radius: var(--r, 8px);
+      border: none;
+      background: none;
+      font-size: 0.875rem;
+      font-weight: 500;
+      cursor: pointer;
+      color: var(--text-1);
+    }
+    .robot-picker-btn:hover { background: var(--surface-hover); }
+    .robot-picker-name { color: var(--text-1); }
 
-    #chat-panel {
-      position: fixed; right: 0; top: 0; height: 100dvh;
-      width: var(--chat-w, 320px); z-index: 200;
-      background: var(--surface); border-left: 1px solid var(--border);
-      box-shadow: -4px 0 32px var(--shadow);
-      display: flex; flex-direction: column; overflow: hidden;
+    .tb-sep {
+      width: 1px;
+      height: 20px;
+      background: var(--border);
+      flex-shrink: 0;
+    }
+
+    .model-chip-wrap {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 10px;
+      border-radius: 20px;
+      background: var(--surface-lo);
+      border: 1px solid var(--border);
+    }
+    .model-chip-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--blue);
+      flex-shrink: 0;
+    }
+    .model-chip-wrap .chat-model-select {
+      background: transparent;
+      border: none;
+      outline: none;
+      font-size: 0.6875rem;
+      color: var(--text-2);
+      cursor: pointer;
+      padding: 0;
+      height: auto;
+    }
+
+    .tb-spacer { flex: 1; }
+
+    .tb-btn {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      padding: 6px 11px;
+      border-radius: var(--r, 8px);
+      border: 1px solid transparent;
+      background: none;
+      font-size: 0.75rem;
+      color: var(--text-2);
+      cursor: pointer;
+      transition: background 0.1s, color 0.1s;
+    }
+    .tb-btn:hover { background: var(--surface-hover); color: var(--text-1); }
+    .tb-btn.active, .tb-btn.on {
+      background: var(--blue-bg);
+      color: var(--blue-text);
+      border-color: hsl(220 100% 65% / .2);
+    }
+    .tb-caret { opacity: .5; }
+
+    /* ── Export split button ──────────────────────────────────────────────── */
+
+    .export-wrap { position: relative; display: flex; }
+
+    .export-main {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      padding: 6px 11px;
+      background: var(--blue);
+      color: var(--on-accent);
+      border: none;
+      border-radius: 8px 0 0 8px;
+      font-size: 0.75rem;
+      font-weight: 500;
+      cursor: pointer;
+    }
+    .export-main:hover { opacity: .88; }
+
+    .export-caret {
+      padding: 6px 8px;
+      background: hsl(220 100% 55%);
+      color: var(--on-accent);
+      border: none;
+      border-left: 1px solid hsl(220 100% 48%);
+      border-radius: 0 8px 8px 0;
+      font-size: 9px;
+      cursor: pointer;
+    }
+    .export-caret:hover { opacity: .88; }
+
+    .export-menu {
+      position: absolute;
+      top: calc(100% + 5px);
+      right: 0;
+      width: 220px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      box-shadow: 0 8px 32px hsl(0 0% 0% / .5);
+      overflow: hidden;
+      z-index: 50;
+    }
+
+    .export-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 10px 14px;
+      cursor: pointer;
+    }
+    .export-item:not(:last-child) { border-bottom: 1px solid var(--border); }
+    .export-item:hover { background: var(--surface-hover); }
+
+    .export-item-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+    .export-item-name { font-size: 0.75rem; font-weight: 500; display: block; color: var(--text-1); }
+    .export-item-desc { font-size: 0.625rem; color: var(--text-3); margin-top: 2px; line-height: 1.4; display: block; }
+
+    /* ── Main area ────────────────────────────────────────────────────────── */
+
+    .main {
+      flex: 1;
+      display: flex;
+      min-height: 0;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* ── Viewport ─────────────────────────────────────────────────────────── */
+
+    .viewport {
+      flex: 1;
+      position: relative;
+      overflow: hidden;
+      background: var(--viewport-bg);
+    }
+
+    /* ── Mode pill ────────────────────────────────────────────────────────── */
+
+    .mode-pill {
+      position: absolute;
+      top: 14px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      background: hsl(228 18% 8% / .92);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 3px;
+      gap: 2px;
+      z-index: 10;
+    }
+
+    .mode-btn {
+      padding: 5px 14px;
+      border-radius: 20px;
+      border: none;
+      background: none;
+      font-size: 0.6875rem;
+      font-weight: 500;
+      color: var(--text-3);
+      transition: background 0.1s, color 0.1s;
+      cursor: pointer;
+    }
+    .mode-btn[aria-selected="true"], .mode-btn.on {
+      background: var(--surface-hover);
+      color: var(--text-1);
+    }
+    .mode-btn:not([aria-selected="true"]):hover { color: var(--text-2); }
+
+    /* ── Part card (floating inspector) ──────────────────────────────────── */
+
+    .part-card {
+      position: absolute;
+      top: 70px;
+      right: 24px;
+      width: 240px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      box-shadow: 0 4px 24px hsl(0 0% 0% / .45);
+      overflow: hidden;
+      z-index: 30;
+      animation: slideIn .18s ease;
+    }
+
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateX(8px); }
+      to   { opacity: 1; transform: translateX(0); }
+    }
+
+    .pc-hd {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 10px 13px 9px;
+      border-bottom: 1px solid var(--border);
+    }
+    .pc-name {
+      font-size: 0.875rem;
+      font-weight: 600;
+      flex: 1;
+      color: var(--text-1);
+    }
+    .pc-close {
+      width: 22px;
+      height: 22px;
+      border-radius: 6px;
+      border: none;
+      background: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-3);
+      font-size: 13px;
+      cursor: pointer;
+      transition: background 0.1s;
+    }
+    .pc-close:hover { background: var(--surface-hover); color: var(--text-1); }
+
+    .pc-fields {
+      padding: 8px 13px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    /* ── Conversation overlay ─────────────────────────────────────────────── */
+
+    .convo-wrap {
+      position: absolute;
+      bottom: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: min(640px, calc(100% - 48px));
+      display: flex;
+      flex-direction: column;
+      padding-bottom: 8px;
+      pointer-events: none;
+      z-index: 20;
+    }
+
+    .convo-wrap .chat-pane {
+      pointer-events: all;
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+    }
+
+    .convo-wrap #chat-messages {
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+      max-height: 40vh;
+      overflow-y: auto;
+      scrollbar-width: thin;
+    }
+
+    /* ── Advanced panel ───────────────────────────────────────────────────── */
+
+    aside.adv-panel {
+      width: var(--adv-w, 320px);
+      min-width: 260px;
+      background: var(--surface);
+      border-left: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+      overflow: hidden;
+      position: relative;
       transform: translateX(100%);
       transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
     }
-    #chat-panel.open { transform: translateX(0); }
+    aside.adv-panel.open { transform: translateX(0); }
 
-    .panel-resize-handle {
+    .adv-panel-resize-handle {
       position: absolute;
-      right: 0;
-      left: auto;
+      left: 0;
       top: 0;
       bottom: 0;
-      width: 8px;        /* hit target */
+      width: 4px;
       cursor: col-resize;
       z-index: 10;
       touch-action: none;
+      transition: background 0.12s;
     }
+    .adv-panel-resize-handle:hover,
+    .adv-panel-resize-handle.dragging { background: color-mix(in srgb, var(--blue) 60%, transparent); }
+    .adv-panel-resize-handle.dragging  { background: var(--blue); }
 
-    .panel-resize-handle::after {
-      content: '';
-      position: absolute;
-      left: 50%;
-      top: 0;
-      bottom: 0;
-      width: 1px;
-      transform: translateX(-50%);
-      background: var(--border);
-      transition: width 0.12s, background 0.12s;
-    }
+    @media (max-width: 768px) { .adv-panel-resize-handle { display: none; } }
 
-    /* Gripper dots — visible at rest to signal draggability */
-    .panel-resize-handle::before {
-      content: '';
-      position: absolute;
-      left: 50%;
-      top: 50%;
-      transform: translate(-50%, -50%);
-      width: 3px;
-      height: 24px;
-      background-image: radial-gradient(circle, var(--text-3) 1px, transparent 1px);
-      background-size: 3px 6px;
-      opacity: 0.5;
-      transition: opacity 0.12s;
-    }
-
-    .panel-resize-handle:hover::before,
-    .panel-resize-handle.dragging::before { opacity: 0; }
-
-    .panel-resize-handle:hover::after,
-    .panel-resize-handle.dragging::after { width: 2px; background: color-mix(in srgb, var(--blue) 60%, transparent); }
-    .panel-resize-handle.dragging::after { background: var(--blue); }
-
-    @media (max-width: 768px) { .panel-resize-handle { display: none; } }
-
-    /* ── Panel header (tabs) ────────────────────────────────────────────── */
-
-    .panel-header {
+    .adv-hd {
+      height: 48px;
       display: flex;
       align-items: center;
+      padding: 0 14px 0 0;
       border-bottom: 1px solid var(--border);
       flex-shrink: 0;
-      height: 40px;
-      padding: 0 6px;
-      gap: 2px;
+      gap: 0;
     }
 
-    .panel-tabs { display: flex; flex: 1; align-items: center; gap: 2px; }
-
-    .tab-btn {
+    .adv-tabs {
+      display: flex;
       flex: 1;
-      background: none;
+      height: 100%;
+    }
+
+    .adv-tab {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      padding: 0 4px;
+      font-size: 0.6875rem;
+      color: var(--text-3);
       border: none;
-      border-radius: 8px;
-      padding: 6px 4px;
-      height: auto;
-      color: var(--control-muted);
+      border-bottom: 2px solid transparent;
+      background: none;
       cursor: pointer;
-      transition: color 0.12s, background 0.12s;
-      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+      transition: color 0.1s, border-color 0.1s;
+      height: 100%;
+    }
+    .adv-tab:hover { color: var(--text-2); }
+    .adv-tab[aria-selected="true"], .adv-tab.active {
+      color: var(--blue-text);
+      border-bottom-color: var(--blue);
     }
 
-    .tab-btn:hover { color: var(--text-2); background: var(--surface-hover); }
-    .tab-btn:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+    .adv-close {
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-3);
+      border: none;
+      border-radius: 6px;
+      background: none;
+      transition: background 0.1s, color 0.1s;
+      flex-shrink: 0;
+      cursor: pointer;
+    }
+    .adv-close:hover { background: var(--surface-hover); color: var(--text-1); }
 
-    .tab-label {
-      font-size: 0.5625rem;
-      font-weight: 600;
-      letter-spacing: 0.04em;
-      line-height: 1;
+    /* ── Tab bodies (adv-panel) ───────────────────────────────────────────── */
+    /* Visibility driven by body class signals set in editor.ts / build.ts.   */
+    /* inspect tab is visible by default; hidden when another tab is active.   */
+
+    .tab-body {
+      display: none;
+      flex-direction: column;
+      flex: 1;
+      min-height: 0;
+      overflow: hidden;
     }
 
-    .tab-btn[data-tab="inspect"] { color: var(--blue-text); background: var(--blue-bg); }
-    body.editor-open .tab-btn[data-tab="inspect"]  { color: var(--control-muted); background: none; }
-    body.editor-open .tab-btn[data-tab="editor"]   { color: var(--blue-text); background: var(--blue-bg); }
-    body.build-open  .tab-btn[data-tab="inspect"]  { color: var(--control-muted); background: none; }
-    body.build-open  .tab-btn[data-tab="build"]    { color: var(--blue-text); background: var(--blue-bg); }
-    body.build-open  .tab-body[data-tab="inspect"] { display: none; }
-    body.build-open  .tab-body[data-tab="build"]   { display: flex; }
+    /* Control/inspect tab: visible when no other tab is active */
+    body:not(.editor-open):not(.build-open) .tab-body[data-tab="inspect"] { display: flex; }
+
+    /* Build tab */
+    body.build-open .tab-body[data-tab="build"] { display: flex; flex-direction: column; }
+
+    /* Editor tab */
+    body.editor-open .tab-body[data-tab="editor"] { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+
+    /* ── Input bar (bottom) ───────────────────────────────────────────────── */
+
+    .input-bar {
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      padding: 10px 16px 12px;
+      flex-shrink: 0;
+      z-index: 20;
+    }
+
+    .input-bar .chat-compose-toolbar {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 6px;
+      border-top: none;
+      padding: 0;
+    }
+
+    .input-bar .chat-input-area {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      border-top: none;
+      padding: 0;
+    }
+
+    .input-bar .chat-input-wrap {
+      background: var(--surface-hover);
+    }
 
     /* ── Build panel ─────────────────────────────────────────────────────────── */
     .build-notice {
@@ -640,7 +949,7 @@
     /* ── Mobile / touch ──────────────────────────────────────────────────── */
 
     @media (max-width: 480px) {
-      #control-panel, #chat-panel { width: 100vw; }
+      aside.adv-panel { width: 100vw !important; }
     }
 
     @media (max-width: 768px) {
@@ -692,18 +1001,7 @@
       font-weight: 400;
     }
 
-    /* ── Tab bodies ──────────────────────────────────────────────────────── */
-
-    .tab-body {
-      display: none;
-      flex-direction: column;
-      flex: 1;
-      overflow: hidden;
-    }
-
-    .tab-body[data-tab="inspect"] { display: flex; }
-    body.editor-open .tab-body[data-tab="inspect"] { display: none; }
-    body.editor-open .tab-body[data-tab="editor"] { display: flex; }
+    /* Tab-body visibility is now handled by the .active class added by JS */
 
     /* ── Library tab ────────────────────────────────────────────────────── */
 
@@ -1117,26 +1415,6 @@
       outline-offset: 1px;
     }
 
-    /* ── FABs (floating action buttons) ─────────────────────────────────── */
-
-    .fab {
-      position: fixed; z-index: 100;
-      display: flex; align-items: center; justify-content: center;
-      width: 40px; height: 40px; border-radius: 10px;
-      background: var(--toggle-bg); border: 1px solid var(--border);
-      color: var(--text-2); cursor: pointer;
-      backdrop-filter: blur(12px) saturate(160%);
-      -webkit-backdrop-filter: blur(12px) saturate(160%);
-      transition: color 0.12s, background 0.12s, border-color 0.12s;
-      box-shadow: 0 4px 12px var(--shadow);
-    }
-
-    .fab:hover { background: var(--surface); color: var(--text-1); border-color: var(--text-3); }
-    .fab:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
-
-    #control-panel-toggle { top: 10px; left: 10px; }
-    #chat-panel-toggle    { top: 10px; right: 10px; }
-
     .sidebar-backdrop {
       display: none;
       position: fixed;
@@ -1147,19 +1425,7 @@
 
     .sidebar-backdrop.visible { display: block; }
 
-    /* ── Viewer area ─────────────────────────────────────────────────────── */
-
-    main {
-      position: fixed;
-      inset: 0;
-      overflow: hidden;
-      transition: left 0.25s ease, right 0.25s ease;
-    }
-
-    #control-panel.open.pinned ~ main { left: var(--panel-w, 320px); }
-    #chat-panel.open.pinned ~ main    { right: var(--chat-w, 320px); }
-
-    #chat-panel .panel-resize-handle { left: 0; right: auto; }
+    /* ── Viewer (urdf-viewer fills .viewport) ─────────────────────────────── */
 
     urdf-viewer {
       width: 100%;
@@ -1242,10 +1508,9 @@
 
     /* ── Part Inspector ──────────────────────────────────────────────────── */
 
+    /* #inspector is now wrapped in .part-card; keep fields padding */
     #inspector {
-      border-top: 1px solid var(--border);
       padding: 10px 12px 12px;
-      background: var(--surface);
     }
 
     .inspector-header {
@@ -1547,11 +1812,7 @@
       bottom: 10px;
       left: 10px;
       z-index: 210;
-      transition: left 0.25s ease, background 0.2s, border-color 0.2s, color 0.2s;
-    }
-
-    #control-panel.open.pinned ~ main #gesture-toggle {
-      left: calc(var(--panel-w, 320px) + 10px);
+      transition: background 0.2s, border-color 0.2s, color 0.2s;
     }
 
     #gesture-toggle.active {
@@ -2283,44 +2544,6 @@
       .chat-proxy-bar { color: var(--blue-hover); background: color-mix(in srgb, var(--blue) 8%, transparent); }
     }
 
-    .panel-edge-tab {
-      position: fixed;
-      top: 50%;
-      transform: translateY(-50%);
-      width: 16px;
-      height: 44px;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      color: var(--text-3);
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 1rem;
-      line-height: 1;
-      z-index: 201;
-      opacity: 0;
-      pointer-events: none;
-      transition: color 0.12s, background 0.12s, opacity 0.25s;
-    }
-    .panel-edge-tab:hover { color: var(--text-1); background: var(--surface-hover); }
-    .panel-edge-tab:focus-visible { outline: 2px solid var(--blue); outline-offset: 1px; }
-
-    #control-panel-close {
-      left: var(--panel-w, 320px);
-      border-left: none;
-      border-radius: 0 6px 6px 0;
-    }
-    #control-panel.open ~ #control-panel-close { opacity: 1; pointer-events: auto; }
-
-    #chat-panel-close {
-      right: var(--chat-w, 320px);
-      border-right: none;
-      border-radius: 6px 0 0 6px;
-    }
-    #chat-panel.open ~ #chat-panel-close { opacity: 1; pointer-events: auto; }
-
-    @media (max-width: 768px) { .panel-edge-tab { display: none !important; } }
 
     .chat-compose-toolbar {
       display: flex;
@@ -2393,8 +2616,7 @@
     }
     .context-pill-dismiss:hover { opacity: 1; }
 
-    /* Context pills only relevant in Build tab */
-    body:not(.build-open) #chat-context-bar { display: none; }
+    /* Context pills only relevant in Build tab — JS hides when build tab not active */
 
     /* ── Build inspector zone ────────────────────────────────────────────── */
 
@@ -2500,5 +2722,31 @@
     /* ── Utility: initial hidden state for elements toggled by JS ─────────── */
     #chat-empty-state { display: none; }
     #resize-tooltip   { display: none; }
-    #inspector        { display: none; }
+    /* #inspector is now a .part-card; hidden by default via JS */
     .hidden           { display: none !important; }
+
+    /* ── Mobile layout ────────────────────────────────────────────────────── */
+
+    @media (max-width: 768px) {
+      /* Adv panel: full-width overlay */
+      aside.adv-panel {
+        position: fixed;
+        right: 0; top: 0; bottom: 0;
+        width: 100% !important;
+        min-width: 0;
+        z-index: 300;
+      }
+
+      /* Mode pill: tighter on mobile */
+      .mode-pill { padding: 2px; }
+      .mode-btn  { padding: 5px 10px; }
+
+      /* Topbar: hide labels, keep icon buttons compact */
+      .tb-btn .tb-label { display: none; }
+      .tb-btn { padding: 6px 8px; }
+      .export-main .tb-label { display: none; }
+      .export-main { padding: 6px 8px; }
+
+      /* Robot picker name truncates */
+      .robot-picker-name { max-width: 100px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    }
