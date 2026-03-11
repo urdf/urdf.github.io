@@ -335,21 +335,31 @@ export class ComponentCrudController {
             });
         };
 
-        const addRow = (key: string, axisClass: string, label: string, step: number, value: number, container: HTMLElement = this._opts.buildInspBody): void => {
-            const row = document.createElement('div');
-            row.className = 'inspector-row';
-            const lbl = document.createElement('label');
-            lbl.className   = axisClass;
-            lbl.textContent = label;
-            const inp = document.createElement('input');
-            inp.type  = 'number';
-            inp.step  = String(step);
-            inp.value = String(value);
-            inp.addEventListener('input', dispatchUpdate);
-            this._opts.makeScrubLabel(lbl, inp);
-            inputs[key] = inp;
-            row.append(lbl, inp);
-            container.appendChild(row);
+        /** Render X/Y/Z (or any 2-3 axis) fields as side-by-side stacked columns. */
+        const addXYZGroup = (
+            keys: string[], axisClasses: string[], labels: string[],
+            step: number, values: number[],
+            container: HTMLElement = this._opts.buildInspBody,
+        ): void => {
+            const group = document.createElement('div');
+            group.className = 'inspector-xyz';
+            keys.forEach((key, i) => {
+                const col = document.createElement('div');
+                col.className = 'inspector-xyz-col';
+                const lbl = document.createElement('span');
+                lbl.className   = `inspector-xyz-label ${axisClasses[i]}`;
+                lbl.textContent = labels[i];
+                const inp = document.createElement('input');
+                inp.type  = 'number';
+                inp.step  = String(step);
+                inp.value = String(values[i]);
+                inp.addEventListener('input', dispatchUpdate);
+                this._opts.makeScrubLabel(lbl, inp);
+                inputs[key] = inp;
+                col.append(lbl, inp);
+                group.appendChild(col);
+            });
+            container.appendChild(group);
         };
 
         const addGroupLabel = (text: string, container: HTMLElement = this._opts.buildInspBody): void => {
@@ -378,19 +388,27 @@ export class ComponentCrudController {
         };
 
         addGroupLabel('Position');
-        addRow('x',  'axis-x', 'X', 0.005, saved.x  ?? 0);
-        addRow('y',  'axis-y', 'Y', 0.005, saved.y  ?? 0);
-        addRow('z',  'axis-z', 'Z', 0.005, saved.z  ?? def.defaultZ);
+        addXYZGroup(
+            ['x',  'y',  'z'],
+            ['axis-x', 'axis-y', 'axis-z'],
+            ['X', 'Y', 'Z'], 0.005,
+            [saved.x ?? 0, saved.y ?? 0, saved.z ?? def.defaultZ],
+        );
 
         if (type !== 'script') {
             addGroupLabel('Size');
             if (def.geomType === 'cylinder') {
-                addRow('r', 'axis-x', 'R', 0.005, saved.dims[0] ?? def.defaultDims[0]);
-                addRow('l', 'axis-z', 'L', 0.005, saved.dims[1] ?? def.defaultDims[1]);
+                addXYZGroup(
+                    ['r', 'l'], ['axis-x', 'axis-z'], ['R', 'L'], 0.005,
+                    [saved.dims[0] ?? def.defaultDims[0], saved.dims[1] ?? def.defaultDims[1]],
+                );
             } else {
-                addRow('w', 'axis-x', 'W', 0.005, saved.dims[0] ?? def.defaultDims[0]);
-                addRow('d', 'axis-y', 'D', 0.005, saved.dims[1] ?? def.defaultDims[1]);
-                addRow('h', 'axis-z', 'H', 0.005, saved.dims[2] ?? def.defaultDims[2]);
+                addXYZGroup(
+                    ['w',  'd',  'h'],
+                    ['axis-x', 'axis-y', 'axis-z'],
+                    ['W', 'D', 'H'], 0.005,
+                    [saved.dims[0] ?? def.defaultDims[0], saved.dims[1] ?? def.defaultDims[1], saved.dims[2] ?? def.defaultDims[2]],
+                );
             }
         }
 
@@ -407,28 +425,76 @@ export class ComponentCrudController {
         this._opts.buildInspBody.appendChild(advancedDetails);
 
         addGroupLabel('Rotation', advancedDetails);
-        addRow('rx', 'axis-x', 'Rx', 0.01, saved.rx ?? 0, advancedDetails);
-        addRow('ry', 'axis-y', 'Ry', 0.01, saved.ry ?? 0, advancedDetails);
-        addRow('rz', 'axis-z', 'Rz', 0.01, saved.rz ?? 0, advancedDetails);
+        addXYZGroup(
+            ['rx', 'ry', 'rz'],
+            ['axis-x', 'axis-y', 'axis-z'],
+            ['Rx', 'Ry', 'Rz'], 0.01,
+            [saved.rx ?? 0, saved.ry ?? 0, saved.rz ?? 0],
+            advancedDetails,
+        );
 
         addGroupLabel('Joint', advancedDetails);
         addSelectRow('parent', 'Parent', this._opts.buildCtrl.getAvailableLinks().filter(l => l !== id), advancedDetails);
-        addSelectRow('jt', 'Type', ['fixed', 'continuous', 'revolute', 'prismatic'], advancedDetails);
         if (saved.parent && selects['parent']) selects['parent'].value = saved.parent;
-        if (saved.jointType && selects['jt'])  selects['jt'].value    = saved.jointType;
+
+        // Joint type icon picker (replaces dropdown)
+        const jtHidden = document.createElement('input');
+        jtHidden.type  = 'hidden';
+        jtHidden.value = savedJt;
+        selects['jt'] = jtHidden as unknown as HTMLSelectElement;
+
+        const JT_COLORS: Record<string, string> = {
+            fixed:      'var(--jt-fixed)',
+            continuous: 'var(--jt-continuous)',
+            revolute:   'var(--jt-revolute)',
+            prismatic:  'var(--jt-prismatic)',
+        };
+        const jtPicker = document.createElement('div');
+        jtPicker.className = 'jtype-picker';
+        for (const [jt, color] of Object.entries(JT_COLORS)) {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'jtype-btn';
+            btn.dataset.jt = jt;
+            btn.style.setProperty('--jt-color', color);
+            if (jt === savedJt) btn.classList.add('active');
+            const dot = document.createElement('span');
+            dot.className = 'jtype-dot';
+            const lbl = document.createElement('span');
+            lbl.textContent = jt;
+            btn.append(dot, lbl);
+            btn.addEventListener('click', () => {
+                jtHidden.value = jt;
+                jtPicker.querySelectorAll<HTMLButtonElement>('.jtype-btn')
+                    .forEach(b => b.classList.toggle('active', b.dataset.jt === jt));
+                jtHidden.dispatchEvent(new Event('change'));
+                dispatchUpdate();
+            });
+            jtPicker.appendChild(btn);
+        }
+        advancedDetails.append(jtPicker, jtHidden);
 
         const axisSection = document.createElement('div');
         addGroupLabel('Axis', axisSection);
-        addRow('ax', 'axis-x', 'X', 0.1, saved.axis[0] ?? 0, axisSection);
-        addRow('ay', 'axis-y', 'Y', 0.1, saved.axis[1] ?? 0, axisSection);
-        addRow('az', 'axis-z', 'Z', 0.1, saved.axis[2] ?? 1, axisSection);
+        addXYZGroup(
+            ['ax', 'ay', 'az'],
+            ['axis-x', 'axis-y', 'axis-z'],
+            ['X', 'Y', 'Z'], 0.1,
+            [saved.axis[0] ?? 0, saved.axis[1] ?? 0, saved.axis[2] ?? 1],
+            axisSection,
+        );
         axisSection.hidden = savedJt === 'fixed';
         advancedDetails.appendChild(axisSection);
 
         const limitsSection = document.createElement('div');
         addGroupLabel('Limits', limitsSection);
-        addRow('limitMin', 'axis-x', 'Min', 0.01, saved.limitLower ?? -1.5708, limitsSection);
-        addRow('limitMax', 'axis-z', 'Max', 0.01, saved.limitUpper ??  1.5708, limitsSection);
+        addXYZGroup(
+            ['limitMin', 'limitMax'],
+            ['axis-x', 'axis-z'],
+            ['Min', 'Max'], 0.01,
+            [saved.limitLower ?? -1.5708, saved.limitUpper ?? 1.5708],
+            limitsSection,
+        );
         limitsSection.hidden = !hasLimits;
         advancedDetails.appendChild(limitsSection);
 
@@ -460,6 +526,7 @@ export class ComponentCrudController {
             axisSection.hidden    = jt === 'fixed';
             limitsSection.hidden  = !showLimits;
             previewSection.hidden = !showLimits;
+            previewSlider.style.accentColor = JT_COLORS[jt] ?? 'var(--blue)';
             if (jt !== 'fixed' && !advancedDetails.open) advancedDetails.open = true;
             if (!showLimits) {
                 previewSlider.value = '0';

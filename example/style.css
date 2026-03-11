@@ -1323,9 +1323,106 @@
     }
 
     /* Spatial axis labels: X=red, Y=green, Z=blue (3D standard) */
-    .inspector-row label.axis-x { color: color-mix(in srgb, var(--red) 85%, var(--text-1)); }
-    .inspector-row label.axis-y { color: color-mix(in srgb, var(--green) 85%, var(--text-1)); }
-    .inspector-row label.axis-z { color: var(--blue-text); }
+    .inspector-row label.axis-x,
+    .inspector-xyz-label.axis-x { color: color-mix(in srgb, var(--red) 85%, var(--text-1)); }
+    .inspector-row label.axis-y,
+    .inspector-xyz-label.axis-y { color: color-mix(in srgb, var(--green) 85%, var(--text-1)); }
+    .inspector-row label.axis-z,
+    .inspector-xyz-label.axis-z { color: var(--blue-text); }
+
+    /* ── XYZ triplet column layout ─────────────────────────────────────────── */
+    .inspector-xyz {
+      display: flex;
+      gap: 4px;
+      margin-bottom: 4px;
+    }
+
+    .inspector-xyz-col {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .inspector-xyz-label {
+      font-size: 0.5rem;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text-3);
+      text-align: center;
+      cursor: ew-resize;
+      user-select: none;
+      touch-action: none;
+      text-decoration: underline;
+      text-decoration-style: dotted;
+      text-decoration-color: color-mix(in srgb, var(--text-3) 30%, transparent);
+      text-underline-offset: 2px;
+      transition: text-decoration-color 0.1s;
+    }
+
+    .inspector-xyz-label:hover { text-decoration-color: var(--text-2); }
+
+    @media (hover: none) {
+      .inspector-xyz-label { text-decoration-color: var(--text-3); }
+    }
+
+    .inspector-xyz-col input[type=number] {
+      width: 100%;
+      background: var(--surface-lo);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      color: var(--text-1);
+      padding: 3px 4px;
+      font-size: 0.6875rem;
+      text-align: right;
+      min-width: 0;
+    }
+
+    .inspector-xyz-col input[type=number]:focus-visible {
+      outline: none;
+      border-color: var(--blue);
+    }
+
+    /* ── Joint type icon picker ─────────────────────────────────────────────── */
+    .jtype-picker {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 4px;
+      padding: 4px 0 2px;
+    }
+
+    .jtype-btn {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      padding: 5px 8px;
+      background: var(--surface-lo);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.625rem;
+      color: var(--text-2);
+      text-align: left;
+      transition: background 0.1s, border-color 0.1s;
+    }
+
+    .jtype-btn:hover { background: var(--surface-hover); }
+
+    .jtype-btn.active {
+      border-color: var(--jt-color, var(--blue));
+      background: color-mix(in srgb, var(--jt-color, var(--blue)) 12%, transparent);
+      color: var(--text-1);
+    }
+
+    .jtype-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--jt-color, var(--text-3));
+      flex-shrink: 0;
+    }
 
     .inspector-row input[type=number],
     .inspector-row input[type=range] {
