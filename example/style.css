@@ -1744,12 +1744,6 @@
     .j-str  { color: var(--green); }
     .j-num  { color: var(--warning); }
     .j-kw   { color: color-mix(in srgb, var(--red) 75%, white); }
-    @media (prefers-color-scheme: light) {
-      .j-key { color: #0066cc; }
-      .j-str { color: #15803d; }
-      .j-num { color: #b45309; }
-      .j-kw  { color: #dc2626; }
-    }
     .chat-tool-card-status {
       width: 14px; height: 14px;
       display: flex; align-items: center; justify-content: center;
