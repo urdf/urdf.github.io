@@ -16,7 +16,7 @@
       --control-muted: hsl(220, 12%, 38%);
       --blue:          hsl(220, 100%, 65%);
       --blue-hover:    hsl(220, 100%, 55%);
-      --blue-bg:       hsla(220, 100%, 65%, 0.12);
+      --blue-bg:       hsl(220 100% 65% / 0.12);
       --blue-text:     hsl(220, 80%, 75%);
       --red:           hsl(3, 100%, 61%);
       --green:         hsl(142, 65%, 55%);
