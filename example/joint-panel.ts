@@ -68,6 +68,7 @@ function buildJointPanel(): void {
         const el = document.createElement('div') as JointEl;
         el.className = 'joint';
         el.dataset.joint = joint.name;
+        el.dataset.jointType = joint.jointType;
 
         const nameEl = document.createElement('div');
         nameEl.className = 'joint-name';
