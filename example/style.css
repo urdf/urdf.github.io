@@ -34,6 +34,20 @@
       --jt-prismatic:  hsl(38, 90%, 60%);
       --jt-floating:   hsl(0, 75%, 65%);
       --jt-planar:     hsl(142, 65%, 55%);
+      /* radius scale */
+      --r:            8px;
+      --r-lg:         14px;
+      --r-xl:         20px;
+      /* supplemental surface + semantic tokens (aliases for POC compat) */
+      --surface-hi:   var(--surface-hover);
+      --on-dark:      var(--on-accent);
+      --cyan:         hsl(186, 85%, 55%);
+      --cyan-bg:      hsl(186 85% 55% / .1);
+      --green-bg:     hsl(142 65% 55% / .1);
+      --warning-bg:   hsl(38 90% 60% / .1);
+      --purple-bg:    hsl(248 100% 62% / .1);
+      --shadow-md:    0 4px 24px hsl(0 0% 0% / .45);
+      --shadow-lg:    0 12px 48px hsl(0 0% 0% / .55);
     }
 
     @media (prefers-color-scheme: light) {
@@ -61,6 +75,11 @@
         --toggle-bg:     hsl(0 0% 100% / 0.85);
         --loading-bg:    hsl(240 14% 97% / 0.6);
         --tooltip-bg:    hsl(0 0% 100% / 0.95);
+        --cyan:         hsl(186, 70%, 40%);
+        --cyan-bg:      hsl(186 70% 40% / .08);
+        --green-bg:     hsl(142 56% 50% / .08);
+        --warning-bg:   hsl(35 91% 32% / .08);
+        --purple-bg:    hsl(248 80% 55% / .08);
       }
     }
 
@@ -265,6 +284,25 @@
       background: var(--viewport-bg);
     }
 
+    .viewport::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background-image:
+        linear-gradient(hsl(228 12% 13%) 1px, transparent 1px),
+        linear-gradient(90deg, hsl(228 12% 13%) 1px, transparent 1px),
+        linear-gradient(hsl(228 12% 11%) 1px, transparent 1px),
+        linear-gradient(90deg, hsl(228 12% 11%) 1px, transparent 1px);
+      background-size: 100px 100px, 100px 100px, 20px 20px, 20px 20px;
+      mask-image: radial-gradient(ellipse 80% 80% at 50% 52%, black 20%, transparent 100%);
+      -webkit-mask-image: radial-gradient(ellipse 80% 80% at 50% 52%, black 20%, transparent 100%);
+      pointer-events: none;
+      z-index: 0;
+    }
+    @media (prefers-color-scheme: light) {
+      .viewport::before { display: none; }
+    }
+
     /* ── Mode pill ────────────────────────────────────────────────────────── */
 
     .mode-pill {
@@ -368,6 +406,12 @@
       padding-bottom: 8px;
       pointer-events: none;
       z-index: 20;
+      transition: width .25s cubic-bezier(.4,0,.2,1);
+    }
+
+    body.adv-open .convo-wrap {
+      width: min(640px, calc(100% - var(--adv-w, 320px) - 24px));
+      left: calc(50% - var(--adv-w, 320px) / 2);
     }
 
     .convo-wrap .chat-pane {
@@ -389,15 +433,18 @@
     /* ── Advanced panel ───────────────────────────────────────────────────── */
 
     aside.adv-panel {
+      position: absolute;
+      right: 0;
+      top: 0;
+      bottom: 0;
       width: var(--adv-w, 320px);
       min-width: 260px;
       background: var(--surface);
       border-left: 1px solid var(--border);
       display: flex;
       flex-direction: column;
-      flex-shrink: 0;
       overflow: hidden;
-      position: relative;
+      z-index: 40;
       transform: translateX(100%);
       transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
     }
@@ -1510,7 +1557,7 @@
 
     /* #inspector is now wrapped in .part-card; keep fields padding */
     #inspector {
-      padding: 10px 12px 12px;
+      padding: 0;
     }
 
     .inspector-header {

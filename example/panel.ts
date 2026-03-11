@@ -16,12 +16,14 @@ let _mobilePanel: HTMLElement | null = null;
 function openAdvPanel(): void {
     advPanel.classList.add('open');
     advToggle.classList.add('on');
+    document.body.classList.add('adv-open');
     if (isDesktop()) { advPanel.classList.add('pinned'); }
     else { backdrop.classList.add('visible'); _mobilePanel = advPanel; }
 }
 function closeAdvPanel(): void {
     advPanel.classList.remove('open', 'pinned');
     advToggle.classList.remove('on');
+    document.body.classList.remove('adv-open');
     backdrop.classList.remove('visible');
     _mobilePanel = null;
 }

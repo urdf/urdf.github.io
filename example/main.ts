@@ -376,6 +376,26 @@ gestureToggleBtn.addEventListener('click', async () => {
 // ── Init panel (open/close + resize) ─────────────────────────────────────
 initPanel();
 
+// ── Export split-button menu ──────────────────────────────────────────────
+{
+    const exportMenu  = document.getElementById('export-menu');
+    const exportCaret = document.getElementById('export-caret');
+    if (exportMenu && exportCaret) {
+        exportCaret.addEventListener('click', (e) => {
+            e.stopPropagation();
+            exportMenu.hidden = !exportMenu.hidden;
+        });
+        document.addEventListener('click', () => { exportMenu.hidden = true; });
+    }
+}
+
+// ── Robot picker button: scrolls the carousel visible on mobile ───────────
+document.getElementById('robot-picker-btn')?.addEventListener('click', () => {
+    const shell = document.querySelector<HTMLElement>('.robot-shell');
+    if (shell) shell.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    robotsPanel.querySelector<HTMLButtonElement>('.robot-btn.active')?.focus();
+});
+
 // ── Build panel elements ──────────────────────────────────────────────────
 const buildExportBtn        = $<HTMLButtonElement>('build-export');
 const buildCopyUrdfBtn      = $<HTMLButtonElement>('build-copy-urdf');
@@ -563,6 +583,8 @@ const robotLoader = new RobotLoader({
             ? robotsPanel.querySelector<HTMLButtonElement>(`.robot-btn[data-name="${robot.name}"]`)
             : null;
         if (btn) { btn.classList.add('active'); robotCarousel.moveSliderTo(btn); }
+        const pickerName = document.getElementById('robot-picker-name');
+        if (pickerName && robot.name) pickerName.textContent = robot.name;
     },
 });
 

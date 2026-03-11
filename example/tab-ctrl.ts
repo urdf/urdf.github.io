@@ -35,6 +35,7 @@ export function initTabSwitching(opts: TabCtrlOptions): void {
         if (advPanel && !advPanel.classList.contains('open')) {
             advPanel.classList.add('open', 'pinned');
             document.getElementById('adv-toggle')?.classList.add('on');
+            document.body.classList.add('adv-open');
         }
     }
 
