@@ -174,12 +174,32 @@
       <!-- Conversation overlay -->
       <div class="convo-wrap" id="convo-wrap">
         <div class="chat-pane">
+          <button type="button" class="convo-history-btn" id="chat-history-toggle" hidden aria-expanded="false">
+            Show accepted changes
+          </button>
           <div class="chat-messages" id="chat-messages" aria-live="polite" aria-label="AI conversation"></div>
           <div id="chat-empty-state" class="chat-empty-state" aria-hidden="true">
-            <button type="button" class="chat-guide-card" id="chat-guide-start">
-              <span class="chat-guide-card-title">Guided Assembly</span>
-              <span class="chat-guide-card-desc">Step-by-step build with 3D highlights</span>
-            </button>
+            <div class="chat-empty-hero">
+              <div class="chat-empty-icon" aria-hidden="true">+</div>
+              <div class="chat-empty-title">Build your robot</div>
+              <div class="chat-empty-subtitle">Describe it in plain English, start guided assembly, or jump into a blank build canvas.</div>
+            </div>
+            <div class="chat-empty-actions">
+              <button type="button" class="chat-guide-card primary" id="chat-new-robot">
+                <span class="chat-guide-card-title">New Robot</span>
+                <span class="chat-guide-card-desc">Open a fresh build canvas</span>
+              </button>
+              <button type="button" class="chat-guide-card" id="chat-guide-start">
+                <span class="chat-guide-card-title">Guided Assembly</span>
+                <span class="chat-guide-card-desc">Step-by-step build with 3D highlights</span>
+              </button>
+            </div>
+            <div class="chat-empty-prompt-label">Try an example</div>
+            <div class="chat-empty-chips" aria-label="Example prompts">
+              <button type="button" class="chat-empty-chip" data-prompt="Build me a 2-wheel robot car with caster">2-wheel car with caster</button>
+              <button type="button" class="chat-empty-chip" data-prompt="Build a 4-DOF robot arm for a desk">4-DOF desk arm</button>
+              <button type="button" class="chat-empty-chip" data-prompt="Create a mobile base with a lidar mount">Mobile base with lidar</button>
+            </div>
           </div>
         </div>
       </div>

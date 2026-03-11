@@ -96,6 +96,7 @@ export class URDFChatController extends AISession {
     // DOM refs set in init() — _messagesEl, _sendBtn, _abortBtn are inherited from AISession
     private _emptyStateEl!:  HTMLElement;
     private _chatPaneEl!:    HTMLElement;
+    private _historyToggleEl!: HTMLButtonElement;
     private _inputEl!:       HTMLTextAreaElement;
     private _briefBtn!:      HTMLButtonElement;
     private _continueBtn!:   HTMLButtonElement;
@@ -120,6 +121,7 @@ export class URDFChatController extends AISession {
     init(): void {
         this._emptyStateEl = $('chat-empty-state');
         this._chatPaneEl   = this._messagesEl.closest('.chat-pane') as HTMLElement;
+        this._historyToggleEl = $<HTMLButtonElement>('chat-history-toggle');
         this._inputEl      = $<HTMLTextAreaElement>('chat-input');
         this._briefBtn    = $<HTMLButtonElement>('chat-brief-toggle');
         this._continueBtn = $<HTMLButtonElement>('chat-continue');
@@ -207,6 +209,26 @@ export class URDFChatController extends AISession {
             this._cb.initRobot('robot-car');
             this._runConversation('Please guide me through building this robot step by step.');
         });
+        document.getElementById('chat-new-robot')?.addEventListener('click', () => {
+            this._guide = false;
+            this._cb.initRobot('custom', 'My Robot');
+            this._inputEl.focus();
+        });
+        for (const chip of document.querySelectorAll<HTMLButtonElement>('.chat-empty-chip')) {
+            chip.addEventListener('click', () => {
+                const prompt = chip.dataset.prompt?.trim();
+                if (!prompt) return;
+                this._inputEl.value = prompt;
+                this._inputEl.dispatchEvent(new Event('input'));
+                this._inputEl.focus();
+            });
+        }
+        this._historyToggleEl.addEventListener('click', () => {
+            const open = !this._messagesEl.classList.contains('show-accepted-history');
+            this._messagesEl.classList.toggle('show-accepted-history', open);
+            this._historyToggleEl.setAttribute('aria-expanded', String(open));
+            this._syncAcceptedHistoryToggle();
+        });
 
         // Global keydown — double-Escape to clear, single key to focus chat
         let _lastEsc = 0;
@@ -233,6 +255,7 @@ export class URDFChatController extends AISession {
 
         this.syncToolCount();
         this._restoreHistory();
+        this._syncAcceptedHistoryToggle();
     }
 
     protected override _onSessionFinally(): void {
@@ -273,6 +296,17 @@ export class URDFChatController extends AISession {
         this._emptyStateEl.style.display = empty ? 'flex' : 'none';
         this._emptyStateEl.setAttribute('aria-hidden', String(!empty));
         this._chatPaneEl.classList.toggle('chat-empty', empty);
+        if (empty) this._messagesEl.classList.remove('show-accepted-history');
+        this._syncAcceptedHistoryToggle();
+    }
+
+    private _syncAcceptedHistoryToggle(): void {
+        const accepted = this._messagesEl.querySelectorAll('.msg.accepted').length;
+        const open = this._messagesEl.classList.contains('show-accepted-history');
+        this._historyToggleEl.hidden = accepted === 0;
+        this._historyToggleEl.textContent = open
+            ? `Hide accepted changes (${accepted})`
+            : `Show accepted changes (${accepted})`;
     }
 
     // ── Autocomplete ──────────────────────────────────────────────────────────
@@ -969,6 +1003,7 @@ Use tools to modify the robot. Prefer direct tool calls over lengthy explanation
     private _appendChat(el: HTMLElement): void {
         this._messagesEl.appendChild(el);
         this._messagesEl.scrollTop = this._messagesEl.scrollHeight;
+        this._syncAcceptedHistoryToggle();
     }
 
     private _appendSystemMsg(text: string): void {
