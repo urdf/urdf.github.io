@@ -66,17 +66,17 @@
 
     @media (prefers-contrast: more) {
       :root {
-        --border:  #6b7280;
-        --text-2:  #d1d5db;
-        --text-3:  #9ca3af;
+        --border:  hsl(220, 9%, 46%);
+        --text-2:  hsl(220, 13%, 85%);
+        --text-3:  hsl(220, 9%, 68%);
       }
     }
 
     @media (prefers-color-scheme: light) and (prefers-contrast: more) {
       :root {
-        --border:  #48484a;
-        --text-2:  #1c1c1e;
-        --text-3:  #3c3c43;
+        --border:  hsl(240, 4%, 29%);
+        --text-2:  hsl(240, 6%, 10%);
+        --text-3:  hsl(240, 5%, 24%);
       }
     }
 
@@ -311,10 +311,13 @@
 
     .insp-preview-slider { width: 100%; margin-top: 2px; }
 
+    /* Nested field-group label inside a component inspector card.
+       Visually subordinate to .section-label (top-level panel header):
+       same size/casing, but lower weight and dimmer color. */
     .build-group-label {
       font-size: 0.5rem;
-      font-weight: 500;
-      color: var(--label);
+      font-weight: 400;
+      color: var(--text-3);
       text-transform: uppercase;
       letter-spacing: 0.1em;
       padding: 6px 0 2px;
