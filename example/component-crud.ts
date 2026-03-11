@@ -148,7 +148,7 @@ export class ComponentCrudController {
         const def = COMPONENT_CATALOG[entry?.type ?? ''];
         this.updateContextPill({
             label:     `${def?.label ?? entry?.type ?? id} · ${id}`,
-            color:     def?.cssColor ?? '#888',
+            color:     def?.cssColor ?? 'var(--text-3)',
             onDismiss: () => this.deselectComp(),
         });
         this._opts.onCompSelected?.(id);
@@ -173,7 +173,7 @@ export class ComponentCrudController {
 
         const dot = document.createElement('span');
         dot.className = 'comp-dot';
-        dot.style.background = def?.cssColor ?? '#888';
+        dot.style.background = def?.cssColor ?? 'var(--text-3)';
 
         const labelEl = document.createElement('span');
         labelEl.textContent = `${def.label} ${id.split('_').pop()}`;
@@ -248,7 +248,7 @@ export class ComponentCrudController {
                     border: 'none', borderRight: '1px solid var(--border)',
                 },
                 '.cm-activeLineGutter':              { background: 'var(--surface-hover)' },
-                '.cm-activeLine':                    { background: 'rgba(128,128,128,0.06)' },
+                '.cm-activeLine':                    { background: 'rgba(30, 33, 46, 0.8)' },
                 '.cm-selectionBackground, ::selection': { background: 'var(--blue-bg) !important' },
                 '.cm-focused .cm-selectionBackground':  { background: 'var(--blue-bg) !important' },
                 '.cm-tooltip':        { background: 'var(--surface)', border: '1px solid var(--border)' },
