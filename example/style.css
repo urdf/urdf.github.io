@@ -38,29 +38,29 @@
 
     @media (prefers-color-scheme: light) {
       :root {
-        --viewport-bg:   #dde1e7;
-        --bg:            #f2f2f7;
-        --surface:       #ffffff;
-        --surface-lo:    #f2f2f7;
-        --surface-hover: #e5e5ea;
-        --border:        #c6c6c8;
-        --text-1:        #1c1c1e;
-        --text-2:        #3c3c43;
-        --text-3:        #8e8e93;
-        --label:         #aeaeb2;
-        --control-muted: #8e8e93;
-        --blue:          #2563eb;
-        --blue-hover:    #1d4ed8;
-        --blue-bg:       rgba(37, 99, 235, 0.1);
-        --blue-text:     #2563eb;
-        --red:           #ff3b30;
-        --green:         #30d158;
-        --warning:       #92400e;
+        --viewport-bg:   hsl(216, 12%, 87%);
+        --bg:            hsl(240, 14%, 97%);
+        --surface:       hsl(0, 0%, 100%);
+        --surface-lo:    hsl(240, 14%, 97%);
+        --surface-hover: hsl(240, 5%, 90%);
+        --border:        hsl(240, 2%, 78%);
+        --text-1:        hsl(240, 6%, 10%);
+        --text-2:        hsl(240, 5%, 24%);
+        --text-3:        hsl(240, 4%, 55%);
+        --label:         hsl(240, 3%, 69%);
+        --control-muted: hsl(240, 4%, 55%);
+        --blue:          hsl(221, 83%, 53%);
+        --blue-hover:    hsl(224, 76%, 48%);
+        --blue-bg:       hsl(221 83% 53% / 0.10);
+        --blue-text:     hsl(221, 83%, 53%);
+        --red:           hsl(3, 100%, 59%);
+        --green:         hsl(142, 56%, 50%);
+        --warning:       hsl(35, 91%, 32%);
         --on-accent:     hsl(0, 0%, 100%);
-        --shadow:        rgba(0, 0, 0, 0.12);
-        --toggle-bg:     rgba(255, 255, 255, 0.85);
-        --loading-bg:    rgba(242, 242, 247, 0.6);
-        --tooltip-bg:    rgba(255, 255, 255, 0.95);
+        --shadow:        hsl(0 0% 0% / 0.12);
+        --toggle-bg:     hsl(0 0% 100% / 0.85);
+        --loading-bg:    hsl(240 14% 97% / 0.6);
+        --tooltip-bg:    hsl(0 0% 100% / 0.95);
       }
     }
 
@@ -312,11 +312,12 @@
     .insp-preview-slider { width: 100%; margin-top: 2px; }
 
     .build-group-label {
-      font-size: 0.6875rem;
+      font-size: 0.5rem;
+      font-weight: 500;
       color: var(--label);
       text-transform: uppercase;
-      letter-spacing: 0.06em;
-      padding: 4px 0 1px;
+      letter-spacing: 0.1em;
+      padding: 6px 0 2px;
     }
 
     .build-export-btn {
@@ -535,7 +536,9 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 3px 0;
+      padding: 3px 4px;
+      margin: 0 -4px;
+      border-radius: 4px;
       font-size: 10px;
       font-weight: 500;
       color: var(--text-3);
@@ -543,6 +546,12 @@
       user-select: none;
       letter-spacing: 0.05em;
       text-transform: uppercase;
+      transition: background 0.1s, color 0.1s;
+    }
+
+    .build-comp-advanced > summary:hover {
+      background: var(--surface-hover);
+      color: var(--text-2);
     }
     .build-comp-advanced > summary::-webkit-details-marker { display: none; }
     .build-comp-advanced > summary::after {
