@@ -62,15 +62,11 @@ export function appendAssistantBubble(
     const wrapper = document.createElement('div');
     wrapper.className = 'msg ai';
 
-    const hd = document.createElement('div');
-    hd.className = 'ai-hd';
-    hd.innerHTML = '<div class="ai-icon">C</div><span class="ai-name">Claude</span>';
-
     const body = document.createElement('div');
     body.className = 'ai-body';
     body.innerHTML = renderMd(html);
 
-    wrapper.append(hd, body);
+    wrapper.append(body);
 
     if (opts?.onAccept !== undefined) {
         const caRow = document.createElement('div');

@@ -96,7 +96,7 @@ export class URDFEditorController extends AISession {
     private readonly _panelEl:      HTMLElement;
     private readonly _textareaEl:   HTMLTextAreaElement;
     private readonly _lineNumsEl:   HTMLElement;
-    private readonly _briefBtn:     HTMLButtonElement;
+    private readonly _detailBtn:    HTMLButtonElement;
     private readonly _actions:      Record<string, Action>;
 
     private _sourceUrl:   string | null = null;
@@ -109,7 +109,7 @@ export class URDFEditorController extends AISession {
     private _robotName        = '';
     private _urdfFetched      = false;
     private _componentSpecs:  string | null = null;
-    private _brief = true;
+    private _detailed = false;
     private readonly _partSelEl:  HTMLSelectElement;
     private readonly _tabsEl:     HTMLElement;
     private readonly _resetBtn:   HTMLButtonElement;
@@ -124,7 +124,7 @@ export class URDFEditorController extends AISession {
         this._panelEl      = panelEl;
         this._textareaEl   = panelEl.querySelector<HTMLTextAreaElement>('#editor-textarea')!;
         this._lineNumsEl   = panelEl.querySelector<HTMLElement>('#editor-line-nums')!;
-        this._briefBtn     = $<HTMLButtonElement>('chat-brief-toggle');
+        this._detailBtn    = $<HTMLButtonElement>('chat-brief-toggle');
         this._partSelEl    = panelEl.querySelector<HTMLSelectElement>('#part-select')!;
         this._tabsEl       = $('editor-tabs');
         this._resetBtn     = panelEl.querySelector<HTMLButtonElement>('#part-reset')!;
@@ -190,9 +190,9 @@ export class URDFEditorController extends AISession {
     }
 
     set brief(v: boolean) {
-        this._brief = v;
-        this._briefBtn.classList.toggle('active', !v);
-        this._briefBtn.setAttribute('aria-pressed', String(!v));
+        this._detailed = !v;
+        this._detailBtn.classList.toggle('active', this._detailed);
+        this._detailBtn.setAttribute('aria-pressed', String(this._detailed));
     }
 
     async jumpToJoint(name: string): Promise<void> {
@@ -631,7 +631,7 @@ export class URDFEditorController extends AISession {
             ? xml.slice(0, MAX_XML_CHARS) + '\n<!-- ... truncated ... -->'
             : xml;
         const robotHeader = this._displayRobotName ? `ROBOT: ${this._displayRobotName}\n\n` : '';
-        const briefNote   = this._brief
+        const briefNote   = !this._detailed
             ? '\nBRIEF MODE: Answer in fewer than 4 lines. No preamble, no postamble, no elaboration. Minimize tokens. Direct answers only. Emoji allowed as semantic shorthand when it replaces a word more efficiently than text.'
             : '';
         return this._partSelEl.value && this._partsList.length

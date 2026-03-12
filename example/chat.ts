@@ -84,7 +84,7 @@ const BUILD_CMDS: Record<string, CmdEntry> = {
 export class URDFChatController extends AISession {
     private readonly _buildCtrl: URDFBuildController;
     private readonly _cb: ChatCallbacks;
-    private _brief = true;
+    private _detailed = false;
     private _guide = false;
     private _cmdAcIdx = -1;
     private _pauseResolve: ((aborted: boolean) => void) | null = null;
@@ -98,7 +98,7 @@ export class URDFChatController extends AISession {
     private _chatPaneEl!:    HTMLElement;
     private _historyToggleEl!: HTMLButtonElement;
     private _inputEl!:       HTMLTextAreaElement;
-    private _briefBtn!:      HTMLButtonElement;
+    private _detailBtn!:     HTMLButtonElement;
     private _continueBtn!:   HTMLButtonElement;
     private _toolCountBtn!:  HTMLElement;
     private _cmdAcEl!:       HTMLElement;
@@ -123,7 +123,7 @@ export class URDFChatController extends AISession {
         this._chatPaneEl   = this._messagesEl.closest('.chat-pane') as HTMLElement;
         this._historyToggleEl = $<HTMLButtonElement>('chat-history-toggle');
         this._inputEl      = $<HTMLTextAreaElement>('chat-input');
-        this._briefBtn    = $<HTMLButtonElement>('chat-brief-toggle');
+        this._detailBtn   = $<HTMLButtonElement>('chat-brief-toggle');
         this._continueBtn = $<HTMLButtonElement>('chat-continue');
         this._toolCountBtn = $('chat-tool-count');
         this._cmdAcEl      = $('cmd-ac');
@@ -131,6 +131,8 @@ export class URDFChatController extends AISession {
         this._ghBarEl       = $('chat-github-bar');
         this._apikeyBarEl   = $('chat-apikey-bar');
         this._proxyBarEl    = $('chat-proxy-bar');
+        document.getElementById('chat-proxy-dismiss')
+            ?.addEventListener('click', () => { this._proxyBarEl.hidden = true; });
 
         // Probe local proxy once on init
         this._probeProxy();
@@ -192,12 +194,12 @@ export class URDFChatController extends AISession {
             this._pauseResolve?.(true);
         });
 
-        // Detail toggle — inactive = brief/default, active = detail mode
-        this._briefBtn.addEventListener('click', () => {
-            this._brief = !this._brief;
-            this._briefBtn.classList.toggle('active', !this._brief);
-            this._briefBtn.setAttribute('aria-pressed', String(!this._brief));
-            this._cb.onBriefToggle(this._brief);
+        // Detail toggle
+        this._detailBtn.addEventListener('click', () => {
+            this._detailed = !this._detailed;
+            this._detailBtn.classList.toggle('active', this._detailed);
+            this._detailBtn.setAttribute('aria-pressed', String(this._detailed));
+            this._cb.onBriefToggle(!this._detailed);
         });
 
         this._continueBtn.addEventListener('click', () => this._pauseResolve?.(false));
@@ -547,7 +549,7 @@ export class URDFChatController extends AISession {
             ? `\nPart files (use read_part + update_part to change colors, materials, or geometry): ${parts.join(', ')}`
             : '';
 
-        const briefNote = (this._brief && !this._guide)
+        const briefNote = (!this._detailed && !this._guide)
             ? '\nBRIEF MODE: Answer in fewer than 4 lines. No preamble. Direct answers only. Emoji allowed as semantic shorthand when it replaces a word more efficiently than text.'
             : '';
 
