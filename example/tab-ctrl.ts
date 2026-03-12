@@ -22,11 +22,22 @@ export interface TabCtrlOptions {
 }
 
 function _setActiveTab(tab: string): void {
-    for (const btn of document.querySelectorAll<HTMLButtonElement>('.tab-btn'))
+    for (const btn of document.querySelectorAll<HTMLButtonElement>('.mode-btn.tab-btn'))
         btn.setAttribute('aria-selected', btn.dataset.tab === tab ? 'true' : 'false');
+}
+
+function _setActiveAdvTab(tab: string): void {
+    const advPanel = document.getElementById('adv-panel');
+    advPanel?.setAttribute('data-adv-tab', tab);
+    for (const btn of document.querySelectorAll<HTMLButtonElement>('.adv-tab'))
+        btn.setAttribute('aria-selected', btn.dataset.tab === tab || btn.dataset.advTab === tab ? 'true' : 'false');
+}
+
+function _setAdvContext(tab: string): void {
     const advContext = document.getElementById('adv-context');
     if (advContext) {
         const titles: Record<string, string> = {
+            ai: 'AI',
             inspect: 'Control',
             build: 'Build',
             editor: 'XML',
@@ -34,6 +45,11 @@ function _setActiveTab(tab: string): void {
         };
         advContext.textContent = titles[tab] ?? 'Advanced';
     }
+}
+
+function _syncTabUi(tab: string): void {
+    _setActiveAdvTab(tab);
+    _setAdvContext(tab);
 }
 
 export function initTabSwitching(opts: TabCtrlOptions): void {
@@ -56,6 +72,7 @@ export function initTabSwitching(opts: TabCtrlOptions): void {
         buildGrid.visible    = false;
         viewportGrid.visible = true;
         document.body.classList.remove('meshes-open');
+        _syncTabUi('inspect');
         _setActiveTab('inspect');
     });
 
@@ -68,6 +85,7 @@ export function initTabSwitching(opts: TabCtrlOptions): void {
         chatInput.placeholder = 'Ask AI to edit this URDF…';
         document.body.classList.remove('meshes-open');
         openAdvPanelIfClosed();
+        _syncTabUi('editor');
         _setActiveTab('editor');
     });
 
@@ -82,6 +100,7 @@ export function initTabSwitching(opts: TabCtrlOptions): void {
         libTabCtrl.buildLibraryGrid();
         document.body.classList.remove('meshes-open');
         openAdvPanelIfClosed();
+        _syncTabUi('build');
         _setActiveTab('build');
     });
 
@@ -102,8 +121,16 @@ export function initTabSwitching(opts: TabCtrlOptions): void {
         viewportGrid.visible = true;
         document.body.classList.add('meshes-open');
         openAdvPanelIfClosed();
-        _setActiveTab('meshes');
+        for (const btn of document.querySelectorAll<HTMLButtonElement>('.mode-btn.tab-btn'))
+            btn.setAttribute('aria-selected', 'false');
+        _syncTabUi('meshes');
+    });
+
+    document.getElementById('adv-tab-ai')?.addEventListener('click', () => {
+        openAdvPanelIfClosed();
+        _syncTabUi('ai');
     });
 
     _setActiveTab('inspect');
+    _syncTabUi('inspect');
 }

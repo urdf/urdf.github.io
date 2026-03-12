@@ -172,38 +172,7 @@
         </div>
       </div>
 
-      <!-- Conversation overlay -->
-      <div class="convo-wrap" id="convo-wrap">
-        <div class="chat-pane">
-          <button type="button" class="convo-history-btn" id="chat-history-toggle" hidden aria-expanded="false">
-            Show accepted changes
-          </button>
-          <div class="chat-messages" id="chat-messages" aria-live="polite" aria-label="AI conversation"></div>
-          <div id="chat-empty-state" class="chat-empty-state" aria-hidden="true">
-            <div class="chat-empty-hero">
-              <div class="chat-empty-icon" aria-hidden="true">+</div>
-              <div class="chat-empty-title">Build your robot</div>
-              <div class="chat-empty-subtitle">Describe it in plain English, start guided assembly, or jump into a blank build canvas.</div>
-            </div>
-            <div class="chat-empty-actions">
-              <button type="button" class="chat-guide-card primary" id="chat-new-robot">
-                <span class="chat-guide-card-title">New Robot</span>
-                <span class="chat-guide-card-desc">Open a fresh build canvas</span>
-              </button>
-              <button type="button" class="chat-guide-card" id="chat-guide-start">
-                <span class="chat-guide-card-title">Guided Assembly</span>
-                <span class="chat-guide-card-desc">Step-by-step build with 3D highlights</span>
-              </button>
-            </div>
-            <div class="chat-empty-prompt-label">Try an example</div>
-            <div class="chat-empty-chips" aria-label="Example prompts">
-              <button type="button" class="chat-empty-chip" data-prompt="Build me a 2-wheel robot car with caster">2-wheel car with caster</button>
-              <button type="button" class="chat-empty-chip" data-prompt="Build a 4-DOF robot arm for a desk">4-DOF desk arm</button>
-              <button type="button" class="chat-empty-chip" data-prompt="Create a mobile base with a lidar mount">Mobile base with lidar</button>
-            </div>
-          </div>
-        </div>
-      </div>
+      <!-- Chat moved to AI tab -->
 
       <!-- Float / overlay layers -->
       <div id="float-panels" aria-live="polite"></div>
@@ -240,8 +209,8 @@
         role="separator"
         aria-label="Resize advanced panel"
         aria-orientation="vertical"
-        aria-valuenow="320"
-        aria-valuemin="260"
+        aria-valuenow="400"
+        aria-valuemin="340"
         aria-valuemax="700"
         tabindex="0"
       ></div>
@@ -259,6 +228,15 @@
         </button>
       </div>
       <div class="panel-tabs adv-tabs" role="tablist" aria-label="Advanced tabs">
+        <button type="button" class="adv-tab" data-adv-tab="ai" id="adv-tab-ai"
+                role="tab" aria-selected="false" title="AI">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
+               stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M9.5 9a3.5 3.5 0 0 1 5 0l.5.5.5-.5a3.5 3.5 0 1 1 5 5l-5.5 5.5L9.5 14a3.5 3.5 0 0 1 0-5z"/>
+            <path d="M3 6h6"/><path d="M3 12h4"/><path d="M3 18h6"/>
+          </svg>
+          <span class="tab-label">AI</span>
+        </button>
         <button type="button" class="adv-tab tab-btn" data-tab="inspect" id="adv-tab-inspect"
                 role="tab" aria-selected="true" title="Control">
           <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
@@ -594,56 +572,87 @@
         </div>
       </div>
 
+      <!-- AI tab -->
+      <div class="tab-body ai-tab-body" data-tab="ai" id="ai-panel">
+        <div class="chat-pane">
+          <button type="button" class="convo-history-btn" id="chat-history-toggle" hidden aria-expanded="false">
+            Show accepted changes
+          </button>
+          <div class="chat-messages" id="chat-messages" aria-live="polite" aria-label="AI conversation"></div>
+          <div id="chat-empty-state" class="chat-empty-state" aria-hidden="true">
+            <div class="chat-empty-hero">
+              <div class="chat-empty-icon" aria-hidden="true">+</div>
+              <div class="chat-empty-title">Build your robot</div>
+              <div class="chat-empty-subtitle">Describe it in plain English, start guided assembly, or jump into a blank build canvas.</div>
+            </div>
+            <div class="chat-empty-actions">
+              <button type="button" class="chat-guide-card primary" id="chat-new-robot">
+                <span class="chat-guide-card-title">New Robot</span>
+                <span class="chat-guide-card-desc">Open a fresh build canvas</span>
+              </button>
+              <button type="button" class="chat-guide-card" id="chat-guide-start">
+                <span class="chat-guide-card-title">Guided Assembly</span>
+                <span class="chat-guide-card-desc">Step-by-step build with 3D highlights</span>
+              </button>
+            </div>
+            <div class="chat-empty-prompt-label">Try an example</div>
+            <div class="chat-empty-chips" aria-label="Example prompts">
+              <button type="button" class="chat-empty-chip" data-prompt="Build me a 2-wheel robot car with caster">2-wheel car with caster</button>
+              <button type="button" class="chat-empty-chip" data-prompt="Build a 4-DOF robot arm for a desk">4-DOF desk arm</button>
+              <button type="button" class="chat-empty-chip" data-prompt="Create a mobile base with a lidar mount">Mobile base with lidar</button>
+            </div>
+          </div>
+        </div>
+        <div class="input-bar ai-input-embed" id="input-bar">
+          <div id="chat-github-bar" class="chat-github-bar" hidden></div>
+          <div id="chat-proxy-bar" class="chat-proxy-bar" hidden>
+            Local proxy active · no API key needed
+            <button type="button" class="chat-proxy-dismiss" aria-label="Dismiss" onclick="this.parentElement.hidden=true">×</button>
+          </div>
+          <div id="chat-apikey-bar" class="chat-apikey-bar" hidden></div>
+          <div id="chat-context-bar" hidden></div>
+          <div class="chat-compose-toolbar">
+            <button type="button" id="chat-brief-toggle" aria-pressed="false" title="Toggle detailed responses">Detail</button>
+            <span id="chat-tool-count" class="chat-tool-count-btn" hidden
+                  aria-label="Active tools" title="Active build tools"></span>
+          </div>
+          <div class="chat-input-area">
+            <div id="cmd-ac" class="cmd-ac" hidden role="listbox" aria-label="Commands"></div>
+            <div class="chat-input-wrap">
+              <textarea
+                id="chat-input"
+                placeholder="Ask AI to build or edit your robot…"
+                aria-label="Chat with AI"
+                rows="1"
+              ></textarea>
+              <label for="chat-stl-upload" class="upload-btn" title="Attach STL mesh" aria-label="Upload STL file">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
+                     stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
+                </svg>
+              </label>
+              <input type="file" id="chat-stl-upload" accept=".stl" style="display:none">
+              <button type="button" id="chat-send" class="chat-send-btn" aria-label="Send message" title="Send (Enter)">
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                  <path d="M8 13V3M3.5 7.5L8 3l4.5 4.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </button>
+              <button type="button" id="chat-abort" class="chat-abort-btn" hidden aria-label="Stop generating" title="Stop">
+                <svg width="10" height="10" viewBox="0 0 11 11" aria-hidden="true">
+                  <rect width="11" height="11" rx="2" fill="currentColor"/>
+                </svg>
+              </button>
+            </div>
+            <button type="button" id="chat-continue" hidden class="chat-continue-btn"
+                    aria-label="Continue to next step">Continue →</button>
+          </div>
+          <a id="credit" href="https://github.com/jonasneves" target="_blank" rel="noopener">By Jonas Neves</a>
+        </div>
+      </div>
+
     </aside>
 
   </div><!-- .main -->
-
-  <!-- ── Input bar ─────────────────────────────────────────────────────── -->
-  <div class="input-bar" id="input-bar">
-    <div id="chat-github-bar" class="chat-github-bar" hidden></div>
-    <div id="chat-proxy-bar" class="chat-proxy-bar" hidden>
-      Local proxy active · no API key needed
-      <button type="button" class="chat-proxy-dismiss" aria-label="Dismiss" onclick="this.parentElement.hidden=true">×</button>
-    </div>
-    <div id="chat-apikey-bar" class="chat-apikey-bar" hidden></div>
-    <div id="chat-context-bar" hidden></div>
-    <div class="chat-compose-toolbar">
-      <button type="button" id="chat-brief-toggle" aria-pressed="false" title="Toggle detailed responses">Detail</button>
-      <span id="chat-tool-count" class="chat-tool-count-btn" hidden
-            aria-label="Active tools" title="Active build tools"></span>
-    </div>
-    <div class="chat-input-area">
-      <div id="cmd-ac" class="cmd-ac" hidden role="listbox" aria-label="Commands"></div>
-      <div class="chat-input-wrap">
-        <textarea
-          id="chat-input"
-          placeholder="Ask AI to build or edit your robot…"
-          aria-label="Chat with AI"
-          rows="1"
-        ></textarea>
-        <label for="chat-stl-upload" class="upload-btn" title="Attach STL mesh" aria-label="Upload STL file">
-          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
-               stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
-          </svg>
-        </label>
-        <input type="file" id="chat-stl-upload" accept=".stl" style="display:none">
-        <button type="button" id="chat-send" class="chat-send-btn" aria-label="Send message" title="Send (Enter)">
-          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-            <path d="M8 13V3M3.5 7.5L8 3l4.5 4.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-        </button>
-        <button type="button" id="chat-abort" class="chat-abort-btn" hidden aria-label="Stop generating" title="Stop">
-          <svg width="10" height="10" viewBox="0 0 11 11" aria-hidden="true">
-            <rect width="11" height="11" rx="2" fill="currentColor"/>
-          </svg>
-        </button>
-      </div>
-      <button type="button" id="chat-continue" hidden class="chat-continue-btn"
-              aria-label="Continue to next step">Continue →</button>
-    </div>
-    <a id="credit" href="https://github.com/jonasneves" target="_blank" rel="noopener">By Jonas Neves</a>
-  </div>
 
   <!-- ── Misc ──────────────────────────────────────────────────────────── -->
   <div class="sidebar-backdrop" id="sidebar-backdrop"></div>

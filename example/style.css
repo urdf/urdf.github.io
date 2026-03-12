@@ -403,56 +403,8 @@
       border-bottom: 1px solid var(--border);
     }
 
-    /* ── Conversation overlay ─────────────────────────────────────────────── */
-
-    .convo-wrap {
-      position: absolute;
-      bottom: 0;
-      left: 50%;
-      transform: translateX(-50%);
-      width: min(640px, calc(100% - 48px));
-      display: flex;
-      flex-direction: column;
-      padding-bottom: 8px;
-      pointer-events: none;
-      z-index: 20;
-      transition: width .25s cubic-bezier(.4,0,.2,1);
-    }
-
-    body.adv-open .convo-wrap {
-      width: min(640px, calc(100% - var(--adv-w, 320px) - 24px));
-      left: calc(50% - var(--adv-w, 320px) / 2);
-    }
-
     body.adv-open .part-card {
-      right: calc(var(--adv-w, 320px) + 24px);
-    }
-
-    .convo-wrap .chat-msg-assistant {
-      background: hsl(228 18% 9% / .88);
-      box-shadow: var(--shadow-md);
-      backdrop-filter: blur(4px);
-      -webkit-backdrop-filter: blur(4px);
-    }
-
-    .convo-wrap .chat-msg-user {
-      box-shadow: var(--shadow-md);
-    }
-
-    .convo-wrap .chat-pane {
-      pointer-events: all;
-      display: flex;
-      flex-direction: column;
-      gap: 7px;
-    }
-
-    .convo-wrap #chat-messages {
-      display: flex;
-      flex-direction: column;
-      gap: 7px;
-      max-height: 40vh;
-      overflow-y: auto;
-      scrollbar-width: thin;
+      right: calc(var(--adv-w, 400px) + 24px);
     }
 
     /* ── Advanced panel ───────────────────────────────────────────────────── */
@@ -462,8 +414,8 @@
       right: 0;
       top: 0;
       bottom: 0;
-      width: var(--adv-w, 320px);
-      min-width: 260px;
+      width: var(--adv-w, 400px);
+      min-width: 340px;
       background: var(--surface);
       border-left: 1px solid var(--border);
       display: flex;
@@ -591,26 +543,45 @@
       overflow: hidden;
     }
 
-    /* Control/inspect tab: visible when no other tab is active */
-    body:not(.editor-open):not(.build-open):not(.meshes-open) .tab-body[data-tab="inspect"] { display: flex; }
+    aside.adv-panel[data-adv-tab="inspect"] .tab-body[data-tab="inspect"] { display: flex; }
+    aside.adv-panel[data-adv-tab="build"] .tab-body[data-tab="build"] { display: flex; }
+    aside.adv-panel[data-adv-tab="editor"] .tab-body[data-tab="editor"] { display: flex; }
+    aside.adv-panel[data-adv-tab="meshes"] .tab-body[data-tab="meshes"] { display: flex; }
+    aside.adv-panel[data-adv-tab="ai"] .tab-body[data-tab="ai"] { display: flex; }
 
-    /* Build tab */
-    body.build-open .tab-body[data-tab="build"] { display: flex; flex-direction: column; }
-
-    /* Editor tab */
-    body.editor-open .tab-body[data-tab="editor"] { display: flex; flex-direction: column; flex: 1; min-height: 0; }
-
-    /* ── Input bar (bottom) ───────────────────────────────────────────────── */
-
-    .input-bar {
-      background: var(--surface);
-      border-top: 1px solid var(--border);
-      padding: 10px 16px 12px;
-      flex-shrink: 0;
-      z-index: 20;
+    .ai-tab-body {
+      background: color-mix(in srgb, var(--surface) 92%, var(--surface-lo));
     }
 
-    .input-bar .chat-compose-toolbar {
+    .ai-tab-body .chat-pane {
+      padding-top: 10px;
+    }
+
+    .ai-tab-body .chat-messages {
+      padding: 0 12px 8px;
+    }
+
+    .ai-tab-body .convo-history-btn {
+      margin: 0 auto 8px;
+    }
+
+    .ai-tab-body .chat-empty-state {
+      padding: 28px 16px 20px;
+    }
+
+    .ai-tab-body .chat-empty-hero {
+      transform: scale(0.9);
+      transform-origin: top center;
+    }
+
+    .ai-input-embed {
+      border-top: 1px solid var(--border);
+      background: color-mix(in srgb, var(--surface) 84%, var(--surface-lo));
+      padding: 10px 12px 12px;
+      flex-shrink: 0;
+    }
+
+    .ai-input-embed .chat-compose-toolbar {
       display: flex;
       align-items: center;
       gap: 6px;
@@ -619,24 +590,13 @@
       padding: 0;
     }
 
-    .input-bar .chat-input-area {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-      border-top: none;
+    .ai-input-embed .chat-input-area {
       padding: 0;
+      border-top: none;
     }
 
-    .input-bar .chat-input-wrap {
+    .ai-input-embed .chat-input-wrap {
       background: var(--surface-hover);
-      border: 1px solid var(--border);
-      border-radius: var(--r-lg);
-      padding: 8px 10px;
-      transition: border-color .15s;
-    }
-
-    .input-bar .chat-input-wrap:focus-within {
-      border-color: hsl(220 100% 65% / .5);
     }
 
     /* ── Build panel ─────────────────────────────────────────────────────────── */
@@ -3150,12 +3110,9 @@
     .upload-zone-label { font-size: 0.75rem; font-weight: 500; color: var(--text-2); }
     .upload-zone-sub { font-size: 0.625rem; color: var(--text-3); }
 
-    /* Meshes tab visibility */
-    body.meshes-open .tab-body[data-tab="meshes"] { display: flex; flex-direction: column; }
-
     /* Upload button inside chat-input-wrap: sits to the left of the send/abort button */
-    .input-bar .chat-input-wrap .upload-btn {
+    .ai-input-embed .chat-input-wrap .upload-btn {
       position: absolute;
       bottom: 6px; right: 38px;
     }
-    .input-bar .chat-input-wrap #chat-input { padding-right: 76px; }
+    .ai-input-embed .chat-input-wrap #chat-input { padding-right: 76px; }
