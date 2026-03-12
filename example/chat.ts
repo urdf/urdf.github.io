@@ -1029,7 +1029,6 @@ Use tools to modify the robot. Prefer direct tool calls over lengthy explanation
         this._appendChat(el);
         return {
             setResult(ok: boolean, input?: Record<string, unknown>, result?: unknown) {
-                statusEl.textContent = ok ? '✓' : '✕';
                 statusEl.classList.add(ok ? 'ok' : 'err');
                 if (input && Object.keys(input).length) {
                     subtitleEl.textContent = Object.entries(input)

@@ -155,7 +155,6 @@ export function appendToolCard(
     appendChat(msgsEl, card);
     return {
         setResult(ok: boolean) {
-            statusEl.textContent = ok ? '✓' : '✕';
             statusEl.classList.add(ok ? 'ok' : 'err');
         },
     };
