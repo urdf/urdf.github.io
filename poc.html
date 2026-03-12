@@ -294,18 +294,6 @@ input[type=range].joint-sldr::-webkit-slider-thumb {
 .pc-action.danger:hover { background: hsl(3 90% 62% / .1); color: var(--red); border-color: hsl(3 90% 62% / .2); }
 
 /* ── Conversation thread ─────────────────────────────────────────────── */
-.convo-wrap {
-  position: absolute;
-  bottom: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  width: min(640px, calc(100% - 280px));
-  display: flex;
-  flex-direction: column;
-  padding-bottom: 12px;
-  pointer-events: none;
-  z-index: 20;
-}
 .convo-history-btn {
   align-self: center;
   pointer-events: all;
@@ -427,7 +415,8 @@ input[type=range].joint-sldr::-webkit-slider-thumb {
 
 /* ── Advanced panel ──────────────────────────────────────────────────── */
 .adv-panel {
-  width: 320px;
+  width: 400px;
+  min-width: 340px;
   background: var(--surface);
   border-left: 1px solid var(--border);
   display: flex; flex-direction: column;
@@ -451,6 +440,28 @@ input[type=range].joint-sldr::-webkit-slider-thumb {
 .adv-tab:hover { color: var(--text-2); }
 .adv-tab.on { color: var(--blue-text); border-bottom-color: var(--blue); }
 .adv-scroll { flex: 1; overflow-y: auto; }
+/* AI tab inside adv-panel */
+#at-ai { display: none; flex-direction: column; height: 100%; }
+#at-ai .ai-messages {
+  flex: 1; overflow-y: auto; padding: 10px 12px;
+}
+#at-ai .convo-history-btn {
+  position: static; align-self: center; margin-bottom: 6px;
+}
+#at-ai .msg {
+  pointer-events: all;
+}
+#at-ai .msg.user { max-width: 100%; }
+#at-ai .msg.ai  { max-width: 100%; }
+#at-ai .ai-input-embed {
+  border-top: 1px solid var(--border);
+  background: rgba(0,0,0,0.15);
+  padding: 10px 12px 12px;
+  flex-shrink: 0;
+}
+#at-ai .input-row { margin-bottom: 0; }
+#at-ai .suggestions { padding-top: 8px; }
+#at-ai .chat-empty-hero { transform: scale(0.85); }
 /* tree */
 .tn {
   display: flex; align-items: center; gap: 4px;
@@ -556,12 +567,6 @@ input[type=range].sldr::-webkit-slider-thumb {
 .upload-zone-sub { font-size: 0.5625rem; color: var(--text-3); }
 
 /* ── Input bar ───────────────────────────────────────────────────────── */
-.input-bar {
-  background: var(--surface);
-  border-top: 1px solid var(--border);
-  padding: 11px 16px 13px;
-  flex-shrink: 0; z-index: 20;
-}
 .input-ctx {
   display: flex; align-items: center; gap: 6px;
   margin-bottom: 8px;
@@ -680,6 +685,173 @@ input[type=range].sldr::-webkit-slider-thumb {
   pointer-events: none; z-index: 99;
 }
 
+/* ── Pending badge ───────────────────────────────────────────────────── */
+.pending-badge {
+  display: none;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 7px;
+  border-radius: 20px;
+  font-size: 0.5625rem;
+  font-weight: 700;
+  background: hsl(38 88% 58% / .15);
+  border: 1px solid hsl(38 88% 58% / .3);
+  color: var(--warning);
+}
+.pending-badge.show { display: flex; }
+.pending-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--warning); animation: pulse-dot 1.5s ease-in-out infinite; }
+@keyframes pulse-dot { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+/* ── Conflict message ────────────────────────────────────────────────── */
+.msg.conflict {
+  align-self: stretch;
+  display: flex; align-items: flex-start; gap: 8px;
+  padding: 9px 12px;
+  background: hsl(38 88% 58% / .08);
+  border: 1px solid hsl(38 88% 58% / .25);
+  border-radius: var(--r);
+  font-size: 0.75rem;
+  color: var(--warning);
+  line-height: 1.45;
+}
+
+/* ── Wireframe mode ──────────────────────────────────────────────────── */
+#robot-svg.wireframe rect,
+#robot-svg.wireframe ellipse,
+#robot-svg.wireframe circle { fill: transparent !important; }
+
+/* ── Streaming cursor ────────────────────────────────────────────────── */
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+.streaming-cursor {
+  display: inline-block; width: 1.5px; height: .85em;
+  background: currentColor; vertical-align: text-bottom;
+  animation: blink .7s step-end infinite; margin-left: 1px;
+}
+
+/* ── Scene tree header ───────────────────────────────────────────────── */
+.tree-hd {
+  display: flex; align-items: center;
+  padding: 7px 12px 3px;
+  font-size: .5rem; font-weight: 700; letter-spacing: .09em; text-transform: uppercase;
+  color: var(--text-3);
+}
+.tree-hd-add {
+  margin-left: auto;
+  display: flex; align-items: center; gap: 3px;
+  padding: 2px 7px; border-radius: 4px;
+  font-size: .5625rem; font-weight: 600;
+  background: var(--surface-hi); border: 1px solid var(--border);
+  color: var(--text-2);
+  transition: color .1s, border-color .1s;
+}
+.tree-hd-add:hover { color: var(--text-1); border-color: hsl(228 12% 30%); }
+
+/* ── Visibility toggle ───────────────────────────────────────────────── */
+.tn-vis {
+  opacity: 0; font-size: 9px; color: var(--text-3);
+  padding: 1px 3px; border-radius: 3px;
+  transition: opacity .1s, background .1s; flex-shrink: 0;
+}
+.tn:hover .tn-vis { opacity: 1; }
+.tn-vis:hover { background: var(--surface-hi); color: var(--text-1); }
+.tn.vis-off { opacity: .38; }
+.tn.vis-off .tn-vis { opacity: 1; color: hsl(3 90% 62% / .7); }
+
+/* ── Inline adjust field ─────────────────────────────────────────────── */
+.ca-adjust-wrap { display: none; margin-top: 8px; }
+.ca-adjust-wrap.open { display: flex; gap: 6px; }
+.ca-adjust-in {
+  flex: 1; background: var(--surface-hi); border: 1px solid var(--border);
+  border-radius: var(--r-lg); padding: 7px 11px;
+  font-size: 0.8125rem; color: var(--text-1); outline: none;
+  transition: border-color .15s;
+}
+.ca-adjust-in:focus { border-color: hsl(220 90% 64% / .5); }
+.ca-adjust-send {
+  width: 30px; height: 30px; border-radius: 50%;
+  background: var(--blue); color: var(--on-dark);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; align-self: flex-end; transition: opacity .1s;
+}
+.ca-adjust-send:hover { opacity: .85; }
+
+/* ── Mesh editor ─────────────────────────────────────────────────────── */
+.mesh-editor {
+  border-top: 1px solid var(--border-lo);
+  margin-top: 8px;
+}
+.mesh-editor-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border-lo);
+}
+.mesh-editor-tab {
+  flex: 1; padding: 6px 4px;
+  font-size: 0.5625rem; font-weight: 600; letter-spacing: .04em; text-transform: uppercase;
+  color: var(--text-3); text-align: center;
+  border-bottom: 2px solid transparent;
+  transition: color .1s, border-color .1s;
+}
+.mesh-editor-tab:hover { color: var(--text-2); }
+.mesh-editor-tab.on { color: var(--purple); border-bottom-color: var(--purple); }
+.mesh-params { padding: 10px 14px; display: flex; flex-direction: column; gap: 6px; }
+.mp-row { display: flex; align-items: center; gap: 8px; }
+.mp-lbl { font-size: 0.6875rem; color: var(--text-2); flex: 1; }
+.mp-in {
+  width: 64px;
+  background: var(--surface-lo); border: 1px solid var(--border);
+  border-radius: 5px; padding: 3px 7px;
+  font-size: 0.6875rem; font-family: ui-monospace, monospace;
+  text-align: right; outline: none; color: var(--text-1);
+  transition: border-color .15s;
+}
+.mp-in:focus { border-color: hsl(260 70% 68% / .6); }
+.mp-in.dirty { border-color: hsl(260 70% 68% / .5); color: var(--purple); }
+.mp-unit { font-size: 0.5rem; color: var(--text-3); min-width: 16px; }
+.mp-section-lbl {
+  font-size: .5rem; font-weight: 700; letter-spacing: .09em; text-transform: uppercase;
+  color: var(--text-3); padding: 4px 0 2px;
+  border-bottom: 1px solid var(--border-lo); margin-bottom: 2px;
+}
+/* code editor */
+.mesh-code-wrap { position: relative; }
+.mesh-code {
+  width: 100%; min-height: 220px;
+  background: var(--surface-lo);
+  border: none;
+  border-top: 1px solid var(--border-lo);
+  padding: 11px 14px;
+  font-family: ui-monospace, monospace; font-size: 0.625rem; line-height: 1.65;
+  color: var(--text-2); resize: vertical; outline: none;
+  tab-size: 2;
+}
+.mesh-code:focus { color: var(--text-1); }
+.mesh-code-badge {
+  position: absolute; top: 8px; right: 14px;
+  font-size: .45rem; font-weight: 700; letter-spacing: .07em; text-transform: uppercase;
+  padding: 2px 6px; border-radius: 3px;
+  background: var(--purple-bg); color: var(--purple);
+  border: 1px solid hsl(260 70% 68% / .2);
+  pointer-events: none;
+}
+/* apply bar */
+.mesh-apply-bar {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 14px;
+  border-top: 1px solid var(--border-lo);
+  background: var(--surface-lo);
+}
+.mesh-apply-status { flex: 1; font-size: 0.5625rem; color: var(--text-3); }
+.mesh-apply-status.dirty { color: var(--warning); }
+.mesh-apply-btn {
+  display: flex; align-items: center; gap: 5px;
+  padding: 5px 13px; border-radius: 20px;
+  font-size: 0.6875rem; font-weight: 600;
+  background: var(--purple); color: hsl(0 0% 8%);
+  transition: opacity .1s;
+}
+.mesh-apply-btn:hover { opacity: .88; }
+.mesh-apply-btn:disabled { opacity: .35; cursor: default; }
+
 /* ── Disambig inline prompt ──────────────────────────────────────────── */
 .disambig {
   display: flex; align-items: flex-start; gap: 7px;
@@ -713,6 +885,10 @@ input[type=range].sldr::-webkit-slider-thumb {
   <div class="model-chip">
     <span class="model-chip-dot"></span>
     claude-sonnet-4-6
+  </div>
+  <div id="pending-badge" class="pending-badge">
+    <span class="pending-dot"></span>
+    <span class="pending-count">1 pending</span>
   </div>
   <div class="tb-spacer"></div>
   <button class="tb-btn" id="adv-btn" onclick="toggleAdv()" data-tip="Scene · Inspector · XML">
@@ -851,9 +1027,9 @@ input[type=range].sldr::-webkit-slider-thumb {
                filter="url(#glow)" pointer-events="none"/>
 
       <!-- wheel_right -->
-      <ellipse cx="46" cy="102" rx="15" ry="33"
+      <ellipse id="wr" cx="46" cy="102" rx="15" ry="33"
                fill="hsl(228 16% 12%)" stroke="hsl(228 12% 29%)" stroke-width="1.5"
-               onclick="selectOther('wheel_right')" style="cursor:pointer"/>
+               onclick="selectPart('wheel_right')" style="cursor:pointer"/>
 
       <!-- caster -->
       <circle cx="-130" cy="0" r="16"
@@ -863,14 +1039,14 @@ input[type=range].sldr::-webkit-slider-thumb {
       <!-- l298n -->
       <rect x="35" y="-26" width="46" height="52" rx="3"
             fill="hsl(130 18% 10%)" stroke="hsl(130 25% 22%)" stroke-width="1"
-            onclick="selectOther('l298n')" style="cursor:pointer"/>
+            onclick="selectPart('l298n')" style="cursor:pointer"/>
       <text x="58" y="2" text-anchor="middle" fill="hsl(130 35% 36%)"
             font-size="7" font-family="ui-monospace,monospace">L298N</text>
 
       <!-- esp32_cam -->
       <rect x="-110" y="-17" width="28" height="34" rx="3"
             fill="hsl(38 20% 11%)" stroke="hsl(38 40% 34%)" stroke-width="1"
-            onclick="selectOther('esp32_cam')" style="cursor:pointer"/>
+            onclick="selectPart('esp32_cam')" style="cursor:pointer"/>
       <rect x="-109" y="-12" width="12" height="12" rx="2"
             fill="hsl(38 48% 20%)" stroke="hsl(38 58% 44%)" stroke-width=".5"
             pointer-events="none"/>
@@ -878,7 +1054,7 @@ input[type=range].sldr::-webkit-slider-thumb {
       <!-- hc-sr04 -->
       <rect x="-126" y="-9" width="26" height="18" rx="2"
             fill="hsl(228 16% 11%)" stroke="hsl(220 26% 34%)" stroke-width="1"
-            onclick="selectOther('hcsr04')" style="cursor:pointer"/>
+            onclick="selectPart('hcsr04')" style="cursor:pointer"/>
       <circle cx="-118" cy="0" r="4.5" fill="none" stroke="hsl(220 48% 46%)" stroke-width="1" pointer-events="none"/>
       <circle cx="-109" cy="0" r="4.5" fill="none" stroke="hsl(220 48% 46%)" stroke-width="1" pointer-events="none"/>
 
@@ -962,76 +1138,7 @@ input[type=range].sldr::-webkit-slider-thumb {
       </div>
     </div>
 
-    <!-- Conversation thread (floating above input) -->
-    <div class="convo-wrap" id="convo-wrap">
-      <button class="convo-history-btn" id="hist-btn" onclick="toggleHistory()">
-        <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
-          <path d="M6 10V4M3 7l3-4 3 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-        3 earlier messages
-      </button>
-      <!-- history (hidden by default) -->
-      <div id="history-msgs" style="display:none;margin-bottom:6px">
-        <div class="msg accepted"><span class="acc-check">✓</span>Added HC-SR04 ultrasonic sensor at the front bumper</div>
-        <div class="msg accepted"><span class="acc-check">✓</span>Rotated esp32_cam 90° to face forward</div>
-        <div class="msg accepted"><span class="acc-check">✓</span>Repositioned battery_box 3mm lower</div>
-      </div>
-      <div class="convo-msgs">
-        <!-- completed turn (dimmed) -->
-        <div class="msg accepted">
-          <span class="acc-check">✓</span>
-          Moved wheel_left from Y=−90mm to Y=−95mm
-        </div>
-        <!-- current user message -->
-        <div class="msg user">
-          Now make both wheels 3mm wider — they look too narrow
-        </div>
-        <!-- AI response — pending accept -->
-        <div class="msg ai">
-          <div class="ai-hd">
-            <div class="ai-icon">C</div>
-            <span class="ai-name">Claude</span>
-          </div>
-          <div class="ai-body">
-            Updated <code>wheel_left</code> and <code>wheel_right</code> width:
-            <strong>30 mm → 33 mm</strong>.
-            <div class="stl-note">
-              <svg width="12" height="12" viewBox="0 0 14 14" fill="none"><path d="M7 1.5l5.5 10.5H1.5z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><line x1="7" y1="6" x2="7" y2="9" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><circle cx="7" cy="10.5" r=".6" fill="currentColor"/></svg>
-              Both are <strong>cylinder primitives</strong> — no STL regeneration needed. If you switch to a custom mesh wheel, I'll regenerate the STL automatically.
-            </div>
-          </div>
-          <div class="ca-row">
-            <button class="ca-accept">✓ Accept</button>
-            <button class="ca-undo">✗ Undo</button>
-            <button class="ca-adjust">Adjust…</button>
-          </div>
-        </div>
-        <!-- disambiguation example — shown conditionally -->
-        <div class="msg ai" id="disambig-msg" style="display:none">
-          <div class="ai-hd">
-            <div class="ai-icon">C</div>
-            <span class="ai-name">Claude</span>
-          </div>
-          <div class="ai-body">
-            Which sensor do you mean?
-            <div class="disambig-chips" style="margin-top:8px">
-              <button class="disambig-chip">📡 HC-SR04 (front)</button>
-              <button class="disambig-chip">📷 ESP32-CAM (rear)</button>
-            </div>
-          </div>
-        </div>
-        <!-- thinking state example -->
-        <div class="msg thinking" id="thinking-msg" style="display:none">
-          <div class="ai-icon">C</div>
-          <div class="think-dots">
-            <div class="think-dot"></div>
-            <div class="think-dot"></div>
-            <div class="think-dot"></div>
-          </div>
-          <span class="think-label">Generating chassis mesh…</span>
-        </div>
-      </div>
-    </div>
+    <!-- convo-wrap moved to AI tab -->
 
   </div><!-- /viewport -->
 
@@ -1042,6 +1149,7 @@ input[type=range].sldr::-webkit-slider-thumb {
       <button class="adv-close" onclick="toggleAdv()">×</button>
     </div>
     <div class="adv-tabs">
+      <button class="adv-tab" data-at="ai" onclick="advTab(this)">AI</button>
       <button class="adv-tab on" data-at="tree" onclick="advTab(this)">Scene</button>
       <button class="adv-tab" data-at="insp" onclick="advTab(this)">Inspector</button>
       <button class="adv-tab" data-at="stl"  onclick="advTab(this)">Meshes</button>
@@ -1051,6 +1159,10 @@ input[type=range].sldr::-webkit-slider-thumb {
 
       <!-- SCENE tree -->
       <div id="at-tree">
+        <div class="tree-hd">
+          Scene
+          <button class="tree-hd-add" onclick="fill('Add a ')">+ Add part</button>
+        </div>
         <div class="tn" style="--d:0" onclick="toggleKids('rc')">
           <span class="tn-caret open" id="c-rc">▶</span>
           <span class="tn-icon">🤖</span>
@@ -1148,27 +1260,132 @@ input[type=range].sldr::-webkit-slider-thumb {
       <!-- MESHES tab -->
       <div id="at-stl" style="display:none">
         <div style="padding:10px 14px 6px;font-size:.5625rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--text-3)">STL Meshes in this robot</div>
+
         <!-- chassis.stl -->
-        <div style="padding:0 14px 10px">
+        <div style="padding:0 14px 8px">
           <div style="font-size:.75rem;font-weight:500;margin-bottom:4px;display:flex;align-items:center;gap:6px">
             <span style="color:var(--purple)">◈</span> chassis.stl
-            <span style="font-size:.5rem;font-weight:700;background:var(--purple-bg);color:var(--purple);border:1px solid hsl(260 70%68%/.2);padding:1px 5px;border-radius:3px;letter-spacing:.06em">MESH</span>
+            <span style="font-size:.5rem;font-weight:700;background:var(--purple-bg);color:var(--purple);border:1px solid hsl(260 70%68%/.2);padding:1px 5px;border-radius:3px;letter-spacing:.06em">GENERATED</span>
+            <span id="mesh-dirty-badge" style="display:none;font-size:.5rem;font-weight:700;background:hsl(38 88%58%/.15);color:var(--warning);border:1px solid hsl(38 88%58%/.3);padding:1px 5px;border-radius:3px">unsaved</span>
+            <div style="margin-left:auto;display:flex;gap:4px">
+              <button class="m-btn">Download</button>
+            </div>
           </div>
-          <div class="mesh-row">
-            <span class="m-name">chassis.stl</span>
-            <button class="m-btn">Download</button>
-            <button class="m-btn" onclick="showThinking()">Regenerate</button>
+          <div style="font-size:.5625rem;color:var(--text-3);line-height:1.5;margin-bottom:8px">
+            Source: <code style="font-family:ui-monospace,monospace;font-size:.9em;color:var(--purple)">gen_chassis.cjs</code> · bumper arc R=85mm · X-mirrored
           </div>
-          <div style="font-size:.625rem;color:var(--text-3);line-height:1.5;margin-top:4px">
-            Generated by <code style="font-family:ui-monospace,monospace;font-size:.9em">gen_chassis.cjs</code>.<br>
-            Editable via parametric controls or by asking Claude.
+
+          <!-- editor tabs -->
+          <div class="mesh-editor">
+            <div class="mesh-editor-tabs">
+              <button class="mesh-editor-tab on" onclick="meshTab(this,'params')">Parameters</button>
+              <button class="mesh-editor-tab" onclick="meshTab(this,'code')">Source code</button>
+            </div>
+
+            <!-- Parameters panel -->
+            <div id="mesh-params-panel" class="mesh-params">
+              <div class="mp-section-lbl">Body</div>
+              <div class="mp-row">
+                <span class="mp-lbl">Length (X)</span>
+                <input class="mp-in" id="mp-length" type="number" value="200" step="5" oninput="meshParamDirty(this)">
+                <span class="mp-unit">mm</span>
+              </div>
+              <div class="mp-row">
+                <span class="mp-lbl">Half-width (Y) — body</span>
+                <input class="mp-in" id="mp-bodyhw" type="number" value="62" step="1" oninput="meshParamDirty(this)">
+                <span class="mp-unit">mm</span>
+              </div>
+              <div class="mp-row">
+                <span class="mp-lbl">Half-width (Y) — rear</span>
+                <input class="mp-in" id="mp-rearhw" type="number" value="95" step="1" oninput="meshParamDirty(this)">
+                <span class="mp-unit">mm</span>
+              </div>
+              <div class="mp-row">
+                <span class="mp-lbl">Step Y (body→rear)</span>
+                <input class="mp-in" id="mp-stepy" type="number" value="80" step="1" oninput="meshParamDirty(this)">
+                <span class="mp-unit">mm</span>
+              </div>
+              <div class="mp-row">
+                <span class="mp-lbl">Wall thickness</span>
+                <input class="mp-in" id="mp-thick" type="number" value="3" step="0.5" oninput="meshParamDirty(this)">
+                <span class="mp-unit">mm</span>
+              </div>
+              <div class="mp-section-lbl" style="margin-top:4px">Bumper arc</div>
+              <div class="mp-row">
+                <span class="mp-lbl">Circle center X</span>
+                <input class="mp-in" id="mp-cx" type="number" value="25" step="1" oninput="meshParamDirty(this)">
+                <span class="mp-unit">mm</span>
+              </div>
+              <div class="mp-row">
+                <span class="mp-lbl">Radius</span>
+                <input class="mp-in" id="mp-br" type="number" value="85" step="1" oninput="meshParamDirty(this)">
+                <span class="mp-unit">mm</span>
+              </div>
+              <div class="mp-section-lbl" style="margin-top:4px">Cutouts</div>
+              <div class="mp-row">
+                <span class="mp-lbl">Motor slots</span>
+                <select class="mp-in" style="width:auto;text-align:left;padding:3px 5px" oninput="meshParamDirty(this)">
+                  <option>2 (rear)</option>
+                  <option>4 (all)</option>
+                  <option>None</option>
+                </select>
+              </div>
+              <div class="mp-row">
+                <span class="mp-lbl">Camera hole</span>
+                <select class="mp-in" style="width:auto;text-align:left;padding:3px 5px" oninput="meshParamDirty(this)">
+                  <option>Front center</option>
+                  <option>None</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Source code panel -->
+            <div id="mesh-code-panel" style="display:none" class="mesh-code-wrap">
+              <div class="mesh-code-badge">JavaScript · gen_chassis.cjs</div>
+              <textarea class="mesh-code" id="mesh-code-area" spellcheck="false" oninput="meshCodeDirty()" wrap="off">// gen_chassis.cjs — parametric chassis generator
+// Edit values below and click Apply to regenerate chassis.stl
+
+const params = {
+  length:   200,   // mm, total X extent
+  bodyHW:    62,   // mm, half-width of body section (Y)
+  rearHW:    95,   // mm, half-width of rear section (Y)
+  stepY:     80,   // mm, X position of body→rear step
+  thickness:  3,   // mm, wall thickness
+  bumper: {
+    cx:  25,       // mm, arc circle center X
+    r:   85,       // mm, arc radius
+  },
+  cutouts: {
+    motorSlots: 'rear',   // 'rear' | 'all' | 'none'
+    cameraHole: 'front',  // 'front' | 'none'
+  },
+};
+
+// Constraint: every hole must lie entirely within its zone.
+// Body zone:  y < stepY → x bounded by ±bodyHW
+// Rear zone:  y > stepY → x bounded by ±rearHW
+// Hole outside zone → earcut phantom triangle (light-gray diagonal wedge)
+
+module.exports = { params, generate };</textarea>
+            </div>
+
+            <!-- apply bar (shared) -->
+            <div class="mesh-apply-bar">
+              <span class="mesh-apply-status" id="mesh-status">No unsaved changes</span>
+              <button class="mesh-apply-btn" id="mesh-apply-btn" disabled onclick="applyMeshChanges()">
+                <svg width="11" height="11" viewBox="0 0 14 14" fill="none"><path d="M2 7l4 4 6-7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                Apply &amp; regenerate
+              </button>
+            </div>
           </div>
+
           <div style="display:flex;gap:5px;margin-top:8px">
-            <button style="flex:1;padding:5px;border-radius:var(--r);font-size:.5625rem;font-weight:600;background:var(--surface-hi);border:1px solid var(--border);color:var(--text-2);transition:color .1s">Visual mesh</button>
-            <button style="flex:1;padding:5px;border-radius:var(--r);font-size:.5625rem;font-weight:600;background:var(--surface-hi);border:1px solid var(--border);color:var(--text-2);transition:color .1s">Collision mesh</button>
+            <button style="flex:1;padding:5px;border-radius:var(--r);font-size:.5625rem;font-weight:600;background:var(--surface-hi);border:1px solid var(--border);color:var(--text-2);transition:color .1s">Visual</button>
+            <button style="flex:1;padding:5px;border-radius:var(--r);font-size:.5625rem;font-weight:600;background:var(--surface-hi);border:1px solid var(--border);color:var(--text-2);transition:color .1s">Collision</button>
             <button style="flex:1;padding:5px;border-radius:var(--r);font-size:.5625rem;font-weight:600;background:var(--surface-hi);border:1px solid var(--border);color:var(--text-2);transition:color .1s">Print-ready</button>
           </div>
         </div>
+
         <div style="height:1px;background:var(--border-lo);margin:0 14px 10px"></div>
         <div style="padding:0 14px 6px;font-size:.5625rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--text-3)">Upload custom mesh</div>
         <div class="upload-zone" onclick="this.style.borderColor='var(--blue)'">
@@ -1192,54 +1409,412 @@ input[type=range].sldr::-webkit-slider-thumb {
     <span style="color:hsl(37 85% 62%)">rpy</span>=<span style="color:hsl(145 52% 58%)">"1.5708 0 0"</span><span style="color:hsl(207 75% 62%)">/&gt;</span>
 <span style="color:hsl(207 75% 62%)">&lt;/joint&gt;</span></div>
 
+      <div id="at-ai" style="display:none">
+        <div class="ai-messages">
+          <button class="convo-history-btn" id="hist-btn" onclick="toggleHistory()">
+            <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
+              <path d="M6 10V4M3 7l3-4 3 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            3 earlier messages
+          </button>
+          <div id="history-msgs" style="display:none;margin-bottom:6px">
+            <div class="msg accepted"><span class="acc-check">✓</span>Added HC-SR04 ultrasonic sensor at the front bumper</div>
+            <div class="msg accepted"><span class="acc-check">✓</span>Rotated esp32_cam 90° to face forward</div>
+            <div class="msg accepted"><span class="acc-check">✓</span>Repositioned battery_box 3mm lower</div>
+          </div>
+          <div class="convo-msgs">
+            <div class="msg accepted">
+              <span class="acc-check">✓</span>
+              Moved wheel_left from Y=−90mm to Y=−95mm
+            </div>
+            <div class="msg user">
+              Now make both wheels 3mm wider — they look too narrow
+            </div>
+            <div class="msg ai">
+              <div class="ai-hd">
+                <div class="ai-icon">C</div>
+                <span class="ai-name">Claude</span>
+              </div>
+              <div class="ai-body">
+                Updated <code>wheel_left</code> and <code>wheel_right</code> width:
+                <strong>30 mm → 33 mm</strong>.
+                <div class="stl-note">
+                  <svg width="12" height="12" viewBox="0 0 14 14" fill="none"><path d="M7 1.5l5.5 10.5H1.5z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><line x1="7" y1="6" x2="7" y2="9" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><circle cx="7" cy="10.5" r=".6" fill="currentColor"/></svg>
+                  Both are <strong>cylinder primitives</strong> — no STL regeneration needed. If you switch to a custom mesh wheel, I'll regenerate the STL automatically.
+                </div>
+              </div>
+              <div class="ca-row">
+                <button class="ca-accept" onclick="acceptChange(this)">✓ Accept</button>
+                <button class="ca-undo" onclick="undoChange(this)">✗ Undo</button>
+                <button class="ca-adjust" onclick="toggleAdjust(this)">Adjust…</button>
+              </div>
+              <div class="ca-adjust-wrap">
+                <input class="ca-adjust-in" type="text" placeholder="Refine the change…">
+                <button class="ca-adjust-send" onclick="sendAdjust(this)">
+                  <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </button>
+              </div>
+            </div>
+            <div class="msg ai" id="disambig-msg" style="display:none">
+              <div class="ai-hd">
+                <div class="ai-icon">C</div>
+                <span class="ai-name">Claude</span>
+              </div>
+              <div class="ai-body">
+                Which sensor do you mean?
+                <div class="disambig-chips" style="margin-top:8px">
+                  <button class="disambig-chip">📡 HC-SR04 (front)</button>
+                  <button class="disambig-chip">📷 ESP32-CAM (rear)</button>
+                </div>
+              </div>
+            </div>
+            <div class="msg thinking" id="thinking-msg" style="display:none">
+              <div class="ai-icon">C</div>
+              <div class="think-dots">
+                <div class="think-dot"></div>
+                <div class="think-dot"></div>
+                <div class="think-dot"></div>
+              </div>
+              <span class="think-label">Generating chassis mesh…</span>
+            </div>
+          </div>
+        </div>
+        <div class="ai-input-embed">
+          <div class="input-ctx">
+            <span>robot-car</span>
+            <span style="color:var(--border)">·</span>
+            <div class="ctx-tag">
+              <svg width="7" height="7" viewBox="0 0 8 8"><circle cx="4" cy="4" r="3" stroke="currentColor" stroke-width="1.2" fill="none"/></svg>
+              wheel_left selected
+            </div>
+            <button onclick="showDisambig()" style="margin-left:auto;font-size:.5625rem;color:var(--text-3);padding:2px 6px;border:1px solid var(--border-lo);border-radius:3px" data-tip="Demo: disambiguation state">try disambig</button>
+            <button onclick="showThinking()" style="font-size:.5625rem;color:var(--text-3);padding:2px 6px;border:1px solid var(--border-lo);border-radius:3px" data-tip="Demo: thinking state">try thinking</button>
+            <button onclick="showStart()" style="font-size:.5625rem;color:var(--text-3);padding:2px 6px;border:1px solid var(--border-lo);border-radius:3px" data-tip="Demo: empty start state">try start</button>
+          </div>
+          <div class="input-row">
+            <textarea id="chat-input" class="input-ta" rows="1"
+              placeholder="Describe a change, ask about your robot, or say 'add a sensor'…"></textarea>
+            <div class="input-actions">
+              <button class="upload-btn" data-tip="Upload STL or URDF file">
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+                  <path d="M8 11V4M5 7l3-4 3 4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+                  <line x1="3" y1="13" x2="13" y2="13" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+                </svg>
+              </button>
+              <button class="send-btn" onclick="sendMessage()">
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+                  <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+          <div class="suggestions">
+            <button class="sugg" onclick="fill('Make both wheels 5mm wider')">Make wheels wider</button>
+            <button class="sugg" onclick="fill('Add an ultrasonic sensor facing front')">Add ultrasonic sensor</button>
+            <button class="sugg" onclick="fill('Mirror wheel_left to the right side')">Mirror wheel</button>
+            <button class="sugg" onclick="fill('Make the chassis 10mm longer')">Lengthen chassis</button>
+            <button class="sugg" onclick="fill('Regenerate the chassis STL')">Regenerate chassis</button>
+            <button class="sugg" onclick="fill('Export STL files for 3D printing')">Export for printing</button>
+            <button class="sugg" onclick="fill('Show me a top-down view')">Top-down view</button>
+          </div>
+        </div>
+      </div>
+
     </div><!-- /adv-scroll -->
   </div><!-- /adv-panel -->
 
 </div><!-- /main -->
 
-<!-- ── Input bar ──────────────────────────────────────────────────────── -->
-<div class="input-bar">
-  <div class="input-ctx">
-    <span>robot-car</span>
-    <span style="color:var(--border)">·</span>
-    <div class="ctx-tag">
-      <svg width="7" height="7" viewBox="0 0 8 8"><circle cx="4" cy="4" r="3" stroke="currentColor" stroke-width="1.2" fill="none"/></svg>
-      wheel_left selected
-    </div>
-    <button onclick="showDisambig()" style="margin-left:auto;font-size:.5625rem;color:var(--text-3);padding:2px 6px;border:1px solid var(--border-lo);border-radius:3px" data-tip="Demo: disambiguation state">try disambig</button>
-    <button onclick="showThinking()" style="font-size:.5625rem;color:var(--text-3);padding:2px 6px;border:1px solid var(--border-lo);border-radius:3px" data-tip="Demo: thinking state">try thinking</button>
-    <button onclick="showStart()" style="font-size:.5625rem;color:var(--text-3);padding:2px 6px;border:1px solid var(--border-lo);border-radius:3px" data-tip="Demo: empty start state">try start</button>
-  </div>
-  <div class="input-row">
-    <textarea class="input-ta" rows="1"
-      placeholder="Describe a change, ask about your robot, or say 'add a sensor'…"></textarea>
-    <div class="input-actions">
-      <button class="upload-btn" data-tip="Upload STL or URDF file">
-        <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-          <path d="M8 11V4M5 7l3-4 3 4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
-          <line x1="3" y1="13" x2="13" y2="13" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
-        </svg>
-      </button>
-      <button class="send-btn">
-        <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-          <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="2"
-                stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-      </button>
-    </div>
-  </div>
-  <div class="suggestions">
-    <button class="sugg" onclick="fill('Make both wheels 5mm wider')">Make wheels wider</button>
-    <button class="sugg" onclick="fill('Add an ultrasonic sensor facing front')">Add ultrasonic sensor</button>
-    <button class="sugg" onclick="fill('Mirror wheel_left to the right side')">Mirror wheel</button>
-    <button class="sugg" onclick="fill('Make the chassis 10mm longer')">Lengthen chassis</button>
-    <button class="sugg" onclick="fill('Regenerate the chassis STL')">Regenerate chassis</button>
-    <button class="sugg" onclick="fill('Export STL files for 3D printing')">Export for printing</button>
-    <button class="sugg" onclick="fill('Show me a top-down view')">Top-down view</button>
-  </div>
-</div>
+<!-- input-bar moved to AI tab -->
 
 <script>
+/* ── Part data ───────────────────────────────────────────── */
+const PARTS = {
+  wheel_left: {
+    name: 'wheel_left', jointBadge: 'continuous', geomBadge: 'cylinder',
+    props: [
+      { l: 'Radius',   v: '32.5 mm' },
+      { l: 'Width',    v: '30 mm' },
+      { l: 'Y offset', v: '−95 mm', changed: true },
+      { l: 'Rot. axis',v: 'Y' },
+    ],
+    hasJoint: true, jointVal: 71,
+  },
+  wheel_right: {
+    name: 'wheel_right', jointBadge: 'continuous', geomBadge: 'cylinder',
+    props: [
+      { l: 'Radius',   v: '32.5 mm' },
+      { l: 'Width',    v: '30 mm' },
+      { l: 'Y offset', v: '+95 mm' },
+      { l: 'Rot. axis',v: 'Y' },
+    ],
+    hasJoint: true, jointVal: 0,
+  },
+  l298n: {
+    name: 'l298n', jointBadge: 'fixed', geomBadge: 'mesh',
+    props: [
+      { l: 'Size',     v: '43 × 43 × 28 mm' },
+      { l: 'X offset', v: '+50 mm' },
+      { l: 'Rotation', v: '−90° Z' },
+      { l: 'Channels', v: '2× H-bridge' },
+    ],
+    hasJoint: false,
+  },
+  esp32_cam: {
+    name: 'esp32_cam', jointBadge: 'fixed', geomBadge: 'mesh',
+    props: [
+      { l: 'Size',    v: '40 × 27 × 12 mm' },
+      { l: 'X offset',v: '−103 mm' },
+      { l: 'Rotation',v: '+90° Z' },
+      { l: 'Sensor',  v: 'OV2640 2MP' },
+    ],
+    hasJoint: false,
+  },
+  hcsr04: {
+    name: 'hcsr04', jointBadge: 'fixed', geomBadge: 'mesh',
+    props: [
+      { l: 'Size',    v: '45 × 20 × 15 mm' },
+      { l: 'Range',   v: '2 – 400 cm' },
+      { l: 'Angle',   v: '15°' },
+      { l: 'X offset',v: '−110 mm' },
+    ],
+    hasJoint: false,
+  },
+};
+
+let selectedPart = 'wheel_left';
+let pendingCount = 1;
+
+function updatePendingBadge() {
+  const badge = document.getElementById('pending-badge');
+  if (!badge) return;
+  if (pendingCount > 0) {
+    badge.classList.add('show');
+    badge.querySelector('.pending-count').textContent = pendingCount + ' pending';
+  } else {
+    badge.classList.remove('show');
+  }
+}
+
+/* ── Select part ─────────────────────────────────────────── */
+function selectPart(name) {
+  const data = PARTS[name];
+  if (!data) return;
+  selectedPart = name;
+
+  const card = document.getElementById('part-card');
+  card.style.display = '';
+
+  card.querySelector('.pc-name').textContent = data.name;
+  const badges = card.querySelectorAll('.pc-badge');
+  const jClass = data.jointBadge === 'continuous' ? 'badge-cont' :
+                 data.jointBadge === 'revolute'   ? 'badge-rev'  : 'badge-prim';
+  const gClass = data.geomBadge  === 'mesh'       ? 'badge-stl'  : 'badge-prim';
+  badges[0].className = 'pc-badge ' + jClass;
+  badges[0].textContent = data.jointBadge;
+  badges[1].className = 'pc-badge ' + gClass;
+  badges[1].textContent = data.geomBadge;
+
+  const propsEl = card.querySelector('.pc-props');
+  propsEl.innerHTML = data.props.map(p =>
+    `<div class="pc-prop">
+      <span class="pc-prop-lbl">${p.l}</span>
+      <span class="pc-prop-val${p.changed ? ' changed' : ''}">${p.v}${p.changed ? ' ↑' : ''}</span>
+    </div>`
+  ).join('');
+
+  const jointSection = card.querySelector('.pc-joint');
+  if (data.hasJoint) {
+    jointSection.style.display = '';
+    const jval = card.querySelector('#jval');
+    const sldr = card.querySelector('.joint-sldr');
+    if (jval) jval.textContent = data.jointVal + '°';
+    if (sldr) sldr.value = data.jointVal;
+  } else {
+    jointSection.style.display = 'none';
+  }
+
+  const ctxTag = document.querySelector('.ctx-tag');
+  if (ctxTag) {
+    ctxTag.innerHTML = `<svg width="7" height="7" viewBox="0 0 8 8"><circle cx="4" cy="4" r="3" stroke="currentColor" stroke-width="1.2" fill="none"/></svg> ${name} selected`;
+  }
+
+  document.querySelectorAll('.tn.sel').forEach(el => el.classList.remove('sel'));
+  const treeNode = document.querySelector(`.tn[data-part="${name}"]`);
+  if (treeNode) treeNode.classList.add('sel');
+
+  const hint = document.getElementById('vp-hint');
+  if (hint) hint.style.display = 'none';
+  const label = document.getElementById('wl-label');
+  if (label) label.style.display = name === 'wheel_left' ? '' : 'none';
+  cardOpen = true;
+}
+
+/* ── Accept / Undo ───────────────────────────────────────── */
+function acceptChange(btn) {
+  const msgEl = btn.closest('.msg.ai');
+  if (!msgEl) return;
+  const body = msgEl.querySelector('.ai-body');
+  const raw = body ? (body.querySelector('.ai-stream') || body).textContent.trim() : '';
+  const summary = raw.slice(0, 90) + (raw.length > 90 ? '…' : '');
+  const accepted = document.createElement('div');
+  accepted.className = 'msg accepted';
+  accepted.innerHTML = `<span class="acc-check">✓</span>${summary}`;
+  msgEl.replaceWith(accepted);
+  pendingCount = Math.max(0, pendingCount - 1);
+  updatePendingBadge();
+}
+
+function undoChange(btn) {
+  const msgEl = btn.closest('.msg.ai');
+  if (!msgEl) return;
+  msgEl.style.borderColor = 'hsl(3 90% 62% / .5)';
+  msgEl.style.background  = 'hsl(3 90% 62% / .05)';
+  setTimeout(() => {
+    msgEl.style.transition = 'opacity .25s';
+    msgEl.style.opacity    = '0';
+    setTimeout(() => msgEl.remove(), 260);
+  }, 300);
+  pendingCount = Math.max(0, pendingCount - 1);
+  updatePendingBadge();
+}
+
+function toggleAdjust(btn) {
+  const wrap = btn.closest('.msg.ai').querySelector('.ca-adjust-wrap');
+  if (!wrap) return;
+  const open = wrap.classList.toggle('open');
+  if (open) wrap.querySelector('.ca-adjust-in').focus();
+}
+
+function sendAdjust(btn) {
+  const input = btn.closest('.ca-adjust-wrap').querySelector('.ca-adjust-in');
+  const text  = input.value.trim();
+  if (!text) return;
+  const msgEl = btn.closest('.msg.ai');
+  msgEl.querySelector('.ca-adjust-wrap').classList.remove('open');
+  input.value = '';
+  // collapse the AI message and send a new turn
+  acceptChange(msgEl.querySelector('.ca-accept'));
+  const ta = document.getElementById('chat-input');
+  ta.value = text;
+  sendMessage();
+}
+
+/* ── Send message ────────────────────────────────────────── */
+const CANNED = [
+  {
+    test: /wider|width/i,
+    text: 'Updated `wheel_left` and `wheel_right` width: 30 mm → 33 mm.',
+    warn: null,
+  },
+  {
+    test: /sensor|ultrasonic|hc.sr04/i,
+    text: 'Added `hcsr04_front` facing −X at X=−128mm, Z=+9mm, fixed to `base_link`.',
+    warn: '⚠ New sensor overlaps bumper arc by ~2mm. Move X to −132mm to clear.',
+  },
+  {
+    test: /chassis|longer|extend/i,
+    text: 'Chassis length updated 200mm → 220mm. Regenerating `chassis.stl`…',
+    warn: null, thinking: 'Regenerating chassis mesh…',
+  },
+  {
+    test: /motor|l298|driver/i,
+    text: '`l298n` is at X=+50mm. I can move, rotate, or replace it — what would you like?',
+    warn: null,
+  },
+  {
+    test: /mirror|symmetr/i,
+    text: 'Mirrored `wheel_left` joint to create `wheel_right` at Y=+95mm. Both share the same geometry.',
+    warn: null,
+  },
+  {
+    test: /.*/,
+    text: (m) => `Got it: "${m.slice(0,50)}". I can make that change — confirm?`,
+    warn: null,
+  },
+];
+
+function sendMessage() {
+  const ta   = document.getElementById('chat-input');
+  const text = ta.value.trim();
+  if (!text) return;
+
+  const msgs = document.querySelector('.convo-msgs');
+  const userEl = document.createElement('div');
+  userEl.className = 'msg user';
+  userEl.textContent = text;
+  msgs.appendChild(userEl);
+  userEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+  ta.value = '';
+  ta.style.height = 'auto';
+
+  const resp = CANNED.find(r => r.test.test(text));
+  const thinker = document.getElementById('thinking-msg');
+  thinker.querySelector('.think-label').textContent = (resp && resp.thinking) || 'Thinking…';
+  thinker.style.display = '';
+
+  setTimeout(() => {
+    thinker.style.display = 'none';
+    const responseText = typeof resp.text === 'function' ? resp.text(text) : resp.text;
+    const aiEl = buildAIMessage(responseText, resp.warn || null);
+    msgs.appendChild(aiEl);
+    aiEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    pendingCount++;
+    updatePendingBadge();
+  }, 1200 + Math.random() * 700);
+}
+
+function buildAIMessage(text, warning) {
+  const div = document.createElement('div');
+  div.className = 'msg ai';
+  div.innerHTML = `
+    <div class="ai-hd">
+      <div class="ai-icon">C</div>
+      <span class="ai-name">Claude</span>
+    </div>
+    <div class="ai-body">
+      <span class="ai-stream"></span><span class="streaming-cursor"></span>
+      ${warning ? `<div class="stl-note" style="margin-top:8px">
+        <svg width="12" height="12" viewBox="0 0 14 14" fill="none"><path d="M7 1.5l5.5 10.5H1.5z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><line x1="7" y1="6" x2="7" y2="9" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><circle cx="7" cy="10.5" r=".6" fill="currentColor"/></svg>
+        ${warning}
+      </div>` : ''}
+    </div>
+    <div class="ca-row">
+      <button class="ca-accept" onclick="acceptChange(this)">✓ Accept</button>
+      <button class="ca-undo"   onclick="undoChange(this)">✗ Undo</button>
+      <button class="ca-adjust" onclick="toggleAdjust(this)">Adjust…</button>
+    </div>
+    <div class="ca-adjust-wrap">
+      <input class="ca-adjust-in" type="text" placeholder="Refine the change…">
+      <button class="ca-adjust-send" onclick="sendAdjust(this)">
+        <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+    </div>`;
+  typeText(div.querySelector('.ai-stream'), text, 14, () => {
+    const cur = div.querySelector('.streaming-cursor');
+    if (cur) cur.remove();
+  });
+  return div;
+}
+
+/* ── Streaming text ──────────────────────────────────────── */
+function typeText(el, text, speed, onDone) {
+  // Render backtick spans as <code> after streaming
+  const fullText = text.replace(/`([^`]+)`/g, '$1');
+  let i = 0;
+  el.textContent = '';
+  const t = setInterval(() => {
+    el.textContent = fullText.slice(0, ++i);
+    if (i >= fullText.length) {
+      clearInterval(t);
+      el.innerHTML = text.replace(/`([^`]+)`/g, '<code>$1</code>');
+      if (onDone) onDone();
+    }
+  }, speed);
+}
+
 /* ── Advanced panel ──────────────────────────────────────── */
 function toggleAdv() {
   const panel = document.getElementById('adv-panel');
@@ -1252,10 +1827,7 @@ function openAdv(tab) {
   const btn   = document.getElementById('adv-btn');
   panel.classList.add('open');
   btn.classList.add('on');
-  if (tab) {
-    const t = document.querySelector(`[data-at="${tab}"]`);
-    if (t) advTab(t);
-  }
+  if (tab) { const t = document.querySelector(`[data-at="${tab}"]`); if (t) advTab(t); }
 }
 
 /* ── Advanced tabs ───────────────────────────────────────── */
@@ -1263,9 +1835,9 @@ function advTab(btn) {
   const id = btn.dataset.at;
   document.querySelectorAll('.adv-tab').forEach(b => b.classList.remove('on'));
   btn.classList.add('on');
-  ['tree','insp','stl','xml'].forEach(k => {
+  ['tree','insp','stl','xml','ai'].forEach(k => {
     const el = document.getElementById('at-' + k);
-    if (el) el.style.display = (k === id) ? 'block' : 'none';
+    if (el) el.style.display = k === id ? (k === 'ai' ? 'flex' : 'block') : 'none';
   });
 }
 
@@ -1278,32 +1850,43 @@ function toggleKids(id) {
   if (caret) caret.classList.toggle('open', open);
 }
 
+function toggleVis(btn, e) {
+  e.stopPropagation();
+  const row = btn.closest('.tn');
+  row.classList.toggle('vis-off');
+}
+
 /* ── Part card ───────────────────────────────────────────── */
 let cardOpen = true;
 function closeCard() {
   document.getElementById('part-card').style.display = 'none';
-  document.getElementById('wl-label').style.display  = 'none';
-  document.getElementById('vp-hint').style.display   = '';
+  const lbl = document.getElementById('wl-label');
+  if (lbl) lbl.style.display = 'none';
+  document.getElementById('vp-hint').style.display = '';
   cardOpen = false;
 }
 function toggleWheel() {
-  if (cardOpen) { closeCard(); }
-  else {
-    document.getElementById('part-card').style.display = '';
-    document.getElementById('wl-label').style.display  = '';
-    document.getElementById('vp-hint').style.display   = 'none';
-    cardOpen = true;
-  }
-}
-function selectOther(name) {
-  const hint = document.getElementById('vp-hint');
-  if (hint) hint.style.display = 'none';
+  if (cardOpen && selectedPart === 'wheel_left') closeCard();
+  else selectPart('wheel_left');
 }
 
 /* ── Mode toggle ─────────────────────────────────────────── */
+let _exploded = false;
 function modeSwitch(btn) {
   btn.closest('.mode-pill').querySelectorAll('.mode-btn').forEach(b => b.classList.remove('on'));
   btn.classList.add('on');
+  const mode = btn.textContent.trim();
+  const svg  = document.getElementById('robot-svg');
+  svg.classList.remove('wireframe');
+  if (mode === 'Wireframe') svg.classList.add('wireframe');
+  const on = mode === 'Exploded';
+  if (_exploded !== on) {
+    _exploded = on;
+    const wl = document.getElementById('wl');
+    const wr = document.getElementById('wr');
+    if (wl) { wl.setAttribute('cy', on ? '-124' : '-102'); wl.nextElementSibling && wl.nextElementSibling.tagName === 'ellipse' && wl.nextElementSibling.setAttribute('cy', on ? '-124' : '-102'); }
+    if (wr) wr.setAttribute('cy', on ? '124' : '102');
+  }
 }
 
 /* ── Export dropdown ─────────────────────────────────────── */
@@ -1319,9 +1902,9 @@ document.addEventListener('click', e => {
 let histOpen = false;
 function toggleHistory() {
   histOpen = !histOpen;
-  document.getElementById('history-msgs').style.display = histOpen ? 'flex' : 'none';
-  if (histOpen) document.getElementById('history-msgs').style.flexDirection = 'column';
-  document.getElementById('history-msgs').style.gap = '6px';
+  const msgs = document.getElementById('history-msgs');
+  msgs.style.display = histOpen ? 'flex' : 'none';
+  if (histOpen) { msgs.style.flexDirection = 'column'; msgs.style.gap = '6px'; }
   document.getElementById('hist-btn').querySelector('svg').style.transform = histOpen ? 'rotate(180deg)' : '';
 }
 
@@ -1335,9 +1918,7 @@ function showThinking() {
   document.getElementById('thinking-msg').style.display = '';
   document.getElementById('disambig-msg').style.display = 'none';
   clearTimeout(thinkTimer);
-  thinkTimer = setTimeout(() => {
-    document.getElementById('thinking-msg').style.display = 'none';
-  }, 4000);
+  thinkTimer = setTimeout(() => document.getElementById('thinking-msg').style.display = 'none', 4000);
 }
 function showStart() {
   document.getElementById('start-overlay').style.display = 'flex';
@@ -1346,7 +1927,7 @@ function showStart() {
 
 /* ── Suggestion chips ────────────────────────────────────── */
 function fill(text) {
-  const ta = document.querySelector('.input-ta');
+  const ta = document.getElementById('chat-input');
   ta.value = text;
   ta.focus();
   ta.style.height = 'auto';
@@ -1354,7 +1935,7 @@ function fill(text) {
 }
 
 /* ── Auto-grow textarea ──────────────────────────────────── */
-document.querySelector('.input-ta').addEventListener('input', function() {
+document.getElementById('chat-input').addEventListener('input', function() {
   this.style.height = 'auto';
   this.style.height = Math.min(this.scrollHeight, 120) + 'px';
 });
@@ -1363,9 +1944,107 @@ document.querySelector('.input-ta').addEventListener('input', function() {
 document.addEventListener('keydown', e => {
   if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
     e.preventDefault();
-    document.querySelector('.input-ta').focus();
+    document.getElementById('chat-input').focus();
   }
 });
+document.getElementById('chat-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+});
+
+/* ── Init ────────────────────────────────────────────────── */
+// Add visibility buttons to non-root tree nodes
+document.querySelectorAll('#at-tree .tn').forEach(tn => {
+  const d = getComputedStyle(tn).getPropertyValue('--d').trim();
+  if (d === '0') return;
+  const vis = document.createElement('button');
+  vis.className = 'tn-vis';
+  vis.title = 'Hide';
+  vis.textContent = '⊙';
+  vis.addEventListener('click', e => toggleVis(vis, e));
+  tn.appendChild(vis);
+});
+
+// Wire tree node clicks to selectPart
+const TREE_PARTS = ['wheel_left','wheel_right','l298n','esp32_cam','hcsr04'];
+document.querySelectorAll('#at-tree .tn').forEach(tn => {
+  const lbl = tn.querySelector('.tn-lbl');
+  if (!lbl) return;
+  const name = lbl.textContent.trim();
+  if (TREE_PARTS.includes(name)) {
+    tn.dataset.part = name;
+    tn.addEventListener('click', e => {
+      if (e.target.classList.contains('tn-vis')) return;
+      selectPart(name);
+    });
+  }
+});
+
+updatePendingBadge();
+
+/* ── Mesh editor ─────────────────────────────────────────── */
+let meshDirty = false;
+
+function meshTab(btn, id) {
+  btn.closest('.mesh-editor-tabs').querySelectorAll('.mesh-editor-tab').forEach(b => b.classList.remove('on'));
+  btn.classList.add('on');
+  document.getElementById('mesh-params-panel').style.display = id === 'params' ? '' : 'none';
+  document.getElementById('mesh-code-panel').style.display   = id === 'code'   ? '' : 'none';
+  // Sync params → code when switching to code view
+  if (id === 'code') syncParamsToCode();
+}
+
+function syncParamsToCode() {
+  const get = id => document.getElementById(id)?.value ?? '';
+  const code = document.getElementById('mesh-code-area');
+  if (!code) return;
+  code.value = code.value
+    .replace(/(length:\s*)\d+/, `$1${get('mp-length')}`)
+    .replace(/(bodyHW:\s*)\d+/, `$1${get('mp-bodyhw')}`)
+    .replace(/(rearHW:\s*)\d+/, `$1${get('mp-rearhw')}`)
+    .replace(/(stepY:\s*)\d+/, `$1${get('mp-stepy')}`)
+    .replace(/(thickness:\s*)\d+/, `$1${get('mp-thick')}`)
+    .replace(/(cx:\s*)\d+/, `$1${get('mp-cx')}`)
+    .replace(/(r:\s*)\d+/, `$1${get('mp-br')}`);
+}
+
+function setMeshDirty(dirty) {
+  meshDirty = dirty;
+  const btn    = document.getElementById('mesh-apply-btn');
+  const status = document.getElementById('mesh-status');
+  const badge  = document.getElementById('mesh-dirty-badge');
+  if (btn)    btn.disabled = !dirty;
+  if (status) { status.textContent = dirty ? 'Unsaved changes — click Apply to regenerate' : 'No unsaved changes'; status.classList.toggle('dirty', dirty); }
+  if (badge)  badge.style.display = dirty ? '' : 'none';
+}
+
+function meshParamDirty(input) {
+  input.classList.add('dirty');
+  setMeshDirty(true);
+}
+
+function meshCodeDirty() {
+  setMeshDirty(true);
+}
+
+function applyMeshChanges() {
+  if (!meshDirty) return;
+  // Show thinking → simulate regeneration
+  const thinker = document.getElementById('thinking-msg');
+  thinker.querySelector('.think-label').textContent = 'Regenerating chassis.stl…';
+  thinker.style.display = '';
+  setTimeout(() => {
+    thinker.style.display = 'none';
+    setMeshDirty(false);
+    document.querySelectorAll('.mp-in.dirty').forEach(el => el.classList.remove('dirty'));
+    // Show accepted message in thread
+    const msgs = document.querySelector('.convo-msgs');
+    const el = document.createElement('div');
+    el.className = 'msg accepted';
+    el.innerHTML = `<span class="acc-check">✓</span>chassis.stl regenerated with updated parameters`;
+    msgs.appendChild(el);
+    el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }, 2000);
+}
 </script>
 </body>
 </html>
