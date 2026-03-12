@@ -295,8 +295,6 @@ for (const input of [inspectorX, inspectorY, inspectorZ, inspectorScaleX, inspec
 inspectorClose.addEventListener('click', () => selectPart(null));
 
 // ── New POC inspector action buttons ──────────────────────────────────────
-document.getElementById('inspector-close-2')?.addEventListener('click', () => selectPart(null));
-
 document.getElementById('inspector-details-btn')?.addEventListener('click', () => {
     const advPanel = document.getElementById('adv-panel');
     if (advPanel && !advPanel.classList.contains('open')) {

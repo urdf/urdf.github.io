@@ -38,6 +38,20 @@
       --r:            8px;
       --r-lg:         14px;
       --r-xl:         20px;
+      /* z-index layer scale */
+      --z-base:       1;
+      --z-mode-pill:  10;
+      --z-topbar:     20;
+      --z-part-card:  30;
+      --z-adv-panel:  40;
+      --z-export:     50;
+      --z-gesture-ov: 90;
+      --z-tooltip:    100;
+      --z-backdrop:   150;
+      --z-hover-tip:  200;
+      --z-panel-mobile: 300;
+      --z-error:      300;
+      --z-float:      400;
       /* supplemental surface + semantic tokens (aliases for POC compat) */
       --surface-hi:   var(--surface-hover);
       --on-dark:      var(--on-accent);
@@ -132,7 +146,7 @@
       background: var(--surface);
       border-bottom: 1px solid var(--border);
       flex-shrink: 0;
-      z-index: 20;
+      z-index: var(--z-topbar);
     }
 
     .robot-picker-btn {
@@ -258,7 +272,7 @@
       border-radius: 12px;
       box-shadow: 0 8px 32px hsl(0 0% 0% / .5);
       overflow: hidden;
-      z-index: 50;
+      z-index: var(--z-export);
     }
 
     .export-item {
@@ -317,7 +331,7 @@
 
     .mode-pill {
       position: absolute;
-      top: 14px;
+      top: 56px;
       left: 50%;
       transform: translateX(-50%);
       display: flex;
@@ -328,7 +342,7 @@
       border-radius: 20px;
       padding: 3px;
       gap: 2px;
-      z-index: 10;
+      z-index: var(--z-mode-pill);
     }
 
     .mode-btn {
@@ -360,7 +374,7 @@
       border-radius: 12px;
       box-shadow: 0 4px 24px hsl(0 0% 0% / .45);
       overflow: hidden;
-      z-index: 30;
+      z-index: var(--z-part-card);
       animation: slideIn .18s ease;
     }
 
@@ -398,11 +412,6 @@
     }
     .pc-close:hover { background: var(--surface-hover); color: var(--text-1); }
 
-    .pc-fields {
-      padding: 8px 13px;
-      border-bottom: 1px solid var(--border);
-    }
-
     body.adv-open .part-card {
       right: calc(var(--adv-w, 400px) + 24px);
     }
@@ -421,7 +430,7 @@
       display: flex;
       flex-direction: column;
       overflow: hidden;
-      z-index: 40;
+      z-index: var(--z-adv-panel);
       transform: translateX(100%);
       transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
     }
@@ -434,15 +443,13 @@
       bottom: 0;
       width: 4px;
       cursor: col-resize;
-      z-index: 10;
+      z-index: var(--z-mode-pill);
       touch-action: none;
       transition: background 0.12s;
     }
     .adv-panel-resize-handle:hover,
     .adv-panel-resize-handle.dragging { background: color-mix(in srgb, var(--blue) 60%, transparent); }
     .adv-panel-resize-handle.dragging  { background: var(--blue); }
-
-    @media (max-width: 768px) { .adv-panel-resize-handle { display: none; } }
 
     .adv-hd {
       display: flex;
@@ -988,7 +995,7 @@
       position: absolute;
       bottom: 8px;
       right: 8px;
-      z-index: 20;
+      z-index: var(--z-topbar);
       padding: 2px 6px;
       font-size: 0.625rem;
       font-family: ui-monospace, monospace;
@@ -1015,48 +1022,13 @@
       color: var(--text-1);
       pointer-events: none;
       display: none;
-      z-index: 200;
+      z-index: var(--z-hover-tip);
     }
 
     /* ── Mobile / touch ──────────────────────────────────────────────────── */
 
     @media (max-width: 480px) {
       aside.adv-panel { width: 100vw !important; }
-    }
-
-    @media (max-width: 768px) {
-      /* Palette buttons: comfortably tappable */
-      .component-palette .robot-btn {
-        min-height: 40px;
-        font-size: 12px;
-        padding: 8px 10px;
-      }
-
-      /* Build param sliders */
-      .build-param .joint-row input[type="range"] { height: 28px; }
-
-      /* Remove button: larger hit area */
-      .build-remove-btn {
-        padding: 6px 10px;
-        font-size: 18px;
-        min-width: 40px;
-      }
-
-      /* Download button */
-      .build-export-btn { min-height: 48px; font-size: 14px; }
-
-      /* Number inputs and labels in component cards */
-      .build-component .inspector-row input[type="number"] {
-        min-height: 36px;
-        font-size: 13px;
-      }
-
-      .build-component .inspector-row label {
-        min-width: 36px;
-        font-size: 12px;
-      }
-
-      .build-group-label { font-size: 0.6875rem; padding: 6px 0 2px; }
     }
 
     .build-param {
@@ -1160,7 +1132,7 @@
       top: 10px;
       left: 50%;
       transform: translateX(-50%);
-      z-index: 100;
+      z-index: var(--z-tooltip);
       background: var(--toggle-bg);
       backdrop-filter: blur(16px) saturate(160%);
       -webkit-backdrop-filter: blur(16px) saturate(160%);
@@ -1169,16 +1141,6 @@
       box-shadow: 0 8px 32px var(--shadow);
       padding: 4px;
       max-width: calc(100% - 100px);
-    }
-
-    @media (max-width: 768px) {
-      .robot-shell {
-        left: 62px;
-        right: 62px;
-        transform: none;
-        max-width: none;
-        overflow-x: auto;
-      }
     }
 
     .robot-track {
@@ -1203,7 +1165,7 @@
 
     .robot-btn {
       position: relative;
-      z-index: 1;
+      z-index: var(--z-base);
       flex: 0 0 auto;
       background: none;
       border: none;
@@ -1492,7 +1454,7 @@
       position: fixed;
       inset: 0;
       background: hsl(0 0% 0% / 0.45);
-      z-index: 150;
+      z-index: var(--z-backdrop);
     }
 
     .sidebar-backdrop.visible { display: block; }
@@ -1555,7 +1517,7 @@
       display: none;
       align-items: flex-start;
       gap: 8px;
-      z-index: 300;
+      z-index: var(--z-error);
       backdrop-filter: blur(4px);
       box-shadow: 0 2px 12px hsl(0 0% 0% / 0.4);
     }
@@ -1584,32 +1546,6 @@
     #inspector {
       padding: 0;
     }
-
-    .inspector-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 8px;
-    }
-
-    .inspector-title {
-      font-size: 0.6875rem;
-      font-weight: 500;
-      color: var(--text-2);
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-    }
-
-    .inspector-part-name {
-      font-size: 0.75rem;
-      color: var(--text-1);
-      margin-bottom: 8px;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    .inspector-fields { display: flex; flex-direction: column; gap: 4px; }
 
     .inspector-group-label {
       font-size: 0.5625rem;
@@ -1836,7 +1772,7 @@
       pointer-events: none;
       white-space: nowrap;
       display: none;
-      z-index: 100;
+      z-index: var(--z-tooltip);
     }
 
     /* ── Motion & contrast ───────────────────────────────────────────────── */
@@ -1852,7 +1788,7 @@
     /* ── Gesture overlay ─────────────────────────────────────────────────── */
 
     #gesture-overlay {
-      position: fixed; inset: 0; pointer-events: none; z-index: 90;
+      position: fixed; inset: 0; pointer-events: none; z-index: var(--z-gesture-ov);
     }
 
     #gesture-video {
@@ -1860,12 +1796,9 @@
       width: 160px; height: 90px; opacity: 0; pointer-events: none;
     }
 
-    /* ── Gesture toggle button (fixed bottom-left) ───────────────────────── */
+    /* ── Gesture toggle button ──────────────────────────────────────────── */
 
     #gesture-toggle {
-      bottom: 10px;
-      left: 10px;
-      z-index: 210;
       transition: background 0.2s, border-color 0.2s, color 0.2s;
     }
 
@@ -1882,8 +1815,6 @@
       0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--blue) 35%, transparent); }
       50%       { box-shadow: 0 0 0 8px color-mix(in srgb, var(--blue) 0%, transparent); }
     }
-
-    /* ── Credit link ─────────────────────────────────────────────────────── */
 
     /* ── Gesture cheat sheet ─────────────────────────────────────────────── */
 
@@ -2291,7 +2222,7 @@
       border-radius: 8px;
       overflow: hidden;
       box-shadow: 0 4px 16px var(--shadow);
-      z-index: 10;
+      z-index: var(--z-mode-pill);
     }
 
     .cmd-ac-item {
@@ -2583,7 +2514,7 @@
     .build-inspector-title { flex: 1; }
 
     /* ── Floating control panels ──────────────────────────────────── */
-    #float-panels, #gesture-hint-host { position: fixed; inset: 0; pointer-events: none; z-index: 400; }
+    #float-panels, #gesture-hint-host { position: fixed; inset: 0; pointer-events: none; z-index: var(--z-float); }
 
     .float-panel {
       position: absolute;
@@ -2685,17 +2616,15 @@
         right: 0; top: 0; bottom: 0;
         width: 100% !important;
         min-width: 0;
-        z-index: 300;
+        z-index: var(--z-panel-mobile);
       }
 
       /* Mode pill: tighter on mobile */
       .mode-pill { padding: 2px; }
       .mode-btn  { padding: 5px 10px; }
 
-      /* Topbar: hide labels, keep icon buttons compact */
-      .tb-btn .tb-label { display: none; }
+      /* Topbar: compact icon buttons on mobile */
       .tb-btn { padding: 6px 8px; }
-      .export-main .tb-label { display: none; }
       .export-main { padding: 6px 8px; }
 
       /* Robot picker name truncates */
@@ -2704,6 +2633,51 @@
       .chat-empty-actions {
         flex-direction: column;
         max-width: 260px;
+      }
+
+      /* Resize handle: not needed on touch */
+      .adv-panel-resize-handle { display: none; }
+
+      /* Palette buttons: comfortably tappable */
+      .component-palette .robot-btn {
+        min-height: 40px;
+        font-size: 12px;
+        padding: 8px 10px;
+      }
+
+      /* Build param sliders */
+      .build-param .joint-row input[type="range"] { height: 28px; }
+
+      /* Remove button: larger hit area */
+      .build-remove-btn {
+        padding: 6px 10px;
+        font-size: 18px;
+        min-width: 40px;
+      }
+
+      /* Download button */
+      .build-export-btn { min-height: 48px; font-size: 14px; }
+
+      /* Number inputs and labels in component cards */
+      .build-component .inspector-row input[type="number"] {
+        min-height: 36px;
+        font-size: 13px;
+      }
+
+      .build-component .inspector-row label {
+        min-width: 36px;
+        font-size: 12px;
+      }
+
+      .build-group-label { font-size: 0.6875rem; padding: 6px 0 2px; }
+
+      /* Robot carousel: edge-to-edge with gutters */
+      .robot-shell {
+        left: 62px;
+        right: 62px;
+        transform: none;
+        max-width: none;
+        overflow-x: auto;
       }
     }
 
@@ -2884,28 +2858,6 @@
 
     /* ── Input bar (POC structure) ────────────────────────────────────────── */
 
-    .input-ctx { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; font-size: 0.6875rem; color: var(--text-3); }
-    .ctx-tag {
-      display: flex; align-items: center; gap: 4px;
-      padding: 2px 8px; border-radius: 20px;
-      background: var(--cyan-bg); border: 1px solid hsl(186 80% 55% / .2);
-      color: var(--cyan); font-size: 0.5625rem; font-weight: 600;
-    }
-
-    .input-row {
-      display: flex; align-items: flex-end; gap: 8px;
-      background: var(--surface-hover); border: 1px solid var(--border);
-      border-radius: var(--r-lg); padding: 10px 12px; transition: border-color .15s;
-    }
-    .input-row:focus-within { border-color: hsl(220 90% 64% / .5); }
-    .input-ta {
-      flex: 1; background: transparent; border: none; resize: none;
-      outline: none; font-size: 0.9375rem; line-height: 1.5;
-      color: var(--text-1); min-height: 24px; max-height: 120px;
-      font-family: inherit;
-    }
-    .input-ta::placeholder { color: var(--text-3); }
-    .input-actions { display: flex; align-items: flex-end; gap: 4px; }
     .upload-btn {
       width: 32px; height: 32px; border-radius: 50%;
       border: 1px solid var(--border); background: var(--surface); color: var(--text-3);
@@ -2913,24 +2865,6 @@
       flex-shrink: 0; cursor: pointer; transition: color .1s, border-color .1s, background .1s;
     }
     .upload-btn:hover { color: var(--text-1); border-color: hsl(228 12% 32%); background: var(--surface-hover); }
-    .send-btn {
-      width: 32px; height: 32px; border-radius: 50%;
-      background: var(--blue); color: var(--on-dark);
-      display: flex; align-items: center; justify-content: center;
-      flex-shrink: 0; border: none; cursor: pointer; transition: opacity .1s;
-    }
-    .send-btn:hover { opacity: .85; }
-
-    .suggestions { display: flex; gap: 6px; margin-top: 8px; overflow-x: auto; scrollbar-width: none; }
-    .suggestions::-webkit-scrollbar { display: none; }
-    .sugg {
-      display: flex; align-items: center; gap: 4px;
-      padding: 4px 11px; border-radius: 20px; font-size: 0.6875rem;
-      border: 1px solid var(--border); color: var(--text-2);
-      background: transparent; white-space: nowrap; flex-shrink: 0; cursor: pointer;
-      transition: border-color .1s, color .1s, background .1s;
-    }
-    .sugg:hover { border-color: hsl(220 90% 64% / .4); color: var(--text-1); background: var(--blue-bg); }
 
     /* ── Topbar: standalone chat-model-select ────────────────────────────── */
 
