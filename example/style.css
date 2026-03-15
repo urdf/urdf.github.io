@@ -2559,9 +2559,11 @@
       .mode-pill { padding: 2px; }
       .mode-btn  { padding: 5px 10px; }
 
-      /* Topbar: compact icon buttons on mobile */
-      .tb-btn { padding: 6px 8px; }
-      .export-main { padding: 6px 8px; }
+      /* Topbar: icon-only buttons on mobile (aria-label carries the meaning) */
+      .tb-btn { padding: 6px 8px; font-size: 0; gap: 0; }
+      .tb-btn svg { font-size: initial; }
+      .export-main { padding: 6px 8px; font-size: 0; gap: 0; }
+      .export-main svg { font-size: initial; }
 
       /* Robot picker name truncates */
       .robot-picker-name { max-width: 100px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
