@@ -363,7 +363,7 @@
       transition: background 0.1s, color 0.1s;
       cursor: pointer;
     }
-    .mode-btn[aria-selected="true"], .mode-btn.on {
+    .mode-btn[aria-selected="true"] {
       background: var(--surface-hover);
       color: var(--text-1);
     }
@@ -520,7 +520,7 @@
       height: 100%;
     }
     .adv-tab:hover { color: var(--text-2); }
-    .adv-tab[aria-selected="true"], .adv-tab.active {
+    .adv-tab[aria-selected="true"] {
       color: var(--blue-text);
       border-bottom-color: var(--blue);
     }
@@ -599,11 +599,6 @@
       align-items: center;
       gap: 6px;
       margin-bottom: 6px;
-    }
-
-    .ai-input-embed .chat-input-area {
-      padding: 0;
-      border-top: none;
     }
 
     .ai-input-embed .chat-input-wrap {
@@ -2193,12 +2188,7 @@
 
     .chat-input-area {
       position: relative;
-      border-top: 1px solid var(--border);
-      padding: 8px;
       flex-shrink: 0;
-      background: color-mix(in srgb, var(--surface) 80%, transparent);
-      backdrop-filter: blur(16px) saturate(1.4);
-      -webkit-backdrop-filter: blur(16px) saturate(1.4);
     }
 
     .chat-input-wrap {
@@ -2552,7 +2542,6 @@
     /* ── Utility: initial hidden state for elements toggled by JS ─────────── */
     #resize-tooltip   { display: none; }
     /* #inspector is now a .part-card; hidden by default via JS */
-    .hidden           { display: none !important; }
 
     /* ── Mobile layout ────────────────────────────────────────────────────── */
 
@@ -2790,13 +2779,6 @@
       flex-shrink: 0; cursor: pointer; transition: color .1s, border-color .1s, background .1s;
     }
     .upload-btn:hover { color: var(--text-1); border-color: hsl(228 12% 32%); background: var(--surface-hover); }
-
-    /* ── Topbar: standalone chat-model-select ────────────────────────────── */
-
-    .chat-model-select {
-      background: transparent; border: none; outline: none;
-      font-size: 0.6875rem; color: var(--text-3); cursor: pointer; padding: 0;
-    }
 
     /* ── Meshes tab ──────────────────────────────────────────────────────── */
 
