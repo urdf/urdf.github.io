@@ -46,11 +46,12 @@
       --z-adv-panel:  40;
       --z-export:     50;
       --z-gesture-ov: 90;
-      --z-tooltip:    100;
+      --z-carousel:   100;
+      --z-tooltip:    110;
       --z-backdrop:   150;
       --z-hover-tip:  200;
       --z-panel-mobile: 300;
-      --z-error:      300;
+      --z-error:      350;
       --z-float:      400;
       /* supplemental surface + semantic tokens (aliases for POC compat) */
       --surface-hi:   var(--surface-hover);
@@ -592,8 +593,6 @@
       align-items: center;
       gap: 6px;
       margin-bottom: 6px;
-      border-top: none;
-      padding: 0;
     }
 
     .ai-input-embed .chat-input-area {
@@ -1125,65 +1124,54 @@
       padding: 10px 12px 4px;
     }
 
-    /* ── Robot picker (mode-selector style) ─────────────────────────────── */
+    /* ── Robot picker dropdown ──────────────────────────────────────────── */
 
-    .robot-shell {
+    .robot-picker-wrap {
+      position: relative;
+    }
+
+    .robot-picker-menu {
       position: absolute;
-      top: 10px;
-      left: 50%;
-      transform: translateX(-50%);
-      z-index: var(--z-tooltip);
+      top: calc(100% + 4px);
+      left: 0;
+      min-width: 180px;
+      max-height: 320px;
+      overflow-y: auto;
       background: var(--toggle-bg);
       backdrop-filter: blur(16px) saturate(160%);
       -webkit-backdrop-filter: blur(16px) saturate(160%);
       border: 1px solid var(--border);
-      border-radius: 14px;
+      border-radius: 10px;
       box-shadow: 0 8px 32px var(--shadow);
       padding: 4px;
-      max-width: calc(100% - 100px);
+      z-index: var(--z-carousel);
     }
 
-    .robot-track {
-      position: relative;
-      display: flex;
-      flex-wrap: nowrap;
-      padding: 3px;
-      border-radius: 10px;
-      background: color-mix(in srgb, var(--bg) 60%, transparent);
-    }
-
-    .robot-track-slider {
-      position: absolute;
-      border-radius: 7px;
-      background: linear-gradient(135deg, color-mix(in srgb, var(--blue) 40%, transparent), color-mix(in srgb, var(--purple) 35%, transparent));
-      box-shadow: 0 2px 10px color-mix(in srgb, var(--blue) 25%, transparent);
-      border: 1px solid color-mix(in srgb, var(--text-1) 8%, transparent);
-      pointer-events: none;
-      will-change: left, width;
-      transition: left 0.3s ease-out, width 0.3s ease-out;
-    }
-
-    .robot-btn {
-      position: relative;
-      z-index: var(--z-base);
-      flex: 0 0 auto;
-      background: none;
+    .robot-picker-item {
+      display: block;
+      width: 100%;
+      padding: 6px 12px;
       border: none;
-      padding: 5px 14px;
-      font-size: 0.75rem;
+      background: none;
+      font-size: 0.8125rem;
       font-weight: 500;
       color: var(--text-2);
       cursor: pointer;
-      transition: color 0.15s;
-      white-space: nowrap;
-      text-align: center;
+      text-align: left;
       border-radius: 7px;
+      transition: background 0.1s, color 0.1s;
     }
 
-    .robot-btn:hover { color: var(--text-1); }
-    .robot-btn:active { transform: scale(0.94); }
-    .robot-btn.active { color: var(--on-accent); font-weight: 600; }
-    .robot-btn:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+    .robot-picker-item:hover { background: var(--surface-hover); color: var(--text-1); }
+    .robot-picker-item[aria-selected="true"] {
+      color: var(--on-accent);
+      font-weight: 600;
+      background: linear-gradient(135deg, color-mix(in srgb, var(--blue) 40%, transparent), color-mix(in srgb, var(--purple) 35%, transparent));
+    }
+    .robot-picker-item:focus-visible { outline: 2px solid var(--blue); outline-offset: -2px; }
+
+    .robot-picker-btn[aria-expanded="true"] { background: var(--surface-hover); }
+    .robot-picker-btn[aria-expanded="true"] .tb-caret { transform: rotate(180deg); }
 
     /* ── Checkboxes ──────────────────────────────────────────────────────── */
 
@@ -1726,38 +1714,6 @@
     .inspector-row input.build-text-input:focus-visible { outline: none; border-color: var(--blue); }
 
     body.build-custom #build-parametric { display: none; }
-
-    .inspector-snippet-wrap { margin-top: 8px; position: relative; }
-
-    .inspector-snippet {
-      font-family: ui-monospace, monospace;
-      font-size: 0.6875rem;
-      color: var(--text-2);
-      background: var(--bg);
-      border: 1px solid var(--border);
-      border-radius: 4px;
-      padding: 6px 8px;
-      white-space: pre;
-      overflow-x: auto;
-      cursor: text;
-      user-select: all;
-      display: block;
-    }
-
-    .inspector-copy {
-      position: absolute;
-      top: 4px;
-      right: 4px;
-      background: var(--surface-lo);
-      border: 1px solid var(--border);
-      border-radius: 3px;
-      color: var(--text-3);
-      font-size: 0.6875rem;
-      padding: 2px 6px;
-      cursor: pointer;
-    }
-
-    .inspector-copy:hover { color: var(--text-1); border-color: var(--blue); }
 
     /* ── Part hover label ─────────────────────────────────────────────────── */
 
@@ -2602,7 +2558,6 @@
     .build-section-detach:hover { color: var(--text-1); background: var(--surface-hover); }
 
     /* ── Utility: initial hidden state for elements toggled by JS ─────────── */
-    #chat-empty-state { display: none; }
     #resize-tooltip   { display: none; }
     /* #inspector is now a .part-card; hidden by default via JS */
     .hidden           { display: none !important; }
@@ -2638,13 +2593,6 @@
       /* Resize handle: not needed on touch */
       .adv-panel-resize-handle { display: none; }
 
-      /* Palette buttons: comfortably tappable */
-      .component-palette .robot-btn {
-        min-height: 40px;
-        font-size: 12px;
-        padding: 8px 10px;
-      }
-
       /* Build param sliders */
       .build-param .joint-row input[type="range"] { height: 28px; }
 
@@ -2670,15 +2618,6 @@
       }
 
       .build-group-label { font-size: 0.6875rem; padding: 6px 0 2px; }
-
-      /* Robot carousel: edge-to-edge with gutters */
-      .robot-shell {
-        left: 62px;
-        right: 62px;
-        transform: none;
-        max-width: none;
-        overflow-x: auto;
-      }
     }
 
     /* ── POC component styles ─────────────────────────────────────────────── */

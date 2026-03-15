@@ -13,34 +13,26 @@
 
   <!-- ── Topbar ─────────────────────────────────────────────────────────── -->
   <header class="topbar">
-    <button type="button" class="robot-picker-btn" id="robot-picker-btn" aria-label="Switch robot">
-      <span class="status-dot" aria-hidden="true"></span>
-      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
-           stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <rect x="2" y="7" width="20" height="14" rx="2"/>
-        <path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/>
-        <line x1="12" y1="12" x2="12" y2="16"/><line x1="10" y1="14" x2="14" y2="14"/>
-      </svg>
-      <span class="robot-picker-name" id="robot-picker-name">Robot</span>
-      <svg class="tb-caret" xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24"
-           fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <polyline points="6 9 12 15 18 9"/>
-      </svg>
-    </button>
+    <div class="robot-picker-wrap">
+      <button type="button" class="robot-picker-btn" id="robot-picker-btn" aria-label="Switch robot"
+              aria-haspopup="listbox" aria-expanded="false">
+        <span class="status-dot" aria-hidden="true"></span>
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <rect x="2" y="7" width="20" height="14" rx="2"/>
+          <path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/>
+          <line x1="12" y1="12" x2="12" y2="16"/><line x1="10" y1="14" x2="14" y2="14"/>
+        </svg>
+        <span class="robot-picker-name" id="robot-picker-name">Robot</span>
+        <svg class="tb-caret" xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24"
+             fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <polyline points="6 9 12 15 18 9"/>
+        </svg>
+      </button>
+      <div class="robot-picker-menu" id="robot-picker-menu" role="listbox" hidden></div>
+    </div>
 
     <div class="tb-sep" aria-hidden="true"></div>
-
-    <div class="model-chip-wrap">
-      <span class="model-chip-dot" aria-hidden="true"></span>
-      <select id="chat-model-select" class="chat-model-select" aria-label="AI model">
-        <option value="anthropic:claude-sonnet-4-6">Claude Sonnet 4.6</option>
-        <option value="github:openai/gpt-4.1">GitHub · GPT-4.1</option>
-        <option value="github:openai/gpt-4.1-mini">GitHub · GPT-4.1 mini</option>
-        <option value="github:openai/gpt-4.1-nano">GitHub · GPT-4.1 nano</option>
-        <option value="github:openai/gpt-5">GitHub · GPT-5</option>
-        <option value="github:openai/gpt-5-mini">GitHub · GPT-5 mini</option>
-      </select>
-    </div>
 
     <div class="tb-spacer"></div>
 
@@ -92,20 +84,6 @@
             <span class="export-item-desc">Copy URDF XML to clipboard</span>
           </span>
         </button>
-        <button type="button" class="export-item" id="build-export-stl">
-          <span class="export-item-icon">🖨</span>
-          <span class="export-item-text">
-            <span class="export-item-name">STL files for printing</span>
-            <span class="export-item-desc">Visual geometry only, watertight check applied.</span>
-          </span>
-        </button>
-        <button type="button" class="export-item" id="build-share-link">
-          <span class="export-item-icon">🔗</span>
-          <span class="export-item-text">
-            <span class="export-item-name">Share link</span>
-            <span class="export-item-desc">Generate a read-only URL to this robot configuration.</span>
-          </span>
-        </button>
       </div>
     </div>
   </header>
@@ -116,13 +94,6 @@
     <!-- Viewport -->
     <div class="viewport">
 
-      <!-- Robot carousel track -->
-      <div class="robot-shell">
-        <div class="robot-track" id="robots" data-gesture-track>
-          <div class="robot-track-slider" id="robot-track-slider"></div>
-        </div>
-      </div>
-
       <!-- Mode / tab pill -->
       <div class="mode-pill" role="tablist" aria-label="View mode">
         <button type="button" class="mode-btn tab-btn" id="tab-inspect" data-tab="inspect"
@@ -130,7 +101,7 @@
         <button type="button" class="mode-btn tab-btn" id="tab-build" data-tab="build"
                 role="tab" aria-selected="false" title="Build">Build</button>
         <button type="button" class="mode-btn tab-btn" id="tab-editor" data-tab="editor"
-                role="tab" aria-selected="false" title="Edit XML">XML</button>
+                role="tab" aria-selected="false" title="XML">XML</button>
       </div>
 
       <!-- 3D viewer -->
@@ -153,17 +124,6 @@
             <span class="pc-joint-val" id="inspector-joint-val">0°</span>
           </div>
           <input type="range" class="joint-sldr" id="inspector-joint-sldr" min="-180" max="180" value="0">
-        </div>
-        <!-- Keep hidden legacy inputs for programmatic access by main.ts -->
-        <div style="display:none" aria-hidden="true">
-          <input type="number" id="inspector-x" step="0.001"/>
-          <input type="number" id="inspector-y" step="0.001"/>
-          <input type="number" id="inspector-z" step="0.001"/>
-          <input type="number" id="inspector-scale-x" step="0.01" min="0.01" value="1"/>
-          <input type="number" id="inspector-scale-y" step="0.01" min="0.01" value="1"/>
-          <input type="number" id="inspector-scale-z" step="0.01" min="0.01" value="1"/>
-          <code id="inspector-snippet"></code>
-          <button id="inspector-copy">Copy</button>
         </div>
         <div class="pc-actions">
           <button type="button" class="pc-action details" id="inspector-details-btn">Details ›</button>
@@ -236,35 +196,7 @@
           </svg>
           <span class="tab-label">AI</span>
         </button>
-        <button type="button" class="adv-tab tab-btn" data-tab="inspect" id="adv-tab-inspect"
-                role="tab" aria-selected="true" title="Control">
-          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
-               stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <line x1="21" x2="14" y1="4" y2="4"/><line x1="10" x2="3" y1="4" y2="4"/>
-            <line x1="21" x2="12" y1="12" y2="12"/><line x1="8" x2="3" y1="12" y2="12"/>
-            <line x1="21" x2="16" y1="20" y2="20"/><line x1="12" x2="3" y1="20" y2="20"/>
-            <line x1="14" x2="14" y1="2" y2="6"/><line x1="8" x2="8" y1="10" y2="14"/>
-            <line x1="16" x2="16" y1="18" y2="22"/>
-          </svg>
-          <span class="tab-label">Control</span>
-        </button>
-        <button type="button" class="adv-tab tab-btn" data-tab="build" id="adv-tab-build"
-                role="tab" aria-selected="false" title="Build">
-          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
-               stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/>
-          </svg>
-          <span class="tab-label">Build</span>
-        </button>
-        <button type="button" class="adv-tab tab-btn" data-tab="editor" id="adv-tab-editor"
-                role="tab" aria-selected="false" title="Edit XML">
-          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
-               stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="m18 16 4-4-4-4"/><path d="m6 8-4 4 4 4"/><path d="m14.5 4-5 16"/>
-          </svg>
-          <span class="tab-label">XML</span>
-        </button>
-        <button type="button" class="adv-tab tab-btn" data-tab="meshes" id="adv-tab-meshes"
+        <button type="button" class="adv-tab" data-adv-tab="meshes" id="adv-tab-meshes"
                 role="tab" aria-selected="false" title="Mesh files">
           <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -553,12 +485,7 @@
         <div class="sidebar-scroll">
           <div class="section-label">Mesh Files</div>
           <div id="mesh-file-list">
-            <!-- Populated by JS when robot loads -->
-            <div class="mesh-row">
-              <span class="m-name">chassis.stl</span>
-              <button type="button" class="m-btn">↓ Download</button>
-              <button type="button" class="m-btn" id="mesh-regen-chassis">Regenerate</button>
-            </div>
+            <!-- Populated by populateMeshTab() on urdf-processed -->
           </div>
 
           <div class="section-label" style="margin-top: 12px;">Upload Custom Mesh</div>
@@ -578,7 +505,7 @@
             Show accepted changes
           </button>
           <div class="chat-messages" id="chat-messages" aria-live="polite" aria-label="AI conversation"></div>
-          <div id="chat-empty-state" class="chat-empty-state" aria-hidden="true">
+          <div id="chat-empty-state" class="chat-empty-state">
             <div class="chat-empty-hero">
               <div class="chat-empty-icon" aria-hidden="true">+</div>
               <div class="chat-empty-title">Build your robot</div>
@@ -611,6 +538,17 @@
           <div id="chat-apikey-bar" class="chat-apikey-bar" hidden></div>
           <div id="chat-context-bar" hidden></div>
           <div class="chat-compose-toolbar">
+            <div class="model-chip-wrap">
+              <span class="model-chip-dot" aria-hidden="true"></span>
+              <select id="chat-model-select" class="chat-model-select" aria-label="AI model">
+                <option value="anthropic:claude-sonnet-4-6">Claude Sonnet 4.6</option>
+                <option value="github:openai/gpt-4.1">GitHub · GPT-4.1</option>
+                <option value="github:openai/gpt-4.1-mini">GitHub · GPT-4.1 mini</option>
+                <option value="github:openai/gpt-4.1-nano">GitHub · GPT-4.1 nano</option>
+                <option value="github:openai/gpt-5">GitHub · GPT-5</option>
+                <option value="github:openai/gpt-5-mini">GitHub · GPT-5 mini</option>
+              </select>
+            </div>
             <button type="button" id="chat-brief-toggle" aria-pressed="false" title="Toggle detailed responses">Detail</button>
             <span id="chat-tool-count" class="chat-tool-count-btn" hidden
                   aria-label="Active tools" title="Active build tools"></span>
@@ -624,7 +562,7 @@
                 aria-label="Chat with AI"
                 rows="1"
               ></textarea>
-              <label for="chat-stl-upload" class="upload-btn" title="Attach STL mesh" aria-label="Upload STL file">
+              <label for="chat-stl-upload" class="upload-btn" title="Attach STL file" aria-label="Attach STL file">
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
                      stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                   <path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/>

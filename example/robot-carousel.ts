@@ -1,13 +1,14 @@
-// Robot button carousel — builds and manages the robot selector strip.
+// Robot picker dropdown + build header/saved list management.
 
 import { URDFBuildController } from './build.js';
 import type { ComponentCrudController } from './component-crud.js';
 import type { RobotLoader, RobotConfig } from './robot-loader.js';
 import { $ } from './dom-utils.js';
 
-export interface RobotCarouselOptions {
-    robotsPanel:               HTMLElement;
-    robotTrackSlider:          HTMLElement;
+export interface RobotPickerOptions {
+    pickerBtn:                 HTMLButtonElement;
+    pickerMenu:                HTMLElement;
+    pickerNameEl:              HTMLElement;
     buildCtrl:                 URDFBuildController;
     buildActiveHeaderEl:       HTMLElement;
     buildActiveNameEl:         HTMLElement;
@@ -20,62 +21,64 @@ export interface RobotCarouselOptions {
     getRobotLoader:            () => RobotLoader;
 }
 
-export class RobotCarousel {
-    private readonly _opts: RobotCarouselOptions;
-    private _hoverTimer: ReturnType<typeof setTimeout> | null = null;
-    gestureHoverBtn: HTMLButtonElement | null = null;
+export class RobotPicker {
+    private readonly _opts: RobotPickerOptions;
 
-    constructor(opts: RobotCarouselOptions) {
+    constructor(opts: RobotPickerOptions) {
         this._opts = opts;
 
-        opts.robotsPanel.closest('.robot-shell')!.addEventListener('mouseleave', () => {
-            if (this._hoverTimer) { clearTimeout(this._hoverTimer); this._hoverTimer = null; }
-            this.moveSliderToActive();
+        opts.pickerBtn.addEventListener('click', () => this._toggle());
+        document.addEventListener('click', (e) => {
+            if (!opts.pickerBtn.contains(e.target as Node) && !opts.pickerMenu.contains(e.target as Node))
+                this._close();
         });
-
-        new ResizeObserver(() => this.moveSliderToActive()).observe(opts.robotsPanel);
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') this._close();
+        });
     }
 
-    moveSliderTo(btn: HTMLButtonElement): void {
-        const { robotsPanel, robotTrackSlider } = this._opts;
-        const trackRect = robotsPanel.getBoundingClientRect();
-        const btnRect   = btn.getBoundingClientRect();
-        robotTrackSlider.style.width  = `${btnRect.width}px`;
-        robotTrackSlider.style.height = `${btnRect.height}px`;
-        robotTrackSlider.style.left   = `${btnRect.left - trackRect.left}px`;
-        robotTrackSlider.style.top    = `${btnRect.top  - trackRect.top}px`;
+    private _toggle(): void {
+        const open = this._opts.pickerMenu.hidden;
+        if (open) this._open(); else this._close();
     }
 
-    moveSliderToActive(): void {
-        const active = this._opts.robotsPanel.querySelector<HTMLButtonElement>('.robot-btn.active');
-        if (active) this.moveSliderTo(active);
+    private _open(): void {
+        this._opts.pickerMenu.hidden = false;
+        this._opts.pickerBtn.setAttribute('aria-expanded', 'true');
+        const selected = this._opts.pickerMenu.querySelector<HTMLButtonElement>('[aria-selected="true"]');
+        selected?.focus();
     }
 
-    clearActiveRobot(): void {
-        for (const btn of this._opts.robotsPanel.querySelectorAll<HTMLButtonElement>('.robot-btn'))
-            btn.classList.remove('active');
+    private _close(): void {
+        this._opts.pickerMenu.hidden = true;
+        this._opts.pickerBtn.setAttribute('aria-expanded', 'false');
     }
 
-    buildRobotButtons(robots: RobotConfig[]): void {
-        const { robotsPanel } = this._opts;
-        robotsPanel.querySelectorAll('.robot-btn').forEach(b => b.remove());
+    buildRobotItems(robots: RobotConfig[]): void {
+        const { pickerMenu } = this._opts;
+        pickerMenu.innerHTML = '';
         for (let i = 0; i < robots.length; i++) {
             const robot = robots[i];
             const btn = document.createElement('button');
             btn.type = 'button';
-            btn.className = 'robot-btn';
-            btn.textContent = robot.label;
-            btn.title = robot.name;
-            btn.dataset.name  = robot.name;
+            btn.className = 'robot-picker-item';
+            btn.textContent = robot.name;
+            btn.dataset.name = robot.name;
             btn.dataset.index = String(i);
-            btn.addEventListener('click', () => this._opts.getRobotLoader().load(robot, i));
-            btn.addEventListener('mouseenter', () => {
-                this.moveSliderTo(btn);
-                if (this._hoverTimer) clearTimeout(this._hoverTimer);
-                this._hoverTimer = setTimeout(() => this._opts.getRobotLoader().load(robot, i), 150);
+            btn.setAttribute('role', 'option');
+            btn.setAttribute('aria-selected', 'false');
+            btn.addEventListener('click', () => {
+                this._opts.getRobotLoader().load(robot, i);
+                this._close();
             });
-            robotsPanel.appendChild(btn);
+            pickerMenu.appendChild(btn);
         }
+    }
+
+    setActive(robotName: string): void {
+        for (const btn of this._opts.pickerMenu.querySelectorAll<HTMLButtonElement>('.robot-picker-item'))
+            btn.setAttribute('aria-selected', String(btn.dataset.name === robotName));
+        this._opts.pickerNameEl.textContent = robotName;
     }
 
     refreshBuildHeader(): void {
@@ -134,14 +137,5 @@ export class RobotCarousel {
             row.append(nameEl, loadBtn, delBtn);
             buildSavedListEl.appendChild(row);
         }
-    }
-
-    scheduleHoverLoad(idx: number, robots: RobotConfig[]): void {
-        if (this._hoverTimer) clearTimeout(this._hoverTimer);
-        this._hoverTimer = setTimeout(() => this._opts.getRobotLoader().load(robots[idx], idx), 150);
-    }
-
-    cancelHoverLoad(): void {
-        if (this._hoverTimer) { clearTimeout(this._hoverTimer); this._hoverTimer = null; }
     }
 }

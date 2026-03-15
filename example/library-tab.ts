@@ -8,8 +8,6 @@ import { $ } from './dom-utils.js';
 export function refreshPaletteCounts(
     buildCtrl: URDFBuildController,
     paletteBadges: Map<string, HTMLSpanElement>,
-    buildCompCountEl: HTMLElement | null,
-    buildCompEmptyEl: HTMLElement | null,
 ): void {
     const counts = new Map<string, number>();
     const entries = buildCtrl.getComponentEntries();
@@ -21,9 +19,6 @@ export function refreshPaletteCounts(
         badge.textContent = n > 0 ? String(n) : '';
         badge.style.display = n > 0 ? 'inline' : 'none';
     }
-    const total = entries.length;
-    if (buildCompCountEl) buildCompCountEl.textContent = total > 0 ? `${total} added` : '';
-    if (buildCompEmptyEl) buildCompEmptyEl.hidden = total > 0 || !buildCtrl.isCatalogActive;
 }
 
 const CATEGORY_ICON: Record<string, string> = {

@@ -21,7 +21,7 @@ import type { RobotConfig, CatalogEntry } from './robot-loader.js';
 import { $ } from './dom-utils.js';
 import { initJointPanel, makeScrubLabel } from './joint-panel.js';
 import { openPanel, openGestureHint } from './float-panel.js';
-import { RobotCarousel } from './robot-carousel.js';
+import { RobotPicker } from './robot-carousel.js';
 import { GizmoController } from './gizmo-ctrl.js';
 import { initTabSwitching } from './tab-ctrl.js';
 import { initKeyboardHandler } from './keyboard-ctrl.js';
@@ -34,7 +34,6 @@ const simulator = new MuJoCoSimulator();
 
 const viewer           = $<URDFManipulator>('viewer');
 const jointsPanel      = $('joints');
-const robotsPanel      = $('robots');
 const loadingEl        = $('loading');
 const partLabel        = $('part-label');
 
@@ -72,8 +71,6 @@ const upAxisEl        = $<HTMLSelectElement>('up-axis');
 
 let ROBOTS: RobotConfig[] = [];
 
-const robotTrackSlider = $('robot-track-slider');
-
 ignoreLimitsEl.addEventListener('change', () => { viewer.ignoreLimits = ignoreLimitsEl.checked; });
 showCollisionEl.addEventListener('change', () => { viewer.showCollision = showCollisionEl.checked; });
 displayShadowEl.addEventListener('change', () => { viewer.displayShadow = displayShadowEl.checked; });
@@ -104,15 +101,14 @@ const inspectorProps       = $('inspector-props');
 const inspectorJointSection = $('inspector-joint-section');
 const inspectorJointVal    = $('inspector-joint-val');
 const inspectorJointSldr   = $<HTMLInputElement>('inspector-joint-sldr');
-const inspectorX           = $<HTMLInputElement>('inspector-x');
-const inspectorY           = $<HTMLInputElement>('inspector-y');
-const inspectorZ           = $<HTMLInputElement>('inspector-z');
-const inspectorScaleX      = $<HTMLInputElement>('inspector-scale-x');
-const inspectorScaleY      = $<HTMLInputElement>('inspector-scale-y');
-const inspectorScaleZ      = $<HTMLInputElement>('inspector-scale-z');
-const inspectorSnippet     = $('inspector-snippet');
-const inspectorCopy        = $<HTMLButtonElement>('inspector-copy');
 const inspectorClose       = $('inspector-close');
+
+// State object replaces hidden DOM inputs for position/scale/snippet
+const inspectorState = {
+    x: 0, y: 0, z: 0,
+    scaleX: 1, scaleY: 1, scaleZ: 1,
+    snippet: '',
+};
 
 let selectedJoint: string | null = null;
 let hoveredJointName: string | null = null;
@@ -125,15 +121,13 @@ function refreshSnippet(): void {
     if (!joint) return;
     const p = joint.position;
     const r = joint.rotation;
-    const sx = parseFloat(inspectorScaleX.value);
-    const sy = parseFloat(inspectorScaleY.value);
-    const sz = parseFloat(inspectorScaleZ.value);
+    const { scaleX: sx, scaleY: sy, scaleZ: sz } = inspectorState;
     const anyScale = Math.abs(sx - 1) > 0.005 || Math.abs(sy - 1) > 0.005 || Math.abs(sz - 1) > 0.005;
     const uniform = Math.abs(sx - sy) < 0.001 && Math.abs(sy - sz) < 0.001;
     let scaleLine = '';
     if (anyScale && uniform) scaleLine = `\nscale: ${sx.toFixed(2)}\u00d7`;
     else if (anyScale)       scaleLine = `\nscale: ${sx.toFixed(2)} ${sy.toFixed(2)} ${sz.toFixed(2)}`;
-    inspectorSnippet.textContent =
+    inspectorState.snippet =
         `[${selectedJoint}]\n` +
         `<origin xyz="${fmt(p.x)} ${fmt(p.y)} ${fmt(p.z)}"\n` +
         `        rpy="${fmt(r.x)} ${fmt(r.y)} ${fmt(r.z)}"/>${scaleLine}`;
@@ -145,14 +139,8 @@ function applyInspector(): void {
     if (!selectedJoint || !viewer.robot) return;
     const joint = viewer.robot.joints[selectedJoint];
     if (!joint) return;
-    joint.position.set(
-        parseFloat(inspectorX.value) || 0,
-        parseFloat(inspectorY.value) || 0,
-        parseFloat(inspectorZ.value) || 0,
-    );
-    const sx = parseFloat(inspectorScaleX.value) || 1;
-    const sy = parseFloat(inspectorScaleY.value) || 1;
-    const sz = parseFloat(inspectorScaleZ.value) || 1;
+    joint.position.set(inspectorState.x, inspectorState.y, inspectorState.z);
+    const { scaleX: sx, scaleY: sy, scaleZ: sz } = inspectorState;
     const link = viewer.robot.links[linkNameFor(selectedJoint)];
     if (link) link.scale.set(sx, sy, sz);
     viewer.redraw();
@@ -256,14 +244,12 @@ function selectPart(jointName: string | null): void {
         });
     }
 
-    // ── Legacy hidden inputs (keep working for applyInspector / refreshSnippet) ──
-    inspectorX.value = fmt(p.x);
-    inspectorY.value = fmt(p.y);
-    inspectorZ.value = fmt(p.z);
-
-    inspectorScaleX.value = String(link ? link.scale.x : 1);
-    inspectorScaleY.value = String(link ? link.scale.y : 1);
-    inspectorScaleZ.value = String(link ? link.scale.z : 1);
+    inspectorState.x = p.x;
+    inspectorState.y = p.y;
+    inspectorState.z = p.z;
+    inspectorState.scaleX = link ? link.scale.x : 1;
+    inspectorState.scaleY = link ? link.scale.y : 1;
+    inspectorState.scaleZ = link ? link.scale.z : 1;
 
     refreshSnippet();
     gestureCtrl?.setSelectedJoint(jointName);
@@ -286,12 +272,6 @@ function selectPart(jointName: string | null): void {
     }
 }
 
-for (const input of [inspectorX, inspectorY, inspectorZ, inspectorScaleX, inspectorScaleY, inspectorScaleZ]) {
-    input.addEventListener('input', applyInspector);
-    const label = input.closest('.inspector-row')?.querySelector('label') as HTMLElement | null;
-    if (label) makeScrubLabel(label, input);
-}
-
 inspectorClose.addEventListener('click', () => selectPart(null));
 
 // ── New POC inspector action buttons ──────────────────────────────────────
@@ -300,23 +280,17 @@ document.getElementById('inspector-details-btn')?.addEventListener('click', () =
     if (advPanel && !advPanel.classList.contains('open')) {
         document.getElementById('adv-toggle')?.click();
     }
-    (document.getElementById('adv-tab-inspect') as HTMLButtonElement | null)?.click();
+    document.getElementById('tab-inspect')?.click();
 });
 
 document.getElementById('inspector-copy-btn')?.addEventListener('click', () => {
-    navigator.clipboard.writeText(inspectorSnippet.textContent ?? '');
+    navigator.clipboard.writeText(inspectorState.snippet);
     const btn = document.getElementById('inspector-copy-btn') as HTMLButtonElement | null;
     if (btn) {
         const orig = btn.textContent;
         btn.textContent = 'Copied!';
         setTimeout(() => { btn.textContent = orig; }, 1500);
     }
-});
-
-inspectorCopy.addEventListener('click', () => {
-    navigator.clipboard.writeText(inspectorSnippet.textContent ?? '');
-    inspectorCopy.textContent = 'Copied!';
-    setTimeout(() => { inspectorCopy.textContent = 'Copy'; }, 1500);
 });
 
 viewer.addEventListener('click', () => {
@@ -516,9 +490,6 @@ function syncSlidersFromController(): void {
 }
 
 function onDwellSelect(clientX: number, clientY: number): void {
-    const robotBtn = document.elementFromPoint(clientX, clientY)?.closest<HTMLButtonElement>('.robot-btn');
-    if (robotBtn) { robotBtn.click(); return; }
-
     const fpRow = document.elementFromPoint(clientX, clientY)?.closest<HTMLElement>('[data-fp-row-index]');
     const initSection = inspectorCtrl.getFloatPanelInitSection();
     if (fpRow && gestureCtrl && initSection) {
@@ -551,29 +522,12 @@ gestureToggleBtn.addEventListener('click', async () => {
     gestureCtrl = new GestureController({
         viewer, overlayCanvas: gestureOverlay, videoEl: gestureVideo,
         onDwellSelect,
-        onPointerMove(clientX, clientY) {
-            const btn = document.elementFromPoint(clientX, clientY)?.closest<HTMLButtonElement>('.robot-btn');
-            if (btn) {
-                robotCarousel.moveSliderTo(btn);
-                if (btn !== robotCarousel.gestureHoverBtn) {
-                    robotCarousel.gestureHoverBtn = btn;
-                    const idx = parseInt(btn.dataset.index!, 10);
-                    robotCarousel.scheduleHoverLoad(idx, ROBOTS);
-                }
-            } else {
-                if (robotCarousel.gestureHoverBtn) {
-                    robotCarousel.gestureHoverBtn = null;
-                    robotCarousel.cancelHoverLoad();
-                }
-                robotCarousel.moveSliderToActive();
-            }
-        },
-        onPointerLeave() { robotCarousel.gestureHoverBtn = null; robotCarousel.moveSliderToActive(); },
+        onPointerMove() {},
+        onPointerLeave() {},
         onThumbsUp() { chatCtrl?.resumeFromGesture(); },
         onStop() {
             gestureCtrl = null;
             gestureToggleBtn.classList.remove('active');
-            robotCarousel.moveSliderToActive();
         },
     });
     gestureCtrl.start()
@@ -607,28 +561,7 @@ initPanel();
         void buildCtrl.exportZip(buildExportBtn);
     });
 
-    // STL-only export stub
-    document.getElementById('build-export-stl')?.addEventListener('click', () => {
-        if (exportMenu) exportMenu.hidden = true;
-        alert('STL export — coming soon');
-    });
-
-    // Share link
-    document.getElementById('build-share-link')?.addEventListener('click', () => {
-        if (exportMenu) exportMenu.hidden = true;
-        const url = window.location.href;
-        navigator.clipboard.writeText(url)
-            .then(() => alert('Link copied to clipboard!'))
-            .catch(() => alert(`Share this link:\n${url}`));
-    });
 }
-
-// ── Robot picker button: scrolls the carousel visible on mobile ───────────
-document.getElementById('robot-picker-btn')?.addEventListener('click', () => {
-    const shell = document.querySelector<HTMLElement>('.robot-shell');
-    if (shell) shell.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    robotsPanel.querySelector<HTMLButtonElement>('.robot-btn.active')?.focus();
-});
 
 // ── Build panel elements ──────────────────────────────────────────────────
 const buildExportBtn        = $<HTMLButtonElement>('build-export');
@@ -647,8 +580,6 @@ const buildActiveNameEl     = $('build-active-name');
 const buildClearCustomBtn   = $<HTMLButtonElement>('build-clear-custom');
 const buildShortcutsToggle  = $<HTMLButtonElement>('build-shortcuts-toggle');
 const buildShortcutsEl      = $('build-shortcuts');
-const buildCompCountEl      = document.getElementById('build-comp-count');
-const buildCompEmptyEl      = document.getElementById('build-comp-empty') as HTMLElement | null;
 const buildInspEl           = $('build-inspector');
 const buildInspTitle        = $('build-inspector-title');
 const buildInspBody         = $('build-inspector-body');
@@ -754,8 +685,8 @@ buildNewCreateBtn.addEventListener('click', () => {
     buildCtrl.initFromScratch(buildNewNameEl.value);
     buildCtrl.open();
     $('tab-build').click();
-    robotCarousel.refreshSavedList();
-    robotCarousel.refreshBuildHeader();
+    robotPicker.refreshSavedList();
+    robotPicker.refreshBuildHeader();
     refreshPaletteCounts();
 });
 
@@ -770,7 +701,7 @@ buildClearCustomBtn.addEventListener('click', () => {
     buildActiveHeaderEl.hidden = true;
     buildSavedListEl.hidden = true;
     buildSavedToggleBtn.setAttribute('aria-expanded', 'false');
-    robotCarousel.refreshSavedList();
+    robotPicker.refreshSavedList();
 });
 
 buildShortcutsToggle.addEventListener('click', (e) => {
@@ -782,13 +713,14 @@ const paletteBadges
  = new Map<string, HTMLSpanElement>();
 
 function refreshPaletteCounts(): void {
-    _refreshPaletteCounts(buildCtrl, paletteBadges, buildCompCountEl, buildCompEmptyEl);
+    _refreshPaletteCounts(buildCtrl, paletteBadges);
 }
 
-// ── Robot carousel ─────────────────────────────────────────────────────────
-const robotCarousel = new RobotCarousel({
-    robotsPanel,
-    robotTrackSlider,
+// ── Robot picker dropdown ──────────────────────────────────────────────────
+const robotPicker = new RobotPicker({
+    pickerBtn:    $<HTMLButtonElement>('robot-picker-btn'),
+    pickerMenu:   $('robot-picker-menu'),
+    pickerNameEl: $('robot-picker-name'),
     buildCtrl,
     buildActiveHeaderEl,
     buildActiveNameEl,
@@ -800,8 +732,8 @@ const robotCarousel = new RobotCarousel({
     refreshPaletteCounts,
     getRobotLoader: () => robotLoader,
 });
-robotCarousel.refreshSavedList();
-robotCarousel.refreshBuildHeader();
+robotPicker.refreshSavedList();
+robotPicker.refreshBuildHeader();
 
 // ── Robot loader ───────────────────────────────────────────────────────────
 const robotLoader = new RobotLoader({
@@ -810,15 +742,9 @@ const robotLoader = new RobotLoader({
     onSimSourceChange: (src) => simCtrl.setSource(src),
     syncSlidersFromController,
     refreshPaletteCounts,
-    refreshBuildHeader: () => robotCarousel.refreshBuildHeader(),
+    refreshBuildHeader: () => robotPicker.refreshBuildHeader(),
     onRobotSelected(robot) {
-        robotCarousel.clearActiveRobot();
-        const btn = robot.name
-            ? robotsPanel.querySelector<HTMLButtonElement>(`.robot-btn[data-name="${robot.name}"]`)
-            : null;
-        if (btn) { btn.classList.add('active'); robotCarousel.moveSliderTo(btn); }
-        const pickerName = document.getElementById('robot-picker-name');
-        if (pickerName && robot.name) pickerName.textContent = robot.name;
+        if (robot.name) robotPicker.setActive(robot.name);
     },
 });
 
@@ -832,7 +758,6 @@ initKeyboardHandler({
 });
 
 // ── Load robot catalog and start initial robot ─────────────────────────────
-robotTrackSlider.style.transition = 'none';
 fetch('/robots/catalog.json')
     .then(r => r.ok ? r.json() as Promise<{ version: number; robots: CatalogEntry[] }> : Promise.reject())
     .then(catalog => { ROBOTS = catalog.robots.map(catalogToConfig); })
@@ -849,13 +774,10 @@ fetch('/robots/catalog.json')
         ];
     })
     .finally(() => {
-        robotCarousel.buildRobotButtons(ROBOTS);
+        robotPicker.buildRobotItems(ROBOTS);
         const paramId = new URLSearchParams(location.search).get('robot');
         const startIdx = paramId ? Math.max(0, ROBOTS.findIndex(r => r.id === paramId)) : 0;
         robotLoader.load(ROBOTS[startIdx], startIdx);
-        requestAnimationFrame(() => requestAnimationFrame(() => {
-            robotTrackSlider.style.transition = '';
-        }));
     });
 
 for (const [type, def] of Object.entries(COMPONENT_CATALOG)) {
@@ -933,8 +855,8 @@ document.querySelectorAll<HTMLButtonElement>('.build-section-detach').forEach(bt
                 });
             }
             buildCtrl.open();
-            robotCarousel.refreshSavedList();
-            robotCarousel.refreshBuildHeader();
+            robotPicker.refreshSavedList();
+            robotPicker.refreshBuildHeader();
             refreshPaletteCounts();
             $<HTMLButtonElement>('tab-build').click();
             chatCtrl?.syncToolCount();

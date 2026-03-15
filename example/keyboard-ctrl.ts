@@ -1,7 +1,7 @@
 // ── Keyboard controller ────────────────────────────────────────────────────
 //
 // Extracted from main.ts. Registers document-level keydown handlers for
-// build-mode shortcuts and robot carousel navigation.
+// build-mode shortcuts and robot navigation.
 
 import type { URDFBuildController } from './build.js';
 import type { ComponentCrudController } from './component-crud.js';
@@ -64,7 +64,7 @@ export function initKeyboardHandler(opts: KeyboardCtrlOptions): void {
             }
         }
 
-        // ── Robot carousel navigation (ArrowLeft / ArrowRight) ────────────
+        // ── Robot navigation (ArrowLeft / ArrowRight) ────────────────────
         if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
         const el = document.activeElement as HTMLElement;
         if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable) return;

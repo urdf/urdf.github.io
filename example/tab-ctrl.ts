@@ -30,7 +30,7 @@ function _setActiveAdvTab(tab: string): void {
     const advPanel = document.getElementById('adv-panel');
     advPanel?.setAttribute('data-adv-tab', tab);
     for (const btn of document.querySelectorAll<HTMLButtonElement>('.adv-tab'))
-        btn.setAttribute('aria-selected', btn.dataset.tab === tab || btn.dataset.advTab === tab ? 'true' : 'false');
+        btn.setAttribute('aria-selected', btn.dataset.advTab === tab ? 'true' : 'false');
 }
 
 function _setAdvContext(tab: string): void {
@@ -71,7 +71,6 @@ export function initTabSwitching(opts: TabCtrlOptions): void {
         getGizmoCtrl()?.onBuildClose();
         buildGrid.visible    = false;
         viewportGrid.visible = true;
-        document.body.classList.remove('meshes-open');
         _syncTabUi('inspect');
         _setActiveTab('inspect');
     });
@@ -83,7 +82,6 @@ export function initTabSwitching(opts: TabCtrlOptions): void {
         buildGrid.visible    = false;
         viewportGrid.visible = true;
         chatInput.placeholder = 'Ask AI to edit this URDF…';
-        document.body.classList.remove('meshes-open');
         openAdvPanelIfClosed();
         _syncTabUi('editor');
         _setActiveTab('editor');
@@ -98,19 +96,10 @@ export function initTabSwitching(opts: TabCtrlOptions): void {
         buildGrid.position.y = viewer.shadowPlane.position.y;
         chatInput.placeholder = 'Ask AI to add or modify components…';
         libTabCtrl.buildLibraryGrid();
-        document.body.classList.remove('meshes-open');
         openAdvPanelIfClosed();
         _syncTabUi('build');
         _setActiveTab('build');
     });
-
-    // Adv-panel tab buttons mirror the mode pill buttons
-    document.getElementById('adv-tab-inspect')?.addEventListener('click', () =>
-        document.getElementById('tab-inspect')?.click());
-    document.getElementById('adv-tab-editor')?.addEventListener('click', () =>
-        document.getElementById('tab-editor')?.click());
-    document.getElementById('adv-tab-build')?.addEventListener('click', () =>
-        document.getElementById('tab-build')?.click());
 
     // Meshes tab — adv-panel only (no mode-pill button)
     document.getElementById('adv-tab-meshes')?.addEventListener('click', () => {
@@ -119,10 +108,9 @@ export function initTabSwitching(opts: TabCtrlOptions): void {
         getGizmoCtrl()?.onBuildClose();
         buildGrid.visible    = false;
         viewportGrid.visible = true;
-        document.body.classList.add('meshes-open');
         openAdvPanelIfClosed();
-        for (const btn of document.querySelectorAll<HTMLButtonElement>('.mode-btn.tab-btn'))
-            btn.setAttribute('aria-selected', 'false');
+        // Viewport reverts to Control behavior; reflect that in the mode pill
+        _setActiveTab('inspect');
         _syncTabUi('meshes');
     });
 

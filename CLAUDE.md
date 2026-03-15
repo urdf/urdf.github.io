@@ -109,11 +109,10 @@ CSS variables live in `:root`. Scrollable region is `.sidebar-scroll` (flex: 1, 
 - Component cards: Position + Size always visible; advanced fields (Rotation, Joint, Axis, Limits, Preview)
   in `<details class="build-comp-advanced">` (collapsed for fixed joints; auto-opens on non-fixed).
 
-**Chat pane:** Height 160 px (`--chat-h`, `localStorage` key `urdf-chat-h`). Appears in Editor and Build tabs only
-(hidden via `body:not(.editor-open):not(.build-open)` CSS rule). `#library-panel` is ordered before the chat
-elements in the DOM so all tab bodies are siblings above the chat pane — this keeps the chat anchored at the
-bottom regardless of which tab is active. Placeholder text updates on tab switch: Editor → "Ask AI to edit
-this URDF…", Build → "Ask AI to add or modify components…".
+**AI tab:** Chat lives inside the AI tab (`#ai-panel`, `data-adv-tab="ai"`) in the advanced panel.
+`URDFChatController` owns the chat pane. It dispatches: editor tab active → `editorCtrl.handleExternalInput(text)`;
+`/cmd` → slash command exec; else → build AI. The model selector (`#chat-model-select`) is inside the
+AI tab compose toolbar.
 
 ## Gesture mode (`example/gesture.ts`)
 
