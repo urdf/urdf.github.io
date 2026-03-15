@@ -109,6 +109,11 @@ CSS variables live in `:root`. Scrollable region is `.sidebar-scroll` (flex: 1, 
 - Component cards: Position + Size always visible; advanced fields (Rotation, Joint, Axis, Limits, Preview)
   in `<details class="build-comp-advanced">` (collapsed for fixed joints; auto-opens on non-fixed).
 
+**Unified navigation:** All tabs live in the viewport mode pill: Control, Build, XML | AI, Mesh.
+A visual separator divides viewport-mode tabs (left) from panel-content tabs (right).
+AI and Mesh open the panel but don't change viewport interaction (orbit, click-to-inspect stay active).
+The panel has no tab bar of its own; `data-adv-tab` on the panel element controls which tab-body is visible.
+
 **AI tab:** Chat lives inside the AI tab (`#ai-panel`, `data-adv-tab="ai"`) in the advanced panel.
 `URDFChatController` owns the chat pane. It dispatches: editor tab active → `editorCtrl.handleExternalInput(text)`;
 `/cmd` → slash command exec; else → build AI. The model selector (`#chat-model-select`) is inside the

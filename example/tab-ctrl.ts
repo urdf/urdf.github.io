@@ -26,11 +26,9 @@ function _setActiveTab(tab: string): void {
         btn.setAttribute('aria-selected', btn.dataset.tab === tab ? 'true' : 'false');
 }
 
-function _setActiveAdvTab(tab: string): void {
+function _setAdvTab(tab: string): void {
     const advPanel = document.getElementById('adv-panel');
     advPanel?.setAttribute('data-adv-tab', tab);
-    for (const btn of document.querySelectorAll<HTMLButtonElement>('.adv-tab'))
-        btn.setAttribute('aria-selected', btn.dataset.advTab === tab ? 'true' : 'false');
 }
 
 function _setAdvContext(tab: string): void {
@@ -48,7 +46,7 @@ function _setAdvContext(tab: string): void {
 }
 
 function _syncTabUi(tab: string): void {
-    _setActiveAdvTab(tab);
+    _setAdvTab(tab);
     _setAdvContext(tab);
 }
 
@@ -101,23 +99,23 @@ export function initTabSwitching(opts: TabCtrlOptions): void {
         _setActiveTab('build');
     });
 
-    // Meshes tab — adv-panel only (no mode-pill button)
-    document.getElementById('adv-tab-meshes')?.addEventListener('click', () => {
+    // Mesh tab — mode pill button, opens panel with mesh content
+    document.getElementById('tab-meshes')?.addEventListener('click', () => {
         editorCtrl.close();
         buildCtrl.close();
         getGizmoCtrl()?.onBuildClose();
         buildGrid.visible    = false;
         viewportGrid.visible = true;
         openAdvPanelIfClosed();
-        // Viewport reverts to Control behavior; reflect that in the mode pill
-        _setActiveTab('inspect');
         _syncTabUi('meshes');
+        _setActiveTab('meshes');
     });
 
-    // AI tab is a utility overlay: preserve the current viewport mode and controllers
-    document.getElementById('adv-tab-ai')?.addEventListener('click', () => {
+    // AI tab — mode pill button, preserves current viewport controllers
+    document.getElementById('tab-ai')?.addEventListener('click', () => {
         openAdvPanelIfClosed();
         _syncTabUi('ai');
+        _setActiveTab('ai');
     });
 
     _setActiveTab('inspect');

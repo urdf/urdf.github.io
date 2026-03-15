@@ -239,27 +239,30 @@
       align-items: center;
       gap: 5px;
       padding: 6px 11px;
-      background: var(--action);
-      color: var(--on-accent);
-      border: none;
+      background: none;
+      color: var(--text-2);
+      border: 1px solid var(--border);
+      border-right: none;
       border-radius: 8px 0 0 8px;
       font-size: 0.75rem;
       font-weight: 500;
       cursor: pointer;
+      transition: background 0.1s, color 0.1s, border-color 0.1s;
     }
-    .export-main:hover { opacity: .88; }
+    .export-main:hover { background: var(--surface-hover); color: var(--text-1); }
 
     .export-caret {
       padding: 6px 8px;
-      background: hsl(220 100% 55%);
-      color: var(--on-accent);
-      border: none;
-      border-left: 1px solid hsl(220 100% 48%);
+      background: none;
+      color: var(--text-2);
+      border: 1px solid var(--border);
+      border-left-color: var(--border);
       border-radius: 0 8px 8px 0;
       font-size: 9px;
       cursor: pointer;
+      transition: background 0.1s, color 0.1s;
     }
-    .export-caret:hover { opacity: .88; }
+    .export-caret:hover { background: var(--surface-hover); color: var(--text-1); }
 
     .export-menu {
       position: absolute;
@@ -290,7 +293,7 @@
     .export-item:not(:last-child) { border-bottom: 1px solid var(--border); }
     .export-item:hover { background: var(--surface-hover); }
 
-    .export-item-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+    .export-item-icon { flex-shrink: 0; margin-top: 1px; color: var(--text-2); }
     .export-item-name { font-size: 0.75rem; font-weight: 500; display: block; color: var(--text-1); }
     .export-item-desc { font-size: 0.625rem; color: var(--text-3); margin-top: 2px; line-height: 1.4; display: block; }
 
@@ -329,7 +332,13 @@
       z-index: -1;
     }
     @media (prefers-color-scheme: light) {
-      .viewport::before { display: none; }
+      .viewport::before {
+        background-image:
+          linear-gradient(hsl(216 12% 82%) 1px, transparent 1px),
+          linear-gradient(90deg, hsl(216 12% 82%) 1px, transparent 1px),
+          linear-gradient(hsl(216 12% 84%) 1px, transparent 1px),
+          linear-gradient(90deg, hsl(216 12% 84%) 1px, transparent 1px);
+      }
     }
 
     /* ── Mode pill ────────────────────────────────────────────────────────── */
@@ -366,6 +375,24 @@
       color: var(--text-1);
     }
     .mode-btn:not([aria-selected="true"]):hover { color: var(--text-2); }
+
+    /* Separator between viewport modes (Control/Build/XML) and panel modes (AI/Mesh) */
+    .mode-sep {
+      width: 1px;
+      height: 14px;
+      background: var(--border);
+      flex-shrink: 0;
+      align-self: center;
+    }
+
+    .mode-icon { vertical-align: -2px; margin-right: 1px; }
+
+    @media (prefers-color-scheme: light) {
+      .mode-pill {
+        background: hsl(0 0% 100% / .88);
+        border-color: hsl(240 2% 78%);
+      }
+    }
 
     /* ── Part card (floating inspector) ──────────────────────────────────── */
 
@@ -419,6 +446,7 @@
 
     body.adv-open .part-card {
       right: calc(var(--adv-w, 400px) + 24px);
+      max-width: min(240px, calc(100vw - var(--adv-w, 400px) - 48px));
     }
 
     /* ── Advanced panel ───────────────────────────────────────────────────── */
@@ -485,35 +513,6 @@
       text-overflow: ellipsis;
     }
 
-    .adv-tabs {
-      display: flex;
-      flex-shrink: 0;
-      height: 40px;
-      border-bottom: 1px solid var(--border);
-      background: color-mix(in srgb, var(--surface) 92%, var(--surface-lo));
-    }
-
-    .adv-tab {
-      flex: 1;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 5px;
-      padding: 0 4px;
-      font-size: 0.6875rem;
-      color: var(--text-3);
-      border: none;
-      border-bottom: 2px solid transparent;
-      background: none;
-      cursor: pointer;
-      transition: color 0.1s, border-color 0.1s;
-      height: 100%;
-    }
-    .adv-tab:hover { color: var(--text-2); }
-    .adv-tab[aria-selected="true"] {
-      color: var(--blue-text);
-      border-bottom-color: var(--blue);
-    }
 
     .adv-close {
       width: 32px;
@@ -772,7 +771,7 @@
       flex: 1;
     }
 
-    #build-shortcuts-toggle { width: 18px; height: 18px; font-size: 10px; line-height: 1; }
+    #build-shortcuts-toggle { width: 24px; height: 24px; font-size: 11px; line-height: 1; }
 
     .build-shortcuts {
       padding: 4px 12px 6px;
@@ -1737,9 +1736,19 @@
 
     #gesture-toggle.active {
       background: var(--blue-bg);
-      border-color: var(--blue);
-      color: var(--blue-text);
+      border-color: var(--toggle-on-border);
+      color: var(--toggle-on-text);
       animation: gesture-pulse 2s ease-in-out infinite;
+    }
+
+    /* Dot indicator distinguishes toggle (boolean) from selector (pick-one) */
+    #gesture-toggle.active::before {
+      content: '';
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--blue);
+      flex-shrink: 0;
     }
 
     #gesture-toggle:active { transform: scale(0.95); }
@@ -2373,10 +2382,14 @@
       padding: 2px 7px;
     }
 
+    /* Toggle (boolean on/off) — distinct from selector pills via dot + square radius */
     #chat-brief-toggle {
+      display: flex;
+      align-items: center;
+      gap: 4px;
       background: none;
       border: 1px solid var(--border);
-      border-radius: var(--r-sm);
+      border-radius: 3px;
       color: var(--text-3);
       cursor: pointer;
       font-size: 0.625rem;
@@ -2393,6 +2406,15 @@
       background: var(--toggle-on-bg);
       border-color: var(--toggle-on-border);
       color: var(--toggle-on-text);
+    }
+
+    #chat-brief-toggle.active::before {
+      content: '';
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: var(--blue);
+      flex-shrink: 0;
     }
 
     .chat-continue-btn {
@@ -2551,12 +2573,14 @@
       .mode-pill { padding: 2px; }
       .mode-btn  { padding: 5px 10px; }
 
-      /* Topbar: compact on mobile but keep text visible */
-      .tb-btn { padding: 5px 8px; }
-      .export-main { padding: 5px 8px; }
+      /* Topbar: icon-only on mobile */
+      .tb-btn { padding: 5px 8px; font-size: 0; gap: 0; }
+      .tb-btn svg { font-size: initial; }
+      .export-main { padding: 5px 8px; font-size: 0; gap: 0; }
+      .export-main svg { font-size: initial; }
 
       /* Robot picker name truncates */
-      .robot-picker-name { max-width: 100px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .robot-picker-name { max-width: 80px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
       .chat-empty-actions {
         flex-direction: column;
@@ -2803,7 +2827,7 @@
       text-align: center;
     }
     .upload-zone:hover { border-color: var(--blue); background: var(--blue-bg); }
-    .upload-zone-icon { font-size: 20px; line-height: 1; }
+    .upload-zone-icon { font-size: 20px; line-height: 1; color: var(--text-3); }
     .upload-zone-label { font-size: 0.75rem; font-weight: 500; color: var(--text-2); }
     .upload-zone-sub { font-size: 0.625rem; color: var(--text-3); }
 
