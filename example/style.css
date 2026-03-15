@@ -845,8 +845,6 @@
     .build-footer-row { display: flex; gap: 6px; }
 
     #build-reset { margin-left: auto; }
-    #build-export { flex: 2; }
-    #build-copy-urdf { flex: 1; }
 
     /* ── Build action buttons (undo / redo) ───────────────────────────────── */
     .build-action-btn {
@@ -1048,7 +1046,6 @@
 
     /* ── Library tab ────────────────────────────────────────────────────── */
 
-    .library-toolbar { padding: 8px 12px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
     .lib-search-input {
       width: 100%; background: var(--surface-lo); border: 1px solid var(--border);
       border-radius: 6px; color: var(--text-1); font-size: 12px; padding: 5px 10px; outline: none;
@@ -1070,7 +1067,6 @@
     .lib-pill--active { background: var(--blue-bg); border-color: var(--blue); color: var(--blue-text); }
     .lib-pill:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
 
-    .lib-scroll { padding: 8px 12px; }
     .lib-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 
     .lib-card {
@@ -1100,20 +1096,12 @@
     .lib-card-add:disabled { opacity: 0.5; cursor: wait; }
     .lib-card-add:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
 
-    .lib-no-build, .lib-empty {
+    .lib-empty {
       font-size: 11px; color: var(--text-2); padding: 16px 4px; text-align: center;
       line-height: 1.5; margin: 0;
     }
 
     /* ── Section blocks ──────────────────────────────────────────────────── */
-
-    .section {
-      padding: 9px 12px;
-      border-bottom: 1px solid var(--border);
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-    }
 
     .section-label {
       font-size: 0.5rem;
@@ -2632,7 +2620,6 @@
     .badge-rev   { background: var(--purple-bg);  color: var(--purple);  border: 1px solid hsl(260 70% 68% / .2); }
     .badge-pris  { background: var(--warning-bg); color: var(--warning); border: 1px solid hsl(38 88% 58% / .2); }
     .badge-fixed { background: var(--surface-hover); color: var(--text-3); border: 1px solid var(--border); }
-    .badge-stl   { background: var(--purple-bg);  color: var(--purple);  border: 1px solid hsl(260 70% 68% / .2); }
     .badge-prim  { background: var(--surface-hover); color: var(--text-3); border: 1px solid var(--border); }
 
     /* ── Part card: property list ────────────────────────────────────────── */
@@ -2645,7 +2632,6 @@
     .pc-prop { display: flex; justify-content: space-between; font-size: 0.75rem; }
     .pc-prop-lbl { color: var(--text-2); }
     .pc-prop-val { color: var(--text-1); font-variant-numeric: tabular-nums; font-weight: 500; }
-    .pc-prop-val.changed { color: var(--cyan); }
 
     /* ── Part card: joint slider ─────────────────────────────────────────── */
 
@@ -2692,8 +2678,6 @@
     .pc-action:hover { border-color: hsl(228 12% 30%); color: var(--text-1); }
     .pc-action.details { background: var(--blue-bg); color: var(--blue-text); border-color: hsl(220 90% 64% / .2); flex: 2; }
     .pc-action.details:hover { background: hsl(220 90% 64% / .18); }
-    .pc-action.danger { color: hsl(3 90% 62% / .65); }
-    .pc-action.danger:hover { background: hsl(3 90% 62% / .1); color: var(--red); border-color: hsl(3 90% 62% / .2); }
 
     /* ── Conversation messages ────────────────────────────────────────────── */
 
@@ -2782,7 +2766,6 @@
     }
     .think-label { font-size: 0.75rem; color: var(--text-3); }
 
-    .convo-msgs { display: flex; flex-direction: column; gap: 7px; }
 
     .convo-history-btn {
       align-self: center; pointer-events: all;

@@ -96,7 +96,6 @@ upAxisEl.value = viewer.up;
 const inspectorEl          = $('inspector');
 const inspectorName        = $('inspector-name');
 const inspectorJointBadge  = $<HTMLSpanElement>('inspector-joint-badge');
-const inspectorGeomBadge   = $<HTMLSpanElement>('inspector-geom-badge');
 const inspectorProps       = $('inspector-props');
 const inspectorJointSection = $('inspector-joint-section');
 const inspectorJointVal    = $('inspector-joint-val');

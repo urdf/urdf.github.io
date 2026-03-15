@@ -91,7 +91,7 @@ Hole outside its zone's boundary causes earcut to create a phantom triangle. Sym
 ## Resizable panel
 
 W3C APG Window Splitter. `role="separator"` + `tabindex="0"`.
-Min 260 px, max min(700 px, 60 vw), default 380 px. `localStorage` key `urdf-panel-w`.
+Min 340 px, max min(700 px, 60 vw), default 400 px. `localStorage` key `urdf-adv-w`.
 **Do not** persist open/closed state. Hidden on mobile (`max-width: 768px`).
 
 ## Sidebar UI conventions
