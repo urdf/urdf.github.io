@@ -194,11 +194,12 @@ export class URDFChatController extends AISession {
             this._pauseResolve?.(true);
         });
 
-        // Detail toggle
+        // Detail toggle: label reflects current state (Brief → Verbose)
         this._detailBtn.addEventListener('click', () => {
             this._detailed = !this._detailed;
             this._detailBtn.classList.toggle('active', this._detailed);
             this._detailBtn.setAttribute('aria-pressed', String(this._detailed));
+            this._detailBtn.textContent = this._detailed ? 'Verbose' : 'Brief';
             this._cb.onBriefToggle(!this._detailed);
         });
 

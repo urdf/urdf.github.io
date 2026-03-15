@@ -118,6 +118,8 @@ export function initTabSwitching(opts: TabCtrlOptions): void {
         _setActiveTab('ai');
     });
 
-    _setActiveTab('inspect');
-    _syncTabUi('inspect');
+    // Default to AI tab — strongest value demonstration for first-time users
+    _setActiveTab('ai');
+    _syncTabUi('ai');
+    openAdvPanelIfClosed();
 }

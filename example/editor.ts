@@ -193,6 +193,7 @@ export class URDFEditorController extends AISession {
         this._detailed = !v;
         this._detailBtn.classList.toggle('active', this._detailed);
         this._detailBtn.setAttribute('aria-pressed', String(this._detailed));
+        this._detailBtn.textContent = this._detailed ? 'Verbose' : 'Brief';
     }
 
     async jumpToJoint(name: string): Promise<void> {

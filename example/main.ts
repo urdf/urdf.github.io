@@ -27,6 +27,7 @@ import { initTabSwitching } from './tab-ctrl.js';
 import { initKeyboardHandler } from './keyboard-ctrl.js';
 import { fmt, toLabel, linkNameFor } from './inspector-helpers.js';
 import { makeDefaultCubeSTL, DEFAULT_SCRIPT } from './default-script.js';
+import { updateDimensions, hideDimensions } from './dim-overlay.js';
 
 customElements.define('urdf-viewer', URDFManipulator);
 
@@ -51,14 +52,36 @@ const buildCtrl  = new URDFBuildController(viewer, buildNoticeEl);
 // ── Chat controller (constructed after all helpers are defined) ────────────
 let chatCtrl: URDFChatController;
 
-// Viewport grid: 2m × 2m, 100mm divisions — always visible for spatial reference
-const _viewportGrid = new GridHelper(2, 20, 0x888888, 0x444444);
+// Read grid colors from CSS variables (adapts to light/dark theme)
+function _cssColor(name: string, fallback: string): number {
+    const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    return parseInt((v || fallback).replace('#', ''), 16);
+}
+
+const _viewportGrid = new GridHelper(2, 20,
+    _cssColor('--grid-major', '888888'),
+    _cssColor('--grid-minor', '444444'));
 _viewportGrid.raycast = () => {};
-// Ground grid: 0.5m × 0.5m, 20mm divisions — visible only in Build mode
-const _buildGrid = new GridHelper(0.5, 25, 0x666666, 0x3d3d3d);
+const _buildGrid = new GridHelper(0.5, 25,
+    _cssColor('--grid-build-major', '666666'),
+    _cssColor('--grid-build-minor', '3d3d3d'));
 _buildGrid.visible = false;
 _buildGrid.raycast = () => {};
 requestAnimationFrame(() => { viewer.scene.add(_viewportGrid); viewer.scene.add(_buildGrid); });
+
+// Update grid colors when OS theme changes
+window.matchMedia('(prefers-color-scheme: light)').addEventListener('change', () => {
+    const setColors = (grid: GridHelper, major: string, minor: string) => {
+        const mat = grid.material as import('three').Material & { color?: import('three').Color };
+        if (Array.isArray(grid.material)) {
+            (grid.material[0] as { color?: import('three').Color }).color?.set(_cssColor(major, '888888'));
+            (grid.material[1] as { color?: import('three').Color }).color?.set(_cssColor(minor, '444444'));
+        }
+    };
+    setColors(_viewportGrid, '--grid-major', '--grid-minor');
+    setColors(_buildGrid, '--grid-build-major', '--grid-build-minor');
+    viewer.redraw();
+});
 
 const chatInput = $<HTMLTextAreaElement>('chat-input');
 
@@ -161,11 +184,13 @@ function selectPart(jointName: string | null): void {
     const joint = jointName ? viewer.robot?.joints[jointName] : null;
     if (!joint || !jointName) {
         inspectorEl.style.display = 'none';
+        hideDimensions();
         if (crudCtrl.getBuildSelPartName()) { crudCtrl.setBuildSelPartName(null); crudCtrl.updateContextPill(null); }
         return;
     }
 
     inspectorEl.style.display = '';
+    updateDimensions(viewer, jointName);
     inspectorName.textContent = toLabel(jointName);
 
     // ── Joint type badge ────────────────────────────────────────────────────
@@ -268,6 +293,11 @@ function selectPart(jointName: string | null): void {
 }
 
 inspectorClose.addEventListener('click', () => selectPart(null));
+
+// Update viewport dimension annotations when camera orbits
+viewer.controls.addEventListener('change', () => {
+    if (selectedJoint) updateDimensions(viewer, selectedJoint);
+});
 
 // ── New POC inspector action buttons ──────────────────────────────────────
 document.getElementById('inspector-details-btn')?.addEventListener('click', () => {
@@ -556,6 +586,12 @@ initPanel();
     document.getElementById('build-export-bundle')?.addEventListener('click', () => {
         if (exportMenu) exportMenu.hidden = true;
         void buildCtrl.exportZip(buildExportBtn);
+    });
+
+    // BOM export
+    document.getElementById('build-export-bom')?.addEventListener('click', () => {
+        if (exportMenu) exportMenu.hidden = true;
+        import('./bom-export.js').then(({ exportBomHtml }) => exportBomHtml(buildCtrl));
     });
 
 }
