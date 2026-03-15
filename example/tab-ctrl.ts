@@ -114,6 +114,7 @@ export function initTabSwitching(opts: TabCtrlOptions): void {
         _syncTabUi('meshes');
     });
 
+    // AI tab is a utility overlay: preserve the current viewport mode and controllers
     document.getElementById('adv-tab-ai')?.addEventListener('click', () => {
         openAdvPanelIfClosed();
         _syncTabUi('ai');
