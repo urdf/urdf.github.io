@@ -43,7 +43,7 @@ function _setAdvContext(tab: string): void {
             editor: 'XML',
             meshes: 'Mesh Files',
         };
-        advContext.textContent = titles[tab] ?? 'Advanced';
+        advContext.textContent = titles[tab] ?? '';
     }
 }
 

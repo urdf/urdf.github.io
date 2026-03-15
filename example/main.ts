@@ -523,11 +523,13 @@ gestureToggleBtn.addEventListener('click', async () => {
         onStop() {
             gestureCtrl = null;
             gestureToggleBtn.classList.remove('active');
+            gestureSectionEl.hidden = true;
         },
     });
     gestureCtrl.start()
         .then(() => {
             gestureToggleBtn.classList.add('active');
+            gestureSectionEl.hidden = false;
             gestureSectionEl.open = true;
         })
         .catch(() => {

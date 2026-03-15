@@ -35,9 +35,16 @@
       --jt-floating:   hsl(0, 75%, 65%);
       --jt-planar:     hsl(142, 65%, 55%);
       /* radius scale */
+      --r-sm:         4px;
       --r:            8px;
-      --r-lg:         14px;
+      --r-lg:         12px;
       --r-xl:         20px;
+      /* semantic action colors — separate behavioral classes from --blue */
+      --action:       var(--blue);
+      --action-hover: var(--blue-hover);
+      --toggle-on-bg: hsl(220 100% 65% / 0.12);
+      --toggle-on-border: hsl(220 100% 65% / .2);
+      --toggle-on-text: hsl(220, 80%, 75%);
       /* z-index layer scale */
       --z-base:       1;
       --z-mode-pill:  10;
@@ -165,15 +172,6 @@
     }
     .robot-picker-btn:hover { background: var(--surface-hover); }
     .robot-picker-name { color: var(--text-1); }
-    .status-dot {
-      width: 7px;
-      height: 7px;
-      border-radius: 999px;
-      background: var(--green);
-      box-shadow: 0 0 6px color-mix(in srgb, var(--green) 80%, transparent);
-      flex-shrink: 0;
-    }
-
     .tb-sep {
       width: 1px;
       height: 20px;
@@ -215,8 +213,8 @@
       align-items: center;
       gap: 5px;
       padding: 6px 11px;
-      border-radius: var(--r, 8px);
-      border: 1px solid transparent;
+      border-radius: var(--r);
+      border: 1px solid var(--border);
       background: none;
       font-size: 0.75rem;
       color: var(--text-2);
@@ -226,9 +224,9 @@
     }
     .tb-btn:hover { background: var(--surface-hover); color: var(--text-1); }
     .tb-btn.active, .tb-btn.on {
-      background: var(--blue-bg);
-      color: var(--blue-text);
-      border-color: hsl(220 100% 65% / .2);
+      background: var(--toggle-on-bg);
+      color: var(--toggle-on-text);
+      border-color: var(--toggle-on-border);
     }
     .tb-caret { opacity: .5; }
 
@@ -241,7 +239,7 @@
       align-items: center;
       gap: 5px;
       padding: 6px 11px;
-      background: var(--blue);
+      background: var(--action);
       color: var(--on-accent);
       border: none;
       border-radius: 8px 0 0 8px;
@@ -478,16 +476,8 @@
       padding: 10px 0 9px;
     }
 
-    .adv-title {
-      font-size: 0.5625rem;
-      font-weight: 700;
-      letter-spacing: 0.09em;
-      text-transform: uppercase;
-      color: var(--text-3);
-    }
-
     .adv-context {
-      font-size: 0.8125rem;
+      font-size: 0.875rem;
       font-weight: 600;
       color: var(--text-1);
       white-space: nowrap;
@@ -533,7 +523,7 @@
       justify-content: center;
       color: var(--text-3);
       border: none;
-      border-radius: 6px;
+      border-radius: var(--r);
       background: none;
       transition: background 0.1s, color 0.1s;
       flex-shrink: 0;
@@ -622,12 +612,12 @@
     .palette-btn {
       flex: none;
       position: relative;
-      font-size: 11px;
+      font-size: 0.6875rem;
       padding: 4px 8px;
       height: auto;
       background: none;
       border: none;
-      border-radius: 7px;
+      border-radius: var(--r);
       color: var(--text-2);
       cursor: pointer;
       font-weight: 500;
@@ -642,7 +632,7 @@
       position: absolute;
       top: 2px;
       right: 3px;
-      font-size: 9px;
+      font-size: 0.5625rem;
       line-height: 1;
       color: var(--blue);
       display: none;
@@ -715,17 +705,17 @@
       display: block;
       width: 100%;
       padding: 8px 0;
-      background: var(--blue);
+      background: var(--action);
       color: var(--on-accent);
       border: none;
-      border-radius: 6px;
-      font-size: 12px;
+      border-radius: var(--r);
+      font-size: 0.75rem;
       font-weight: 600;
       cursor: pointer;
       letter-spacing: 0.02em;
     }
 
-    .build-export-btn:hover  { background: var(--blue-hover); }
+    .build-export-btn:hover  { background: var(--action-hover); }
     .build-export-btn:active { transform: scale(0.98); }
     .build-export-btn:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
 
@@ -735,15 +725,15 @@
       width: 100%;
       padding: 8px 0;
       background: none;
-      color: var(--blue-text);
-      border: 1px solid var(--blue);
-      border-radius: 6px;
-      font-size: 12px;
+      color: var(--toggle-on-text);
+      border: 1px solid var(--action);
+      border-radius: var(--r);
+      font-size: 0.75rem;
       font-weight: 600;
       cursor: pointer;
       letter-spacing: 0.02em;
     }
-    .build-secondary-btn:hover  { background: var(--blue-bg); }
+    .build-secondary-btn:hover  { background: var(--toggle-on-bg); }
     .build-secondary-btn:active { transform: scale(0.98); }
     .build-secondary-btn:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
 
@@ -772,7 +762,7 @@
     }
 
     .build-active-name {
-      font-size: 11px;
+      font-size: 0.6875rem;
       font-weight: 600;
       color: var(--text-1);
       opacity: 0.7;
@@ -815,14 +805,14 @@
 
     .build-saved-name {
       flex: 1;
-      font-size: 11px;
+      font-size: 0.6875rem;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
       color: var(--text-1);
     }
 
-    .build-saved-load { padding: 2px 8px; font-size: 10px; flex-shrink: 0; }
+    .build-saved-load { padding: 2px 8px; font-size: 0.625rem; flex-shrink: 0; }
 
     .build-palette-header {
       display: flex;
@@ -851,7 +841,7 @@
     .build-action-btn {
       background: none;
       border: 1px solid var(--border);
-      border-radius: 7px;
+      border-radius: var(--r);
       padding: 4px 12px;
       font-size: 0.6875rem;
       font-weight: 500;
@@ -1015,8 +1005,8 @@
       padding: 3px 8px;
       background: var(--bg);
       border: 1px solid var(--border);
-      border-radius: 4px;
-      font-size: 11px;
+      border-radius: var(--r-sm);
+      font-size: 0.6875rem;
       color: var(--text-1);
       pointer-events: none;
       display: none;
@@ -1058,8 +1048,8 @@
       border-bottom: 1px solid var(--border); flex-shrink: 0;
     }
     .lib-pill {
-      background: var(--surface-lo); border: 1px solid var(--border); border-radius: 12px;
-      color: var(--text-2); font-size: 10px; font-weight: 500; padding: 3px 8px;
+      background: var(--surface-lo); border: 1px solid var(--border); border-radius: var(--r-lg);
+      color: var(--text-2); font-size: 0.625rem; font-weight: 500; padding: 3px 8px;
       transition: background 0.1s, color 0.1s, border-color 0.1s; white-space: nowrap; cursor: pointer;
     }
     .lib-pill:hover { color: var(--text-1); border-color: var(--text-2); }
@@ -1080,23 +1070,23 @@
     }
 
     .lib-card-info { padding: 6px 8px 8px; flex: 1; display: flex; flex-direction: column; gap: 3px; }
-    .lib-card-name { font-size: 11px; font-weight: 600; color: var(--text-1); }
+    .lib-card-name { font-size: 0.6875rem; font-weight: 600; color: var(--text-1); }
     .lib-card-meta { display: flex; align-items: center; justify-content: space-between; gap: 4px; }
-    .lib-card-cat  { font-size: 9px; font-weight: 500; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.05em; }
-    .lib-card-dims { font-size: 9px; color: var(--text-3); font-family: ui-monospace, monospace; }
+    .lib-card-cat  { font-size: 0.5625rem; font-weight: 500; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.05em; }
+    .lib-card-dims { font-size: 0.5625rem; color: var(--text-3); font-family: ui-monospace, monospace; }
 
     .lib-card-add {
-      margin-top: 4px; width: 100%; background: var(--blue); border: none; border-radius: 4px;
-      color: var(--on-accent); font-size: 10px; font-weight: 600; padding: 5px 0;
+      margin-top: 4px; width: 100%; background: var(--action); border: none; border-radius: var(--r-sm);
+      color: var(--on-accent); font-size: 0.625rem; font-weight: 600; padding: 5px 0;
       transition: background 0.1s; cursor: pointer;
     }
-    .lib-card-add:hover   { background: var(--blue-hover); }
+    .lib-card-add:hover   { background: var(--action-hover); }
     .lib-card-add:active  { transform: scale(0.98); }
     .lib-card-add:disabled { opacity: 0.5; cursor: wait; }
     .lib-card-add:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
 
     .lib-empty {
-      font-size: 11px; color: var(--text-2); padding: 16px 4px; text-align: center;
+      font-size: 0.6875rem; color: var(--text-2); padding: 16px 4px; text-align: center;
       line-height: 1.5; margin: 0;
     }
 
@@ -1128,7 +1118,7 @@
       backdrop-filter: blur(16px) saturate(160%);
       -webkit-backdrop-filter: blur(16px) saturate(160%);
       border: 1px solid var(--border);
-      border-radius: 10px;
+      border-radius: var(--r-lg);
       box-shadow: 0 8px 32px var(--shadow);
       padding: 4px;
       z-index: var(--z-carousel);
@@ -1145,7 +1135,7 @@
       color: var(--text-2);
       cursor: pointer;
       text-align: left;
-      border-radius: 7px;
+      border-radius: var(--r);
       transition: background 0.1s, color 0.1s;
     }
 
@@ -1486,8 +1476,8 @@
       background: color-mix(in srgb, var(--red) 92%, transparent);
       color: var(--on-accent);
       padding: 8px 10px 8px 12px;
-      border-radius: 6px;
-      font-size: 11px;
+      border-radius: var(--r);
+      font-size: 0.6875rem;
       line-height: 1.5;
       display: none;
       align-items: flex-start;
@@ -2076,9 +2066,9 @@
 
     .chat-continue-bubble {
       align-self: flex-start;
-      border: 1px solid color-mix(in srgb, var(--blue) 40%, transparent);
-      border-radius: 8px;
-      background: var(--blue);
+      border: 1px solid color-mix(in srgb, var(--action) 40%, transparent);
+      border-radius: var(--r);
+      background: var(--action);
       color: var(--on-accent);
       font-size: 0.6875rem;
       font-weight: 500;
@@ -2087,7 +2077,7 @@
       cursor: pointer;
       max-width: 100%;
     }
-    .chat-continue-bubble:hover { background: var(--blue-hover); }
+    .chat-continue-bubble:hover { background: var(--action-hover); }
     .chat-continue-bubble:active { transform: scale(0.97); }
 
     /* ── Panel recap card ─────────────────────────────────────────────────── */
@@ -2097,7 +2087,7 @@
       background: var(--surface);
       border: 1px solid var(--border);
       border-left: 2px solid var(--text-3);
-      border-radius: 6px;
+      border-radius: var(--r);
       padding: 6px 10px;
       font-size: 0.625rem;
       display: flex;
@@ -2126,7 +2116,7 @@
       background: var(--surface);
       border: 1px solid var(--border);
       border-left: 2px solid var(--blue);
-      border-radius: 6px;
+      border-radius: var(--r);
       padding: 8px 10px;
       font-size: 0.6875rem;
       display: flex;
@@ -2234,7 +2224,7 @@
       transition: opacity 0.12s, transform 0.1s, background 0.12s;
     }
 
-    .chat-send-btn { background: var(--blue); color: var(--on-accent); }
+    .chat-send-btn { background: var(--action); color: var(--on-accent); }
     .chat-send-btn:hover:not(:disabled) { opacity: .88; transform: translateY(-50%) scale(1.04); }
     .chat-send-btn:active { transform: translateY(-50%) scale(0.92); }
     .chat-send-btn:disabled { opacity: 0.3; cursor: default; }
@@ -2386,7 +2376,7 @@
     #chat-brief-toggle {
       background: none;
       border: 1px solid var(--border);
-      border-radius: 999px;
+      border-radius: var(--r-sm);
       color: var(--text-3);
       cursor: pointer;
       font-size: 0.625rem;
@@ -2400,18 +2390,18 @@
     #chat-brief-toggle:hover { border-color: var(--text-2); color: var(--text-2); }
 
     #chat-brief-toggle.active {
-      background: var(--blue-bg);
-      border-color: var(--blue);
-      color: var(--blue-text);
+      background: var(--toggle-on-bg);
+      border-color: var(--toggle-on-border);
+      color: var(--toggle-on-text);
     }
 
     .chat-continue-btn {
-      width: 100%; padding: 10px; border-radius: 8px;
-      background: var(--blue); color: var(--on-accent); border: none;
+      width: 100%; padding: 10px; border-radius: var(--r);
+      background: var(--action); color: var(--on-accent); border: none;
       font-size: 0.875rem; font-weight: 500; cursor: pointer;
       transition: background 0.15s; margin-top: 4px;
     }
-    .chat-continue-btn:hover { background: var(--blue-hover); }
+    .chat-continue-btn:hover { background: var(--action-hover); }
 
     /* ── Chat context bar + pills ────────────────────────────────────────── */
 
@@ -2529,15 +2519,17 @@
 
     /* Detach button inside sidebar section summaries */
     .build-section-detach {
-      background: none; border: none; padding: 1px 4px;
-      color: var(--label); cursor: pointer; font-size: 11px;
-      border-radius: 4px; line-height: 1; flex-shrink: 0;
-      opacity: 0.45;
-      transition: opacity 0.12s, color 0.12s, background 0.12s;
+      background: none; border: 1px solid transparent; padding: 1px 4px;
+      color: var(--text-3); cursor: pointer; font-size: 0.6875rem;
+      border-radius: var(--r-sm); line-height: 1; flex-shrink: 0;
+      transition: opacity 0.12s, color 0.12s, background 0.12s, border-color 0.12s;
     }
-    .build-section > summary:hover .build-section-detach,
-    .build-section > summary:focus-within .build-section-detach { opacity: 1; color: var(--text-2); }
-    .build-section-detach:hover { color: var(--text-1); background: var(--surface-hover); }
+    .build-section-detach:hover { color: var(--text-1); background: var(--surface-hover); border-color: var(--border); }
+    @media (hover: hover) {
+      .build-section-detach { opacity: 0; }
+      .build-section > summary:hover .build-section-detach,
+      .build-section > summary:focus-within .build-section-detach { opacity: 1; }
+    }
 
     /* ── Utility: initial hidden state for elements toggled by JS ─────────── */
     #resize-tooltip   { display: none; }
@@ -2559,11 +2551,9 @@
       .mode-pill { padding: 2px; }
       .mode-btn  { padding: 5px 10px; }
 
-      /* Topbar: icon-only buttons on mobile (aria-label carries the meaning) */
-      .tb-btn { padding: 6px 8px; font-size: 0; gap: 0; }
-      .tb-btn svg { font-size: initial; }
-      .export-main { padding: 6px 8px; font-size: 0; gap: 0; }
-      .export-main svg { font-size: initial; }
+      /* Topbar: compact on mobile but keep text visible */
+      .tb-btn { padding: 5px 8px; }
+      .export-main { padding: 5px 8px; }
 
       /* Robot picker name truncates */
       .robot-picker-name { max-width: 100px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
