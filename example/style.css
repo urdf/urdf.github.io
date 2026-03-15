@@ -282,6 +282,12 @@
       gap: 10px;
       padding: 10px 14px;
       cursor: pointer;
+      background: none;
+      border: none;
+      color: inherit;
+      font: inherit;
+      text-align: left;
+      width: 100%;
     }
     .export-item:not(:last-child) { border-bottom: 1px solid var(--border); }
     .export-item:hover { background: var(--surface-hover); }
@@ -1041,8 +1047,6 @@
       color: var(--text-3);
       font-weight: 400;
     }
-
-    /* Tab-body visibility is now handled by the .active class added by JS */
 
     /* ── Library tab ────────────────────────────────────────────────────── */
 
@@ -2620,7 +2624,6 @@
     .badge-rev   { background: var(--purple-bg);  color: var(--purple);  border: 1px solid hsl(260 70% 68% / .2); }
     .badge-pris  { background: var(--warning-bg); color: var(--warning); border: 1px solid hsl(38 88% 58% / .2); }
     .badge-fixed { background: var(--surface-hover); color: var(--text-3); border: 1px solid var(--border); }
-    .badge-prim  { background: var(--surface-hover); color: var(--text-3); border: 1px solid var(--border); }
 
     /* ── Part card: property list ────────────────────────────────────────── */
 
@@ -2810,6 +2813,7 @@
       background: var(--surface-hover);
       transition: border-color .1s, color .1s;
       white-space: nowrap;
+      cursor: pointer;
     }
     .m-btn:hover { border-color: hsl(228 12% 32%); color: var(--text-1); }
 
