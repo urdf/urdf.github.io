@@ -113,6 +113,7 @@ let selectedJoint: string | null = null;
 let hoveredJointName: string | null = null;
 let gestureCtrl: GestureController | null = null;
 let gizmoCtrl: GizmoController | null = null;
+let _sliderListener: ((e: Event) => void) | null = null;
 
 function refreshSnippet(): void {
     if (!selectedJoint || !viewer.robot) return;
@@ -222,16 +223,10 @@ function selectPart(jointName: string | null): void {
             ? `${(currentAngle * 1000).toFixed(1)} mm`
             : `${(currentAngle * 180 / Math.PI).toFixed(1)}°`;
 
-        // Replace slider listener (clone to remove old listeners)
-        const newSldr = inspectorJointSldr.cloneNode(true) as HTMLInputElement;
-        newSldr.min   = inspectorJointSldr.min;
-        newSldr.max   = inspectorJointSldr.max;
-        newSldr.value = inspectorJointSldr.value;
-        inspectorJointSldr.replaceWith(newSldr);
-        // Re-assign reference via DOM lookup (const ref can't be reassigned)
-        const liveSldr = document.getElementById('inspector-joint-sldr') as HTMLInputElement;
-        liveSldr.addEventListener('input', () => {
-            const raw = parseFloat(liveSldr.value);
+        // Swap listener on the same DOM node (avoids broken clone-and-replace)
+        if (_sliderListener) inspectorJointSldr.removeEventListener('input', _sliderListener);
+        _sliderListener = () => {
+            const raw = parseFloat(inspectorJointSldr.value);
             const rad = isPrismatic ? raw / 1000 : raw * (Math.PI / 180);
             if (viewer.robot && jointName) {
                 (viewer.robot.joints[jointName] as { setJointValue?: (v: number) => void }).setJointValue?.(rad);
@@ -240,7 +235,8 @@ function selectPart(jointName: string | null): void {
             inspectorJointVal.textContent = isPrismatic
                 ? `${raw.toFixed(1)} mm`
                 : `${raw.toFixed(1)}°`;
-        });
+        };
+        inspectorJointSldr.addEventListener('input', _sliderListener);
     }
 
     inspectorState.x = p.x;
