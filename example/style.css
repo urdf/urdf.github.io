@@ -1,10 +1,10 @@
     /* ── Design tokens ───────────────────────────────────────────────────── */
 
     :root {
-      --viewport-bg:   hsl(228, 22%, 8%);
-      --bg:            hsl(228, 22%, 8%);
+      --viewport-bg:   hsl(228, 22%, 7%);
+      --bg:            hsl(228, 20%, 10%);
       --surface:       hsl(228, 18%, 12%);
-      --surface-lo:    hsl(228, 22%, 8%);
+      --surface-lo:    hsl(228, 20%, 9%);
       --surface-hover: hsl(228, 16%, 17%);
       --border:        hsl(228, 14%, 20%);
       --text-1:        hsl(220, 30%, 93%);
@@ -1472,6 +1472,14 @@
     .joint[data-joint-type="prismatic"]  input[type=range] { accent-color: var(--jt-prismatic); }
     .joint[data-joint-type="floating"]   input[type=range] { accent-color: var(--jt-floating); }
     .joint[data-joint-type="fixed"]      input[type=range] { accent-color: var(--jt-fixed); }
+
+    /* Precision numeric inputs: monospace for tabular alignment */
+    .joint-row input[type=number],
+    .inspector-xyz-col input[type=number],
+    .inspector-row input[type=number],
+    .float-panel-row-inputs input[type=number] {
+      font-family: ui-monospace, monospace;
+    }
 
     .joint-row input[type=number] {
       width: 58px;
