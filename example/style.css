@@ -166,8 +166,10 @@
       align-items: center;
       padding: 0 16px;
       gap: 8px;
-      background: var(--surface);
-      border-bottom: 1px solid var(--border);
+      background: hsl(228 18% 12% / .82);
+      backdrop-filter: blur(20px) saturate(140%);
+      -webkit-backdrop-filter: blur(20px) saturate(140%);
+      border-bottom: 1px solid hsl(228 14% 20% / .6);
       flex-shrink: 0;
       z-index: var(--z-topbar);
     }
@@ -316,10 +318,12 @@
       top: calc(100% + 5px);
       right: 0;
       width: 220px;
-      background: var(--surface);
-      border: 1px solid var(--border);
+      background: hsl(228 18% 12% / .82);
+      backdrop-filter: blur(24px) saturate(140%);
+      -webkit-backdrop-filter: blur(24px) saturate(140%);
+      border: 1px solid hsl(228 14% 28% / .4);
       border-radius: 12px;
-      box-shadow: 0 8px 32px hsl(0 0% 0% / .5);
+      box-shadow: 0 12px 40px hsl(0 0% 0% / .5);
       overflow: hidden;
       z-index: var(--z-export);
     }
@@ -426,12 +430,30 @@
     .mode-icon { vertical-align: -2px; margin-right: 1px; }
 
     @media (prefers-color-scheme: light) {
+      .topbar {
+        background: hsl(0 0% 100% / .78);
+        border-bottom-color: hsl(240 2% 78% / .6);
+      }
       .mode-pill {
         background: hsl(0 0% 100% / .88);
         border-color: hsl(240 2% 78%);
       }
       .mode-btn[aria-selected="true"] {
         background: hsl(240 5% 82%);
+      }
+      .part-card {
+        background: hsl(0 0% 100% / .82);
+        border-color: hsl(240 2% 78% / .5);
+        box-shadow: 0 8px 32px hsl(0 0% 0% / .12), 0 0 0 1px hsl(240 2% 78% / .3);
+      }
+      aside.adv-panel {
+        background: hsl(0 0% 100% / .88);
+        border-left-color: hsl(240 2% 78% / .5);
+      }
+      .export-menu {
+        background: hsl(0 0% 100% / .85);
+        border-color: hsl(240 2% 78% / .4);
+        box-shadow: 0 12px 40px hsl(0 0% 0% / .15);
       }
     }
 
@@ -442,10 +464,12 @@
       top: 70px;
       right: 24px;
       width: 240px;
-      background: var(--surface);
-      border: 1px solid var(--border);
+      background: hsl(228 18% 12% / .78);
+      backdrop-filter: blur(24px) saturate(140%);
+      -webkit-backdrop-filter: blur(24px) saturate(140%);
+      border: 1px solid hsl(228 14% 28% / .5);
       border-radius: 12px;
-      box-shadow: 0 4px 24px hsl(0 0% 0% / .45);
+      box-shadow: 0 8px 32px hsl(0 0% 0% / .4), 0 0 0 1px hsl(228 14% 20% / .3);
       overflow: hidden;
       z-index: var(--z-part-card);
       animation: slideIn .18s ease;
@@ -499,8 +523,10 @@
       bottom: 0;
       width: var(--adv-w, 400px);
       min-width: 340px;
-      background: var(--surface);
-      border-left: 1px solid var(--border);
+      background: hsl(228 18% 11% / .92);
+      backdrop-filter: blur(24px) saturate(130%);
+      -webkit-backdrop-filter: blur(24px) saturate(130%);
+      border-left: 1px solid hsl(228 14% 20% / .5);
       display: flex;
       flex-direction: column;
       overflow: hidden;
@@ -1046,21 +1072,25 @@
       font-weight: 600;
       letter-spacing: 0.05em;
       text-transform: uppercase;
-      background: var(--surface-lo);
+      background: hsl(228 18% 12% / .7);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
       color: var(--text-1);
-      border: 1px solid var(--border);
+      border: 1px solid hsl(228 14% 28% / .4);
       border-radius: 3px;
       cursor: pointer;
       line-height: 1.4;
     }
-    .gizmo-mode-btn:hover { background: var(--surface-hover); }
+    .gizmo-mode-btn:hover { background: hsl(228 18% 16% / .85); }
     .gizmo-mode-btn:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
 
     #build-hover-tip {
       position: fixed;
       padding: 3px 8px;
-      background: var(--bg);
-      border: 1px solid var(--border);
+      background: hsl(228 18% 12% / .85);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid hsl(228 14% 28% / .4);
       border-radius: var(--r-sm);
       font-size: 0.6875rem;
       color: var(--text-1);
@@ -1766,8 +1796,10 @@
 
     .part-label {
       position: fixed;
-      background: var(--tooltip-bg);
-      border: 1px solid var(--border);
+      background: hsl(228 18% 12% / .85);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid hsl(228 14% 28% / .4);
       border-radius: 4px;
       color: var(--text-1);
       font-size: 0.75rem;
