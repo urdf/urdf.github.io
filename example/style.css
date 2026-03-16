@@ -1,7 +1,7 @@
     /* ── Design tokens ───────────────────────────────────────────────────── */
 
     :root {
-      --viewport-bg:   hsl(228, 22%, 7%);
+      --viewport-bg:   hsl(228, 12%, 18%);
       --bg:            hsl(228, 20%, 10%);
       --surface:       hsl(228, 18%, 12%);
       --surface-lo:    hsl(228, 20%, 9%);
@@ -77,11 +77,11 @@
       --shadow-md:    0 4px 24px hsl(0 0% 0% / .45);
       --shadow-lg:    0 12px 48px hsl(0 0% 0% / .55);
       --border-lo:    hsl(228, 12%, 16%);
-      /* Three.js grid colors (read by JS) */
-      --grid-major:   #888888;
-      --grid-minor:   #444444;
-      --grid-build-major: #666666;
-      --grid-build-minor: #3d3d3d;
+      /* Three.js grid colors (read by JS) — tuned against --viewport-bg */
+      --grid-major:   #505058;
+      --grid-minor:   #383840;
+      --grid-build-major: #585860;
+      --grid-build-minor: #404048;
     }
 
     @media (prefers-color-scheme: light) {
@@ -395,7 +395,7 @@
       cursor: pointer;
     }
     .mode-btn[aria-selected="true"] {
-      background: var(--surface-hover);
+      background: hsl(228 14% 24%);
       color: var(--text-1);
     }
     .mode-btn:not([aria-selected="true"]):hover { color: var(--text-2); }
@@ -429,6 +429,9 @@
       .mode-pill {
         background: hsl(0 0% 100% / .88);
         border-color: hsl(240 2% 78%);
+      }
+      .mode-btn[aria-selected="true"] {
+        background: hsl(240 5% 82%);
       }
     }
 
@@ -700,7 +703,8 @@
 
     .build-component {
       border-top: 1px solid var(--border);
-      padding: 6px 12px;
+      border-left: 2px solid var(--comp-color, transparent);
+      padding: 6px 12px 6px 10px;
     }
 
     .build-component-header {
@@ -1106,6 +1110,12 @@
     }
     .lib-pill:hover { color: var(--text-1); border-color: var(--text-2); }
     .lib-pill--active { background: var(--blue-bg); border-color: var(--blue); color: var(--blue-text); }
+    /* Category pills use their semantic color when active */
+    .lib-pill--active[data-cat="Sensor"]    { --pill-c: var(--cat-sensor);    background: color-mix(in srgb, var(--pill-c) 12%, transparent); border-color: var(--pill-c); color: var(--pill-c); }
+    .lib-pill--active[data-cat="Actuator"]  { --pill-c: var(--cat-actuator);  background: color-mix(in srgb, var(--pill-c) 12%, transparent); border-color: var(--pill-c); color: var(--pill-c); }
+    .lib-pill--active[data-cat="MCU"]       { --pill-c: var(--cat-mcu);       background: color-mix(in srgb, var(--pill-c) 12%, transparent); border-color: var(--pill-c); color: var(--pill-c); }
+    .lib-pill--active[data-cat="Power"]     { --pill-c: var(--cat-power);     background: color-mix(in srgb, var(--pill-c) 12%, transparent); border-color: var(--pill-c); color: var(--pill-c); }
+    .lib-pill--active[data-cat="Structural"]{ --pill-c: var(--cat-structural);background: color-mix(in srgb, var(--pill-c) 12%, transparent); border-color: var(--pill-c); color: var(--pill-c); }
     .lib-pill:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
 
     .lib-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }

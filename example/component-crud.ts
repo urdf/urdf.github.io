@@ -167,6 +167,7 @@ export class ComponentCrudController {
         const item = document.createElement('div');
         item.className = 'build-component';
         item.dataset.id = id;
+        if (def?.cssColor) item.style.setProperty('--comp-color', def.cssColor);
 
         const header = document.createElement('div');
         header.className = 'build-component-header';
