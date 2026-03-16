@@ -806,6 +806,8 @@ fetch('/robots/catalog.json')
             { id: 'so_arm100',         name: 'SO-ARM100',          label: 'SO-100',   urdf: '/robots/so_arm100/so100.urdf',                                         up: '+Z' },
             { id: 'simple_humanoid',   name: 'Simple Humanoid',    label: 'Humanoid', urdf: '/robots/simple_humanoid/simple_humanoid.urdf',                         up: '+Z' },
             { id: 'spryped',           name: 'Spryped',            label: 'Spryped',  urdf: '/robots/spryped/urdf/spryped.urdf', package: 'spryped_urdf_rev06: /robots/spryped', up: '+Z' },
+            { id: 'franka_panda',      name: 'Franka Panda',       label: 'Panda',    urdf: '/robots/franka_panda/panda.urdf', package: 'franka_panda: /robots/franka_panda',    up: '+Z' },
+            { id: 'orca_hand',         name: 'ORCA Hand',          label: 'ORCA',     urdf: '/robots/orca_hand/orcahand_right.urdf', package: 'orcahand_description: /robots/orca_hand', up: '+Z' },
         ];
     })
     .finally(() => {
