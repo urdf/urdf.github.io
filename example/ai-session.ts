@@ -9,7 +9,7 @@ import type { TextBlock, ToolUseBlock, ToolResBlock, ContentBlock, Msg } from '.
 import { renderMd } from './ai-types.js';
 import { parseSSE, appendUserBubble, appendAssistantBubble, appendSpinner } from './ai-chat-ui.js';
 
-export const LOCAL_PROXY = 'http://127.0.0.1:7337/claude'; // claude-local-proxy (npm i -g claude-local-proxy)
+export const LOCAL_PROXY = 'http://127.0.0.1:7337/v1/messages';
 export const MODEL       = 'claude-sonnet-4-6';
 
 export type ToolCardHandle = { setResult(ok: boolean, input?: Record<string, unknown>, result?: unknown): void };
