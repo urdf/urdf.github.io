@@ -363,30 +363,7 @@
       background: var(--viewport-bg);
     }
 
-    .viewport::before {
-      content: '';
-      position: absolute;
-      inset: 0;
-      background-image:
-        linear-gradient(hsl(228 12% 13%) 1px, transparent 1px),
-        linear-gradient(90deg, hsl(228 12% 13%) 1px, transparent 1px),
-        linear-gradient(hsl(228 12% 11%) 1px, transparent 1px),
-        linear-gradient(90deg, hsl(228 12% 11%) 1px, transparent 1px);
-      background-size: 100px 100px, 100px 100px, 20px 20px, 20px 20px;
-      mask-image: radial-gradient(ellipse 80% 80% at 50% 52%, black 20%, transparent 100%);
-      -webkit-mask-image: radial-gradient(ellipse 80% 80% at 50% 52%, black 20%, transparent 100%);
-      pointer-events: none;
-      z-index: -1;
-    }
-    @media (prefers-color-scheme: light) {
-      .viewport::before {
-        background-image:
-          linear-gradient(hsl(216 12% 82%) 1px, transparent 1px),
-          linear-gradient(90deg, hsl(216 12% 82%) 1px, transparent 1px),
-          linear-gradient(hsl(216 12% 84%) 1px, transparent 1px),
-          linear-gradient(90deg, hsl(216 12% 84%) 1px, transparent 1px);
-      }
-    }
+    /* Grid is now rendered by InfiniteGrid shader in the Three.js scene */
 
     /* ── Mode pill ────────────────────────────────────────────────────────── */
 

@@ -4,7 +4,8 @@ import { URDFBuildController, COMPONENT_CATALOG } from './build.js';
 import { URDFChatController } from './chat.js';
 import type { ChatCallbacks } from './chat.js';
 import type { GestureController } from './gesture.js';
-import { GridHelper } from 'three';
+import { Color } from 'three';
+import { InfiniteGrid } from './infinite-grid.js';
 import { MuJoCoSimulator } from './simulator.js';
 import { SimController } from './sim-ctrl.js';
 import { initPanel } from './panel.js';
@@ -52,34 +53,35 @@ const buildCtrl  = new URDFBuildController(viewer, buildNoticeEl);
 // ── Chat controller (constructed after all helpers are defined) ────────────
 let chatCtrl: URDFChatController;
 
-// Read grid colors from CSS variables (adapts to light/dark theme)
-function _cssColor(name: string, fallback: string): number {
+// Shader-based infinite grid (perspective-correct, distance-faded)
+function _cssColor(name: string, fallback: string): Color {
     const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
-    return parseInt((v || fallback).replace('#', ''), 16);
+    return new Color(parseInt((v || fallback).replace('#', ''), 16));
 }
 
-const _viewportGrid = new GridHelper(2, 20,
-    _cssColor('--grid-major', '888888'),
-    _cssColor('--grid-minor', '444444'));
-_viewportGrid.raycast = () => {};
-const _buildGrid = new GridHelper(0.5, 25,
-    _cssColor('--grid-build-major', '666666'),
-    _cssColor('--grid-build-minor', '3d3d3d'));
+const _viewportGrid = new InfiniteGrid({
+    majorSpacing: 0.1, minorSpacing: 0.02,        // 100mm major, 20mm minor
+    majorColor: _cssColor('--grid-major', '888888'),
+    minorColor: _cssColor('--grid-minor', '444444'),
+    fadeRadius: 1.5,
+});
+const _buildGrid = new InfiniteGrid({
+    majorSpacing: 0.05, minorSpacing: 0.01,        // 50mm major, 10mm minor
+    majorColor: _cssColor('--grid-build-major', '666666'),
+    minorColor: _cssColor('--grid-build-minor', '3d3d3d'),
+    fadeRadius: 0.6,
+});
 _buildGrid.visible = false;
-_buildGrid.raycast = () => {};
 requestAnimationFrame(() => { viewer.scene.add(_viewportGrid); viewer.scene.add(_buildGrid); });
 
 // Update grid colors when OS theme changes
 window.matchMedia('(prefers-color-scheme: light)').addEventListener('change', () => {
-    const setColors = (grid: GridHelper, major: string, minor: string) => {
-        const mat = grid.material as import('three').Material & { color?: import('three').Color };
-        if (Array.isArray(grid.material)) {
-            (grid.material[0] as { color?: import('three').Color }).color?.set(_cssColor(major, '888888'));
-            (grid.material[1] as { color?: import('three').Color }).color?.set(_cssColor(minor, '444444'));
-        }
-    };
-    setColors(_viewportGrid, '--grid-major', '--grid-minor');
-    setColors(_buildGrid, '--grid-build-major', '--grid-build-minor');
+    _viewportGrid.setColors(
+        _cssColor('--grid-major', '888888'),
+        _cssColor('--grid-minor', '444444'));
+    _buildGrid.setColors(
+        _cssColor('--grid-build-major', '666666'),
+        _cssColor('--grid-build-minor', '3d3d3d'));
     viewer.redraw();
 });
 
@@ -349,8 +351,8 @@ viewer.addEventListener('urdf-processed', () => {
         .forEach(s => { s.value = '0'; });
     requestAnimationFrame(() => {
         const groundY = viewer.shadowPlane.position.y;
-        _viewportGrid.position.y = groundY;
-        _buildGrid.position.y = groundY;
+        _viewportGrid.groundY = groundY;
+        _buildGrid.groundY = groundY;
         // Re-attach gizmo to newly loaded robot (joint objects are replaced on each reload)
         const selId = crudCtrl.getBuildSelCompId();
         if (selId) gizmoCtrl?.attach(selId);

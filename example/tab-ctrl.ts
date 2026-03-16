@@ -8,7 +8,7 @@ import type { URDFEditorController } from './editor.js';
 import type { URDFBuildController } from './build.js';
 import type { GizmoController } from './gizmo-ctrl.js';
 import type { LibraryTabController } from './library-tab.js';
-import type { GridHelper } from 'three';
+import type { InfiniteGrid } from './infinite-grid.js';
 
 export interface TabCtrlOptions {
     editorCtrl:      URDFEditorController;
@@ -16,8 +16,8 @@ export interface TabCtrlOptions {
     getGizmoCtrl:    () => GizmoController | null;
     libTabCtrl:      LibraryTabController;
     viewer:          URDFManipulator;
-    viewportGrid:    GridHelper;
-    buildGrid:       GridHelper;
+    viewportGrid:    InfiniteGrid;
+    buildGrid:       InfiniteGrid;
     chatInput:       HTMLTextAreaElement;
 }
 
@@ -91,7 +91,7 @@ export function initTabSwitching(opts: TabCtrlOptions): void {
         getGizmoCtrl()?.onBuildOpen();
         viewportGrid.visible = false;
         buildGrid.visible    = true;
-        buildGrid.position.y = viewer.shadowPlane.position.y;
+        buildGrid.groundY = viewer.shadowPlane.position.y;
         chatInput.placeholder = 'Ask AI to add or modify components…';
         libTabCtrl.buildLibraryGrid();
         openAdvPanelIfClosed();
