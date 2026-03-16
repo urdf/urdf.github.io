@@ -6,13 +6,9 @@ import * as THREE from 'three';
 
 const vertexShader = /* glsl */ `
 varying vec3 vWorldPos;
-uniform float uGroundY;
 
 void main() {
-    // Large quad in XZ, positioned at ground level
-    vec3 pos = position;
-    pos.y = uGroundY;
-    vWorldPos = (modelMatrix * vec4(pos, 1.0)).xyz;
+    vWorldPos = (modelMatrix * vec4(position, 1.0)).xyz;
     gl_Position = projectionMatrix * viewMatrix * vec4(vWorldPos, 1.0);
 }
 `;
@@ -83,7 +79,6 @@ export class InfiniteGrid extends THREE.Mesh {
             vertexShader,
             fragmentShader,
             uniforms: {
-                uGroundY:      { value: 0 },
                 uMajorSpacing: { value: majorSpacing },
                 uMinorSpacing: { value: minorSpacing },
                 uMajorColor:   { value: majorColor },
@@ -98,11 +93,12 @@ export class InfiniteGrid extends THREE.Mesh {
 
         super(geometry, material);
         this.frustumCulled = false;
+        this.renderOrder = -1;   // draw before shadow plane
         this.raycast = () => {};
     }
 
-    get groundY(): number { return this.material.uniforms.uGroundY.value; }
-    set groundY(v: number) { this.material.uniforms.uGroundY.value = v; }
+    get groundY(): number { return this.position.y; }
+    set groundY(v: number) { this.position.y = v - 0.0005; }  // slight offset below shadow plane to avoid Z-fight
 
     setSpacing(major: number, minor: number): void {
         this.material.uniforms.uMajorSpacing.value = major;
