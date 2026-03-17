@@ -1,6 +1,7 @@
 import type { URDFBuildController } from './build.js';
 import { LIBRARY } from '../src/generators/components/index.js';
-import { buildTools } from './chat-tools.js';
+import { buildTools, buildJointTools } from './chat-tools.js';
+import type { JointInfo } from './chat-tools.js';
 import { executeTool } from './chat-tool-executor.js';
 import type { TextBlock, ToolUseBlock, ToolResBlock, ContentBlock, Msg } from './ai-types.js';
 import { renderMd } from './ai-types.js';
@@ -51,6 +52,8 @@ export interface ChatCallbacks {
     openPanel:                (section: string) => void;
     openGestureHint:          () => void;
     isGestureActive:          () => boolean;
+    setJointValue:            (name: string, angle: number) => void;
+    getJointLimits:           () => Record<string, JointInfo>;
 }
 
 const SECTION_TITLES: Record<string, string> = {
@@ -503,12 +506,15 @@ export class URDFChatController extends AISession {
     // ── Build AI tools ────────────────────────────────────────────────────────
 
     private _buildTools(): object[] {
-        return buildTools({
-            buildCtrl:       this._buildCtrl,
-            guide:           this._guide,
-            isGestureActive: this._cb.isGestureActive,
-            getPartsList:    this._cb.getPartsList,
-        });
+        return [
+            ...buildTools({
+                buildCtrl:       this._buildCtrl,
+                guide:           this._guide,
+                isGestureActive: this._cb.isGestureActive,
+                getPartsList:    this._cb.getPartsList,
+            }),
+            ...buildJointTools(this._cb.getJointLimits),
+        ];
     }
 
     // ── Tool execution ────────────────────────────────────────────────────────
@@ -523,6 +529,7 @@ export class URDFChatController extends AISession {
             setPauseResolve:    fn => { this._pauseResolve = fn; },
             hideContinueButton: () => this._hideContinueButton(),
             appendActionCard:   (section, message) => this._appendActionCard(section, message),
+            setJointValue:      (name, angle) => this._cb.setJointValue(name, angle),
         });
     }
 
@@ -552,6 +559,15 @@ export class URDFChatController extends AISession {
 
         const briefNote = (!this._detailed && !this._guide)
             ? '\nBRIEF MODE: Answer in fewer than 4 lines. No preamble. Direct answers only. Emoji allowed as semantic shorthand when it replaces a word more efficiently than text.'
+            : '';
+
+        const jointLimits  = this._cb.getJointLimits();
+        const moveableJoints = Object.entries(jointLimits).filter(([, v]) => v.type !== 'fixed');
+        const jointBlock = moveableJoints.length > 0
+            ? '\nJoints (set_joint_value / set_pose, radians): ' +
+              moveableJoints
+                  .map(([n, v]) => v.type === 'continuous' ? n : `${n}[${v.lower.toFixed(2)}..${v.upper.toFixed(2)}]`)
+                  .join(' ')
             : '';
 
         const catalogActive = this._buildCtrl.isCatalogActive;
@@ -595,7 +611,7 @@ Current wheels: radius=${(wp.radius * 1000).toFixed(1)}mm  width=${(wp.width * 1
 Current components:
 ${compList}
 
-Available library components: ${LIBRARY.map(e => e.id).join(', ')}${focusedBlock}${partsBlock}
+Available library components: ${LIBRARY.map(e => e.id).join(', ')}${focusedBlock}${partsBlock}${jointBlock}
 
 Use tools to modify the robot. Prefer direct tool calls over lengthy explanations.${briefNote}`;
     }

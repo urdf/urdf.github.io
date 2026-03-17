@@ -11,6 +11,7 @@ export interface ExecutorDeps {
     setPauseResolve:    (fn: ((aborted: boolean) => void) | null) => void;
     hideContinueButton: () => void;
     appendActionCard:   (section: string, message: string) => void;
+    setJointValue:      (name: string, angle: number) => void;
 }
 
 export async function executeTool(
@@ -202,6 +203,18 @@ export async function executeTool(
                     powerbank: { radius: +(pb2.radius * 1000).toFixed(2), length: +(pb2.length * 1000).toFixed(2) },
                 },
             };
+        }
+        case 'set_joint_value': {
+            const { joint, angle } = args as { joint: string; angle: number };
+            deps.setJointValue(joint, angle);
+            return { ok: true, joint, angle };
+        }
+        case 'set_pose': {
+            const joints = args.joints as Record<string, number>;
+            for (const [joint, angle] of Object.entries(joints)) {
+                deps.setJointValue(joint, angle);
+            }
+            return { ok: true, joints_set: Object.keys(joints).length };
         }
         default:
             return { error: `Unknown tool: ${name}` };

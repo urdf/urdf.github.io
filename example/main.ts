@@ -924,6 +924,16 @@ document.querySelectorAll<HTMLButtonElement>('.build-section-detach').forEach(bt
         openPanel:        (section) => openPanel(section, inspectorCtrl, FLOAT_PANEL_DEFS, syncSlidersFromController),
         openGestureHint:  () => openGestureHint(),
         isGestureActive:  () => gestureCtrl !== null,
+        setJointValue:    (name, angle) => viewer.setJointValue(name, angle),
+        getJointLimits:   () => {
+            const joints = viewer.robot?.joints ?? {};
+            const result: Record<string, { type: string; lower: number; upper: number }> = {};
+            for (const [name, joint] of Object.entries(joints)) {
+                const j = joint as { jointType: string; limit: { lower: number; upper: number } };
+                result[name] = { type: j.jointType, lower: j.limit.lower, upper: j.limit.upper };
+            }
+            return result;
+        },
     };
     chatCtrl = new URDFChatController(buildCtrl, chatCallbacks);
     chatCtrl.init();

@@ -8,6 +8,55 @@ export interface ToolsDeps {
     getPartsList:   () => string[];
 }
 
+export interface JointInfo { type: string; lower: number; upper: number; }
+
+export function buildJointTools(
+    getJointLimits: () => Record<string, JointInfo>,
+): object[] {
+    const limits   = getJointLimits();
+    const moveable = Object.entries(limits).filter(([, v]) => v.type !== 'fixed');
+    if (moveable.length === 0) return [];
+
+    const jointDesc = moveable
+        .map(([name, v]) => {
+            const range = v.type === 'continuous'
+                ? 'continuous'
+                : `${v.lower.toFixed(3)}..${v.upper.toFixed(3)} rad`;
+            return `${name} (${range})`;
+        })
+        .join(', ');
+
+    return [
+        {
+            name: 'set_joint_value',
+            description: 'Set a single joint to a specific angle in radians. Clamped to joint limits automatically.',
+            input_schema: {
+                type: 'object',
+                properties: {
+                    joint: { type: 'string', description: `Joint name. Available: ${jointDesc}` },
+                    angle: { type: 'number', description: 'Angle in radians.' },
+                },
+                required: ['joint', 'angle'],
+            },
+        },
+        {
+            name: 'set_pose',
+            description: 'Set multiple joints simultaneously to express a pose ("fist", "peace sign", "point", etc.). All angles in radians.',
+            input_schema: {
+                type: 'object',
+                properties: {
+                    joints: {
+                        type: 'object',
+                        description: 'Map of joint name → angle in radians. Only include joints to change.',
+                        additionalProperties: { type: 'number' },
+                    },
+                },
+                required: ['joints'],
+            },
+        },
+    ];
+}
+
 export function buildTools(deps: ToolsDeps): object[] {
     const { buildCtrl, guide, isGestureActive, getPartsList } = deps;
 
