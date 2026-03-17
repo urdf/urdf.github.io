@@ -53,6 +53,7 @@ export interface ChatCallbacks {
     openGestureHint:          () => void;
     isGestureActive:          () => boolean;
     setJointValue:            (name: string, angle: number) => void;
+    animateJoints:            (joints: Record<string, number>, durationMs: number) => void;
     getJointLimits:           () => Record<string, JointInfo>;
 }
 
@@ -537,7 +538,7 @@ export class URDFChatController extends AISession {
             setPauseResolve:    fn => { this._pauseResolve = fn; },
             hideContinueButton: () => this._hideContinueButton(),
             appendActionCard:   (section, message) => this._appendActionCard(section, message),
-            setJointValue:      (name, angle) => this._cb.setJointValue(name, angle),
+            animateJoints:      (joints, durationMs) => this._cb.animateJoints(joints, durationMs),
         });
     }
 

@@ -942,6 +942,31 @@ document.querySelectorAll<HTMLButtonElement>('.build-section-detach').forEach(bt
         openGestureHint:  () => openGestureHint(),
         isGestureActive:  () => gestureCtrl !== null,
         setJointValue:    (name, angle) => viewer.setJointValue(name, angle),
+        animateJoints:    (() => {
+            let gen = 0;
+            const ease = (t: number) => t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+            return (joints: Record<string, number>, durationMs: number) => {
+                const myGen = ++gen;
+                if (durationMs <= 0) {
+                    for (const [name, angle] of Object.entries(joints)) viewer.setJointValue(name, angle);
+                    return;
+                }
+                const start: Record<string, number> = {};
+                for (const name of Object.keys(joints)) {
+                    start[name] = (viewer.robot?.joints[name] as { angle?: number } | undefined)?.angle ?? 0;
+                }
+                const t0 = performance.now();
+                const tick = () => {
+                    if (gen !== myGen) return;
+                    const t = Math.min(1, (performance.now() - t0) / durationMs);
+                    for (const [name, target] of Object.entries(joints)) {
+                        viewer.setJointValue(name, start[name] + (target - start[name]) * ease(t));
+                    }
+                    if (t < 1) requestAnimationFrame(tick);
+                };
+                requestAnimationFrame(tick);
+            };
+        })(),
         getJointLimits:   () => {
             const joints = viewer.robot?.joints ?? {};
             const result: Record<string, { type: string; lower: number; upper: number }> = {};

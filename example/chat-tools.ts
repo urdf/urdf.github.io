@@ -29,27 +29,29 @@ export function buildJointTools(
     return [
         {
             name: 'set_joint_value',
-            description: 'Set a single joint to a specific angle in radians. Clamped to joint limits automatically.',
+            description: 'Animate a single joint to a specific angle in radians. Clamped to joint limits automatically.',
             input_schema: {
                 type: 'object',
                 properties: {
-                    joint: { type: 'string', description: `Joint name. Available: ${jointDesc}` },
-                    angle: { type: 'number', description: 'Angle in radians.' },
+                    joint:       { type: 'string', description: `Joint name. Available: ${jointDesc}` },
+                    angle:       { type: 'number', description: 'Target angle in radians.' },
+                    duration_ms: { type: 'number', description: 'Animation duration in ms (default 600). Use 0 for instant.' },
                 },
                 required: ['joint', 'angle'],
             },
         },
         {
             name: 'set_pose',
-            description: 'Set multiple joints simultaneously to express a pose ("fist", "peace sign", "point", etc.). All angles in radians.',
+            description: 'Animate multiple joints to express a pose ("fist", "peace sign", "point", etc.). All angles in radians.',
             input_schema: {
                 type: 'object',
                 properties: {
                     joints: {
                         type: 'object',
-                        description: 'Map of joint name → angle in radians. Only include joints to change.',
+                        description: 'Map of joint name → target angle in radians. Only include joints to change.',
                         additionalProperties: { type: 'number' },
                     },
+                    duration_ms: { type: 'number', description: 'Animation duration in ms (default 600). Use 0 for instant.' },
                 },
                 required: ['joints'],
             },

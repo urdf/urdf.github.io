@@ -11,7 +11,7 @@ export interface ExecutorDeps {
     setPauseResolve:    (fn: ((aborted: boolean) => void) | null) => void;
     hideContinueButton: () => void;
     appendActionCard:   (section: string, message: string) => void;
-    setJointValue:      (name: string, angle: number) => void;
+    animateJoints:      (joints: Record<string, number>, durationMs: number) => void;
 }
 
 export async function executeTool(
@@ -205,15 +205,14 @@ export async function executeTool(
             };
         }
         case 'set_joint_value': {
-            const { joint, angle } = args as { joint: string; angle: number };
-            deps.setJointValue(joint, angle);
+            const { joint, angle, duration_ms } = args as { joint: string; angle: number; duration_ms?: number };
+            deps.animateJoints({ [joint]: angle }, duration_ms ?? 600);
             return { ok: true, joint, angle };
         }
         case 'set_pose': {
             const joints = args.joints as Record<string, number>;
-            for (const [joint, angle] of Object.entries(joints)) {
-                deps.setJointValue(joint, angle);
-            }
+            const duration_ms = args.duration_ms as number | undefined;
+            deps.animateJoints(joints, duration_ms ?? 600);
             return { ok: true, joints_set: Object.keys(joints).length };
         }
         default:
