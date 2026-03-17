@@ -1404,6 +1404,13 @@
     .gesture-icon  { font-size: 1rem; line-height: 1; flex-shrink: 0; width: 20px; text-align: center; }
     .gesture-label { font-size: 0.6875rem; color: var(--text-2); }
 
+    .gesture-mirror-row { padding: 0 12px 10px; }
+    #mirror-hand-btn.active {
+      background: var(--toggle-on-bg);
+      color: var(--blue-text);
+      border-color: var(--blue);
+    }
+
     /* ── Joint range ticks ──────────────────────────────────────────────── */
     .joint-ticks {
       position: relative;

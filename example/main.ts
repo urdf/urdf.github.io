@@ -43,6 +43,7 @@ const gestureToggleBtn = $<HTMLButtonElement>('gesture-toggle');
 const gestureOverlay   = $<HTMLCanvasElement>('gesture-overlay');
 const gestureVideo     = $<HTMLVideoElement>('gesture-video');
 const gestureSectionEl = $<HTMLDetailsElement>('gesture-section');
+const mirrorHandBtn    = $<HTMLButtonElement>('mirror-hand-btn');
 
 const editorPanelEl    = $('editor-panel');
 const buildNoticeEl    = $('build-notice');
@@ -555,6 +556,7 @@ gestureToggleBtn.addEventListener('click', async () => {
         onStop() {
             gestureCtrl = null;
             gestureToggleBtn.classList.remove('active');
+            mirrorHandBtn.classList.remove('active');
             gestureSectionEl.hidden = true;
         },
     });
@@ -567,6 +569,20 @@ gestureToggleBtn.addEventListener('click', async () => {
         .catch(() => {
             gestureCtrl = null;
         });
+});
+
+mirrorHandBtn.addEventListener('click', () => {
+    if (!gestureCtrl) return;
+    const active = mirrorHandBtn.classList.toggle('active');
+    if (active) {
+        gestureCtrl.setMirrorMode((joints) => {
+            for (const [name, angle] of Object.entries(joints)) {
+                viewer.setJointValue(name, angle);
+            }
+        });
+    } else {
+        gestureCtrl.setMirrorMode(null);
+    }
 });
 
 // ── Init panel (open/close + resize) ─────────────────────────────────────

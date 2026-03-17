@@ -129,6 +129,10 @@ export class GestureController {
     private _stableGestureName = '';
     private _thumbsUpFired = false;
 
+    // ── Mirror mode ───────────────────────────────────────────────────────
+    private _mirrorCallback: ((joints: Record<string, number>) => void) | null = null;
+    private _mirrorFilters = new Map<string, OneEuroFilter>();
+
     // ── Raycasting / drag integration ─────────────────────────────────────
     private _raycaster = new THREE.Raycaster();
     private _overRobot = false;
@@ -226,6 +230,11 @@ export class GestureController {
         this._paramCallback = null;
     }
 
+    setMirrorMode(cb: ((joints: Record<string, number>) => void) | null): void {
+        this._mirrorCallback = cb;
+        if (!cb) this._mirrorFilters.forEach(f => f.reset());
+    }
+
     setParamCallback(cb: ((deltaRad: number) => void) | null): void {
         this._paramCallback = cb;
         if (cb) {
@@ -256,6 +265,21 @@ export class GestureController {
 
             if (hands.length === 0) {
                 this._resetTimers();
+            } else if (this._mirrorCallback) {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const worldLms: { x: number; y: number; z: number }[] = (result as any).worldLandmarks?.[0] ?? [];
+                if (worldLms.length >= 21) {
+                    const pose = this._computeHandPose(worldLms);
+                    const t = performance.now();
+                    const filtered: Record<string, number> = {};
+                    for (const [name, val] of Object.entries(pose)) {
+                        if (!this._mirrorFilters.has(name)) {
+                            this._mirrorFilters.set(name, new OneEuroFilter(2.0, 0.05));
+                        }
+                        filtered[name] = this._mirrorFilters.get(name)!.filter(val, t);
+                    }
+                    this._mirrorCallback(filtered);
+                }
             } else if (hands.length >= 2) {
                 this._handleZoom(hands);
                 this._resetOneHandTimers();
@@ -554,6 +578,7 @@ export class GestureController {
         this._stableGestureName = '';
         this._wristFilterX.reset();
         this._wristFilterY.reset();
+        this._mirrorFilters.forEach(f => f.reset());
         this._clearHover();
         this.onPointerLeave?.();
     }
@@ -568,6 +593,46 @@ export class GestureController {
     private _resetDwell(): void {
         this.dwellStart = 0;
         this.dwellMoved = false;
+    }
+
+    // Compute per-joint curl angles from MediaPipe world landmarks.
+    // Returns ORCA Hand right-hand joint names → angle in radians (0 = straight).
+    // curl(a,b,c) = π − angle-at-b, so 0 = straight and ~π/2 = fully bent.
+    // setJointValue clamps to limits; unknown joint names on other robots are silently ignored.
+    private _computeHandPose(lms: { x: number; y: number; z: number }[]): Record<string, number> {
+        const curl = (
+            a: { x: number; y: number; z: number },
+            b: { x: number; y: number; z: number },
+            c: { x: number; y: number; z: number },
+        ): number => {
+            const v1x = a.x - b.x, v1y = a.y - b.y, v1z = a.z - b.z;
+            const v2x = c.x - b.x, v2y = c.y - b.y, v2z = c.z - b.z;
+            const dot = v1x * v2x + v1y * v2y + v1z * v2z;
+            const m = Math.sqrt((v1x ** 2 + v1y ** 2 + v1z ** 2) * (v2x ** 2 + v2y ** 2 + v2z ** 2));
+            if (m < 1e-10) return 0;
+            return Math.PI - Math.acos(Math.max(-1, Math.min(1, dot / m)));
+        };
+
+        // MediaPipe landmark indices:
+        //   Thumb:  1=CMC  2=MCP  3=IP   4=tip
+        //   Index:  5=MCP  6=PIP  7=DIP  8=tip
+        //   Middle: 9=MCP 10=PIP 11=DIP 12=tip
+        //   Ring:  13=MCP 14=PIP 15=DIP 16=tip
+        //   Pinky: 17=MCP 18=PIP 19=DIP 20=tip
+        const thumbIp = curl(lms[2], lms[3], lms[4]);
+        return {
+            right_index_mcp:  curl(lms[0], lms[5],  lms[6]),
+            right_index_pip:  curl(lms[5], lms[6],  lms[7]),
+            right_middle_mcp: curl(lms[0], lms[9],  lms[10]),
+            right_middle_pip: curl(lms[9], lms[10], lms[11]),
+            right_ring_mcp:   curl(lms[0], lms[13], lms[14]),
+            right_ring_pip:   curl(lms[13], lms[14], lms[15]),
+            right_pinky_mcp:  curl(lms[0], lms[17], lms[18]),
+            right_pinky_pip:  curl(lms[17], lms[18], lms[19]),
+            right_thumb_mcp:  curl(lms[1], lms[2],  lms[3]),
+            right_thumb_pip:  thumbIp,
+            right_thumb_dip:  thumbIp * 0.7, // no 4th landmark — approximate from IP flex
+        };
     }
 
     private _drawHand(ctx: CanvasRenderingContext2D, lms: NormalizedLandmark[]): void {
