@@ -55,6 +55,7 @@ export interface ChatCallbacks {
     setJointValue:            (name: string, angle: number) => void;
     animateJoints:            (joints: Record<string, number>, durationMs: number) => void;
     getJointLimits:           () => Record<string, JointInfo>;
+    getPhysicsSpec:           () => { url: string; summary: string } | null;
 }
 
 const SECTION_TITLES: Record<string, string> = {
@@ -515,7 +516,7 @@ export class URDFChatController extends AISession {
     // ── Build AI tools ────────────────────────────────────────────────────────
 
     private _buildTools(): object[] {
-        return [
+        const tools = [
             ...buildTools({
                 buildCtrl:       this._buildCtrl,
                 guide:           this._guide,
@@ -524,6 +525,14 @@ export class URDFChatController extends AISession {
             }),
             ...buildJointTools(this._cb.getJointLimits),
         ];
+        if (this._cb.getPhysicsSpec()) {
+            tools.push({
+                name: 'get_physics_spec',
+                description: 'Fetch the full physics specification for the current robot: link masses, inertia tensors, joint axes, estimated dynamics (damping, friction), actuation model, and known limitations. Use when reasoning about forces, stability, or joint loading.',
+                input_schema: { type: 'object', properties: {} },
+            });
+        }
+        return tools;
     }
 
     // ── Tool execution ────────────────────────────────────────────────────────
@@ -539,6 +548,7 @@ export class URDFChatController extends AISession {
             hideContinueButton: () => this._hideContinueButton(),
             appendActionCard:   (section, message) => this._appendActionCard(section, message),
             animateJoints:      (joints, durationMs) => this._cb.animateJoints(joints, durationMs),
+            getPhysicsSpec:     () => this._cb.getPhysicsSpec(),
         });
     }
 
@@ -591,10 +601,14 @@ export class URDFChatController extends AISession {
             const jointList = moveableJoints
                 .map(([n, v]) => v.type === 'continuous' ? n : `${n}[${v.lower.toFixed(2)}..${v.upper.toFixed(2)}]`)
                 .join(' ');
+            const physicsSpec = this._cb.getPhysicsSpec();
+            const physicsBlock = physicsSpec
+                ? `\nPhysics: ${physicsSpec.summary}\nCall get_physics_spec for full inertia/link data when reasoning about forces or stability.`
+                : '';
             return `${gest}You are a robot joint controller embedded in a live 3D URDF viewer.
 A pre-built robot is loaded. Use set_joint_value or set_pose to animate it. Angles in radians; limits enforced automatically.
 
-Joints (${moveableJoints.length} moveable): ${jointList}${partsBlock}
+Joints (${moveableJoints.length} moveable): ${jointList}${partsBlock}${physicsBlock}
 
 Prefer direct tool calls over explanations. Name poses naturally (fist, peace sign, point, open hand, thumbs up).${briefNote}`;
         }

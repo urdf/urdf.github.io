@@ -967,6 +967,15 @@ document.querySelectorAll<HTMLButtonElement>('.build-section-detach').forEach(bt
                 requestAnimationFrame(tick);
             };
         })(),
+        getPhysicsSpec:   () => {
+            // Detect ORCA hand by its unique joint combination
+            const joints = viewer.robot?.joints ?? {};
+            if (!joints['right_wrist'] || !joints['right_thumb_abd']) return null;
+            return {
+                url: '/robots/orca_hand/physics-spec.json',
+                summary: 'Tendon-driven, 17 DOF. Hand mass ~0.23 kg (palm+fingers), tower 0.9 kg (fixed mount). No damping in URDF (est. ~0.003 Nm·s/rad per finger joint). Effort limits (100 Nm) are placeholders — real finger torques 0.5–2 Nm. MCP:PIP flexion coupling ~1:0.7 (tendon, not encoded in URDF).',
+            };
+        },
         getJointLimits:   () => {
             const joints = viewer.robot?.joints ?? {};
             const result: Record<string, { type: string; lower: number; upper: number }> = {};

@@ -12,6 +12,7 @@ export interface ExecutorDeps {
     hideContinueButton: () => void;
     appendActionCard:   (section: string, message: string) => void;
     animateJoints:      (joints: Record<string, number>, durationMs: number) => void;
+    getPhysicsSpec:     () => { url: string; summary: string } | null;
 }
 
 export async function executeTool(
@@ -203,6 +204,13 @@ export async function executeTool(
                     powerbank: { radius: +(pb2.radius * 1000).toFixed(2), length: +(pb2.length * 1000).toFixed(2) },
                 },
             };
+        }
+        case 'get_physics_spec': {
+            const spec = deps.getPhysicsSpec();
+            if (!spec) return { error: 'No physics spec for current robot' };
+            const resp = await fetch(spec.url);
+            if (!resp.ok) return { error: `Failed to fetch physics spec: ${resp.status}` };
+            return await resp.json();
         }
         case 'set_joint_value': {
             const { joint, angle, duration_ms } = args as { joint: string; angle: number; duration_ms?: number };
