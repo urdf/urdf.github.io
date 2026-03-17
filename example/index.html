@@ -522,11 +522,12 @@
               </button>
             </div>
             <div class="chat-empty-prompt-label">Try an example</div>
-            <div class="chat-empty-chips" aria-label="Example prompts">
-              <button type="button" class="chat-empty-chip" data-prompt="Build me a 2-wheel robot car with caster">2-wheel car with caster</button>
-              <button type="button" class="chat-empty-chip" data-prompt="Build a 4-DOF robot arm for a desk">4-DOF desk arm</button>
-              <button type="button" class="chat-empty-chip" data-prompt="Create a mobile base with a lidar mount">Mobile base with lidar</button>
+            <div class="chat-prompt-carousel">
+              <button type="button" class="chat-carousel-arrow" id="chat-carousel-prev" aria-label="Previous examples" hidden>‹</button>
+              <div class="chat-empty-chips" id="chat-empty-chips" aria-label="Example prompts"></div>
+              <button type="button" class="chat-carousel-arrow" id="chat-carousel-next" aria-label="Next examples" hidden>›</button>
             </div>
+            <div class="chat-carousel-dots" id="chat-carousel-dots"></div>
           </div>
         </div>
         <div class="ai-input-embed" id="input-bar">

@@ -84,6 +84,29 @@ const BUILD_CMDS: Record<string, CmdEntry> = {
     export: { desc: 'Export URDF + STL ZIP' },
 };
 
+// ── Prompt suggestions ────────────────────────────────────────────────────────
+
+interface Prompt { label: string; text: string; }
+
+const ORCA_PROMPTS: Prompt[] = [
+    { label: 'Fist → open hand',    text: 'Slowly curl into a fist, then open to a flat palm' },
+    { label: 'Peace sign ✌️',       text: 'Show me a peace sign' },
+    { label: 'Precision pinch',     text: 'Set up a precision pinch between thumb and index fingertip' },
+    { label: 'Max finger spread',   text: 'Spread all fingers as wide as possible — maximum abduction' },
+    { label: 'Gravity analysis',    text: 'Which joints carry the most gravitational stress in an open hand? Show the highest-load pose and explain why' },
+    { label: 'Tendon coupling',     text: 'Demonstrate MCP:PIP tendon coupling — curl only the knuckle joints and explain what happens to the PIP joints' },
+    { label: 'ASL A → B → C',      text: 'Sign the ASL letters A, B, and C in sequence, pausing on each' },
+    { label: 'Power vs precision',  text: 'Show a power grip, then a precision grip — explain the mechanical trade-off between the two' },
+];
+
+const BUILD_PROMPTS: Prompt[] = [
+    { label: '2-wheel car',         text: 'Build me a 2-wheel robot car with caster' },
+    { label: '4-DOF desk arm',      text: 'Build a 4-DOF robot arm for a desk' },
+    { label: 'Mobile + lidar',      text: 'Create a mobile base with a lidar mount' },
+];
+
+const PAGE_SIZE = 4;
+
 // ── Main controller ───────────────────────────────────────────────────────────
 
 export class URDFChatController extends AISession {
@@ -92,6 +115,8 @@ export class URDFChatController extends AISession {
     private _detailed = false;
     private _guide = false;
     private _cmdAcIdx = -1;
+    private _promptPage = 0;
+    private _promptSet  = '';
     private _pauseResolve: ((aborted: boolean) => void) | null = null;
     private _provider: Provider = 'anthropic';
     private _model = MODEL;
@@ -222,14 +247,16 @@ export class URDFChatController extends AISession {
             this._cb.initRobot('custom', 'My Robot');
             this._inputEl.focus();
         });
-        for (const chip of document.querySelectorAll<HTMLButtonElement>('.chat-empty-chip')) {
-            chip.addEventListener('click', () => {
-                const prompt = chip.dataset.prompt?.trim();
-                if (!prompt) return;
-                this._inputEl.value = prompt;
-                this._inputEl.dispatchEvent(new Event('input'));
-                this._inputEl.focus();
-            });
+        // Event delegation — handles dynamically generated chips
+        document.getElementById('chat-empty-chips')?.addEventListener('click', (e) => {
+            const chip = (e.target as HTMLElement).closest<HTMLButtonElement>('.chat-empty-chip');
+            if (!chip) return;
+            const prompt = chip.dataset.prompt?.trim();
+            if (!prompt) return;
+            this._inputEl.value = prompt;
+            this._inputEl.dispatchEvent(new Event('input'));
+            this._inputEl.focus();
+        });
         }
         this._historyToggleEl.addEventListener('click', () => {
             const open = !this._messagesEl.classList.contains('show-accepted-history');
@@ -284,6 +311,65 @@ export class URDFChatController extends AISession {
             this._toolCountBtn.hidden = !active;
             if (active) this._toolCountBtn.textContent = `${this._buildTools().length} tools`;
         }
+        this._populateSuggestions();
+    }
+
+    private _populateSuggestions(): void {
+        const chipsEl = document.getElementById('chat-empty-chips');
+        const dotsEl  = document.getElementById('chat-carousel-dots');
+        const prevBtn = document.getElementById('chat-carousel-prev') as HTMLButtonElement | null;
+        const nextBtn = document.getElementById('chat-carousel-next') as HTMLButtonElement | null;
+        if (!chipsEl) return;
+
+        const joints  = this._cb.getJointLimits();
+        const isOrca  = 'right_wrist' in joints && 'right_thumb_abd' in joints;
+        const newSet  = isOrca ? 'orca' : 'build';
+        const prompts = isOrca ? ORCA_PROMPTS : BUILD_PROMPTS;
+
+        // Reset page when the prompt set changes (e.g. different robot loaded)
+        if (newSet !== this._promptSet) {
+            this._promptSet  = newSet;
+            this._promptPage = 0;
+        }
+
+        const pages = Math.ceil(prompts.length / PAGE_SIZE);
+
+        const render = () => {
+            const slice = prompts.slice(this._promptPage * PAGE_SIZE, (this._promptPage + 1) * PAGE_SIZE);
+            chipsEl.innerHTML = '';
+            for (const p of slice) {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'chat-empty-chip';
+                btn.textContent = p.label;
+                btn.dataset.prompt = p.text;
+                chipsEl.appendChild(btn);
+            }
+            if (dotsEl) {
+                dotsEl.innerHTML = '';
+                if (pages > 1) {
+                    for (let i = 0; i < pages; i++) {
+                        const dot = document.createElement('span');
+                        dot.className = `chat-carousel-dot${i === this._promptPage ? ' active' : ''}`;
+                        dotsEl.appendChild(dot);
+                    }
+                }
+            }
+            if (prevBtn) { prevBtn.hidden = pages <= 1; prevBtn.disabled = this._promptPage === 0; }
+            if (nextBtn) { nextBtn.hidden = pages <= 1; nextBtn.disabled = this._promptPage === pages - 1; }
+        };
+
+        // Wire arrows once (idempotent via replaceWith clone trick)
+        if (prevBtn && !prevBtn.dataset.wired) {
+            prevBtn.dataset.wired = '1';
+            prevBtn.addEventListener('click', () => { if (this._promptPage > 0) { this._promptPage--; render(); } });
+        }
+        if (nextBtn && !nextBtn.dataset.wired) {
+            nextBtn.dataset.wired = '1';
+            nextBtn.addEventListener('click', () => { if (this._promptPage < pages - 1) { this._promptPage++; render(); } });
+        }
+
+        render();
     }
 
     resumeFromGesture(): void {
