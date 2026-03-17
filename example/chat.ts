@@ -115,8 +115,8 @@ export class URDFChatController extends AISession {
     private _detailed = false;
     private _guide = false;
     private _cmdAcIdx = -1;
-    private _promptPage = 0;
-    private _promptSet  = '';
+    private _promptPage     = 0;
+    private _currentPrompts: Prompt[] = BUILD_PROMPTS;
     private _pauseResolve: ((aborted: boolean) => void) | null = null;
     private _provider: Provider = 'anthropic';
     private _model = MODEL;
@@ -257,7 +257,6 @@ export class URDFChatController extends AISession {
             this._inputEl.dispatchEvent(new Event('input'));
             this._inputEl.focus();
         });
-        }
         this._historyToggleEl.addEventListener('click', () => {
             const open = !this._messagesEl.classList.contains('show-accepted-history');
             this._messagesEl.classList.toggle('show-accepted-history', open);
@@ -288,7 +287,9 @@ export class URDFChatController extends AISession {
             this._inputEl.focus();
         });
 
+        this._initPromptCarousel();
         this.syncToolCount();
+        this._populateSuggestions();
         this._restoreHistory();
         this._syncAcceptedHistoryToggle();
     }
@@ -303,6 +304,8 @@ export class URDFChatController extends AISession {
             this._appendSystemMsg('Robot changed — conversation reset.');
         }
         this.syncToolCount();
+        // Defer until joints are settled in the viewer
+        requestAnimationFrame(() => this._populateSuggestions());
     }
 
     syncToolCount(): void {
@@ -311,65 +314,63 @@ export class URDFChatController extends AISession {
             this._toolCountBtn.hidden = !active;
             if (active) this._toolCountBtn.textContent = `${this._buildTools().length} tools`;
         }
-        this._populateSuggestions();
+    }
+
+    private _initPromptCarousel(): void {
+        document.getElementById('chat-carousel-prev')?.addEventListener('click', () => {
+            if (this._promptPage > 0) { this._promptPage--; this._renderPromptPage(); }
+        });
+        document.getElementById('chat-carousel-next')?.addEventListener('click', () => {
+            const pages = Math.ceil(this._currentPrompts.length / PAGE_SIZE);
+            if (this._promptPage < pages - 1) { this._promptPage++; this._renderPromptPage(); }
+        });
     }
 
     private _populateSuggestions(): void {
+        const joints    = this._cb.getJointLimits();
+        const isOrca    = 'right_wrist' in joints && 'right_thumb_abd' in joints;
+        const newPrompts = isOrca ? ORCA_PROMPTS : BUILD_PROMPTS;
+        if (newPrompts !== this._currentPrompts) {
+            this._currentPrompts = newPrompts;
+            this._promptPage     = 0;
+        }
+        this._renderPromptPage();
+    }
+
+    private _renderPromptPage(): void {
         const chipsEl = document.getElementById('chat-empty-chips');
         const dotsEl  = document.getElementById('chat-carousel-dots');
         const prevBtn = document.getElementById('chat-carousel-prev') as HTMLButtonElement | null;
         const nextBtn = document.getElementById('chat-carousel-next') as HTMLButtonElement | null;
         if (!chipsEl) return;
 
-        const joints  = this._cb.getJointLimits();
-        const isOrca  = 'right_wrist' in joints && 'right_thumb_abd' in joints;
-        const newSet  = isOrca ? 'orca' : 'build';
-        const prompts = isOrca ? ORCA_PROMPTS : BUILD_PROMPTS;
+        const prompts = this._currentPrompts;
+        const pages   = Math.ceil(prompts.length / PAGE_SIZE);
+        const slice   = prompts.slice(this._promptPage * PAGE_SIZE, (this._promptPage + 1) * PAGE_SIZE);
 
-        // Reset page when the prompt set changes (e.g. different robot loaded)
-        if (newSet !== this._promptSet) {
-            this._promptSet  = newSet;
-            this._promptPage = 0;
+        chipsEl.innerHTML = '';
+        for (const p of slice) {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'chat-empty-chip';
+            btn.textContent = p.label;
+            btn.dataset.prompt = p.text;
+            chipsEl.appendChild(btn);
         }
 
-        const pages = Math.ceil(prompts.length / PAGE_SIZE);
-
-        const render = () => {
-            const slice = prompts.slice(this._promptPage * PAGE_SIZE, (this._promptPage + 1) * PAGE_SIZE);
-            chipsEl.innerHTML = '';
-            for (const p of slice) {
-                const btn = document.createElement('button');
-                btn.type = 'button';
-                btn.className = 'chat-empty-chip';
-                btn.textContent = p.label;
-                btn.dataset.prompt = p.text;
-                chipsEl.appendChild(btn);
-            }
-            if (dotsEl) {
-                dotsEl.innerHTML = '';
-                if (pages > 1) {
-                    for (let i = 0; i < pages; i++) {
-                        const dot = document.createElement('span');
-                        dot.className = `chat-carousel-dot${i === this._promptPage ? ' active' : ''}`;
-                        dotsEl.appendChild(dot);
-                    }
+        if (dotsEl) {
+            dotsEl.innerHTML = '';
+            if (pages > 1) {
+                for (let i = 0; i < pages; i++) {
+                    const dot = document.createElement('span');
+                    dot.className = `chat-carousel-dot${i === this._promptPage ? ' active' : ''}`;
+                    dotsEl.appendChild(dot);
                 }
             }
-            if (prevBtn) { prevBtn.hidden = pages <= 1; prevBtn.disabled = this._promptPage === 0; }
-            if (nextBtn) { nextBtn.hidden = pages <= 1; nextBtn.disabled = this._promptPage === pages - 1; }
-        };
-
-        // Wire arrows once (idempotent via replaceWith clone trick)
-        if (prevBtn && !prevBtn.dataset.wired) {
-            prevBtn.dataset.wired = '1';
-            prevBtn.addEventListener('click', () => { if (this._promptPage > 0) { this._promptPage--; render(); } });
-        }
-        if (nextBtn && !nextBtn.dataset.wired) {
-            nextBtn.dataset.wired = '1';
-            nextBtn.addEventListener('click', () => { if (this._promptPage < pages - 1) { this._promptPage++; render(); } });
         }
 
-        render();
+        if (prevBtn) { prevBtn.hidden = pages <= 1; prevBtn.disabled = this._promptPage === 0; }
+        if (nextBtn) { nextBtn.hidden = pages <= 1; nextBtn.disabled = this._promptPage === pages - 1; }
     }
 
     resumeFromGesture(): void {
