@@ -268,6 +268,14 @@ export class URDFChatController extends AISession {
         this._hideContinueButton();
     }
 
+    notifyRobotLoaded(): void {
+        if (this._history.length > 0) {
+            this._clearChat();
+            this._appendSystemMsg('Robot changed — conversation reset.');
+        }
+        this.syncToolCount();
+    }
+
     syncToolCount(): void {
         if (this._toolCountBtn) {
             const active = this._buildCtrl.isCatalogActive;
@@ -573,6 +581,22 @@ export class URDFChatController extends AISession {
         const catalogActive = this._buildCtrl.isCatalogActive;
         const jointNames    = this._cb.getJointNames();
         const noRobot       = !catalogActive && parts.length === 0;
+
+        // Pre-built robot with moveable joints (e.g. ORCA Hand) — skip car-specific context entirely
+        if (!catalogActive && !this._guide && moveableJoints.length > 0) {
+            const gest = this._cb.isGestureActive()
+                ? '\nGESTURE MODE ACTIVE: call show_gesture_hint instead of writing gesture lists.\n'
+                : '';
+            const jointList = moveableJoints
+                .map(([n, v]) => v.type === 'continuous' ? n : `${n}[${v.lower.toFixed(2)}..${v.upper.toFixed(2)}]`)
+                .join(' ');
+            return `${gest}You are a robot joint controller embedded in a live 3D URDF viewer.
+A pre-built robot is loaded. Use set_joint_value or set_pose to animate it. Angles in radians; limits enforced automatically.
+
+Joints (${moveableJoints.length} moveable): ${jointList}${partsBlock}
+
+Prefer direct tool calls over explanations. Name poses naturally (fist, peace sign, point, open hand, thumbs up).${briefNote}`;
+        }
 
         const guideContext = noRobot
             ? `The workspace is empty. Ask the user what they want to build, then call init_robot with their choice:

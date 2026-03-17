@@ -350,6 +350,7 @@ viewer.addEventListener('urdf-processed', () => {
     loadingEl.classList.remove('visible');
     document.querySelectorAll<HTMLInputElement>('input[data-preview="true"]')
         .forEach(s => { s.value = '0'; });
+    chatCtrl?.notifyRobotLoaded();
     requestAnimationFrame(() => {
         const groundY = viewer.shadowPlane.position.y;
         _viewportGrid.groundY = groundY;
