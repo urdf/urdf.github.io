@@ -1178,7 +1178,14 @@ Use tools to modify the robot. Prefer direct tool calls over lengthy explanation
                 if (input && Object.keys(input).length) {
                     subtitleEl.textContent = Object.entries(input)
                         .slice(0, 3)
-                        .map(([k, v]) => `${k}=${typeof v === 'number' ? +Number(v).toFixed(3) : v}`)
+                        .map(([k, v]) => {
+                            if (typeof v === 'number') return `${k}=${+Number(v).toFixed(3)}`;
+                            if (typeof v === 'object' && v !== null) {
+                                const s = JSON.stringify(v);
+                                return `${k}=${s.length > 24 ? s.slice(0, 24) + '…' : s}`;
+                            }
+                            return `${k}=${v}`;
+                        })
                         .join(' ');
                 }
                 const body = document.createElement('div');

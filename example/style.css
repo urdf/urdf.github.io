@@ -2138,11 +2138,7 @@
 
     .chat-tool-card {
       align-self: flex-start;
-      display: flex;
-      align-items: center;
-      gap: 7px;
-      padding: 7px 10px;
-      min-height: 30px;
+      display: block;
       border: 1px solid var(--border);
       border-radius: 8px;
       background: var(--surface);
@@ -2152,6 +2148,16 @@
       max-width: 100%;
       transition: border-color .2s;
     }
+    .chat-tool-card > summary {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      padding: 7px 10px;
+      min-height: 30px;
+      list-style: none;
+      cursor: pointer;
+    }
+    .chat-tool-card > summary::-webkit-details-marker { display: none; }
     .chat-tool-card-name { color: var(--text-2); font-weight: 500; flex-shrink: 0; }
     .chat-tool-card-subtitle {
       color: var(--text-3);
