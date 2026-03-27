@@ -1407,12 +1407,14 @@
     .gesture-icon  { font-size: 1rem; line-height: 1; flex-shrink: 0; width: 20px; text-align: center; }
     .gesture-label { font-size: 0.6875rem; color: var(--text-2); }
 
-    .gesture-mirror-row { padding: 0 12px 10px; }
-    #mirror-hand-btn.active {
-      background: var(--toggle-on-bg);
-      color: var(--blue-text);
+    /* Shared active state for toggle buttons (ghost, mirror-hand, etc.) */
+    .toggle-btn.active {
+      background: color-mix(in srgb, var(--blue) 15%, transparent);
       border-color: var(--blue);
+      color: var(--blue-text);
     }
+
+    .gesture-mirror-row { padding: 0 12px 10px; }
 
     /* ── Joint range ticks ──────────────────────────────────────────────── */
     .joint-ticks {
@@ -1547,11 +1549,6 @@
       line-height: 1.6;
     }
     .ghost-btn:hover { background: var(--surface-2, var(--surface)); color: var(--text-1); }
-    .ghost-btn.active {
-      background: color-mix(in srgb, var(--blue) 15%, transparent);
-      border-color: var(--blue);
-      color: var(--blue-text);
-    }
 
     /* ── Pose presets ────────────────────────────────────────────────────── */
     .poses-panel { padding: 4px 6px 8px; }
@@ -3081,6 +3078,7 @@
       cursor: pointer;
     }
     .m-btn:hover { border-color: hsl(228 12% 32%); color: var(--text-1); }
+    .upload-success { color: var(--green); font-style: normal; font-size: 0.5rem; }
 
     .upload-zone {
       display: flex; flex-direction: column; align-items: center; justify-content: center;

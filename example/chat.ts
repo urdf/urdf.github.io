@@ -669,12 +669,6 @@ export class URDFChatController extends AISession {
 
         const jointLimits  = this._cb.getJointLimits();
         const moveableJoints = Object.entries(jointLimits).filter(([, v]) => v.type !== 'fixed');
-        const jointBlock = moveableJoints.length > 0
-            ? '\nJoints (set_joint_value / set_pose, radians): ' +
-              moveableJoints
-                  .map(([n, v]) => v.type === 'continuous' ? n : `${n}[${v.lower.toFixed(2)}..${v.upper.toFixed(2)}]`)
-                  .join(' ')
-            : '';
 
         const catalogActive = this._buildCtrl.isCatalogActive;
         const jointNames    = this._cb.getJointNames();
@@ -737,25 +731,9 @@ Current wheels: radius=${(wp.radius * 1000).toFixed(1)}mm  width=${(wp.width * 1
 Current components:
 ${compList}
 
-Available library components: ${LIBRARY.map(e => e.id).join(', ')}${focusedBlock}${partsBlock}${jointBlock}
+Available library components: ${LIBRARY.map(e => e.id).join(', ')}${focusedBlock}${partsBlock}
 
 Use tools to modify the robot. Prefer direct tool calls over lengthy explanations.${briefNote}`;
-    }
-
-    protected override async _executeTools(
-        toolCalls: ToolUseBlock[],
-        cardMap?: Map<string, ToolCardHandle>,
-    ): Promise<{ noFollowUp: boolean }> {
-        const results: ToolResBlock[] = [];
-        for (const tc of toolCalls) {
-            const card = cardMap?.get(tc.id) ?? this._appendToolCard(tc.name);
-            const res  = await this._executeTool(tc.name, tc.input);
-            const ok   = !(res as Record<string, unknown>).error;
-            card.setResult(ok, tc.input, res);
-            results.push({ type: 'tool_result', tool_use_id: tc.id, content: JSON.stringify(res) });
-        }
-        this._history.push({ role: 'user', content: results });
-        return { noFollowUp: false };
     }
 
     protected override async _runLoop(): Promise<void> {
@@ -766,8 +744,10 @@ Use tools to modify the robot. Prefer direct tool calls over lengthy explanation
                 ? await this._processStreamOpenAI(stream, spinner)
                 : await this._processStream(stream, spinner);
             this._history.push({ role: 'assistant', content: result.content });
+            this._saveHistory();
             if (!result.toolCalls.length) break;
-            await this._executeTools(result.toolCalls, result.toolCards);
+            const { noFollowUp } = await this._executeTools(result.toolCalls, result.toolCards);
+            if (noFollowUp) break;
         }
     }
 

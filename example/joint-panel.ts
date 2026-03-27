@@ -1,6 +1,7 @@
 // Joint slider panel — renders and updates the joint controls in the Robot tab.
 
 import { URDFManipulator } from '../src/index.js';
+import type { URDFJoint } from '../src/URDFClasses.js';
 
 const DEG_TO_RAD = Math.PI / 180; // multiply degrees → radians; divide radians → degrees
 
@@ -96,7 +97,7 @@ export function initPosePresets(
         if (!name || !_viewer?.robot) return;
         const joints: Record<string, number> = {};
         for (const [n, j] of Object.entries(_viewer.robot.joints)) {
-            if (j.jointType !== 'fixed') joints[n] = (j as { angle: number }).angle;
+            if (j.jointType !== 'fixed') joints[n] = (j as URDFJoint).angle;
         }
         const poses = _loadPoses();
         const idx = poses.findIndex(p => p.name === name);

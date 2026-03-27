@@ -4,7 +4,7 @@ import { URDFBuildController, COMPONENT_CATALOG } from './build.js';
 import { URDFChatController } from './chat.js';
 import type { ChatCallbacks } from './chat.js';
 import type { GestureController } from './gesture.js';
-import { Color, Mesh, Material, Object3D } from 'three';
+import { Color } from 'three';
 import { InfiniteGrid } from './infinite-grid.js';
 import { MuJoCoSimulator } from './simulator.js';
 import { SimController } from './sim-ctrl.js';
@@ -29,6 +29,12 @@ import { initKeyboardHandler } from './keyboard-ctrl.js';
 import { fmt, toLabel, linkNameFor } from './inspector-helpers.js';
 import { makeDefaultCubeSTL, DEFAULT_SCRIPT } from './default-script.js';
 import { updateDimensions, hideDimensions } from './dim-overlay.js';
+import type { URDFJoint } from '../src/URDFClasses.js';
+import { populateMeshTab } from './mesh-tab.js';
+import { initGhostOverlay } from './ghost-overlay.js';
+
+// Smooth ease-in-out used for joint animation (easeInOutQuad)
+const ease = (t: number): number => t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
 
 customElements.define('urdf-viewer', URDFManipulator);
 
@@ -203,7 +209,7 @@ function selectPart(jointName: string | null): void {
     inspectorName.textContent = toLabel(jointName);
 
     // ── Joint type badge ────────────────────────────────────────────────────
-    const jointType = (joint as { jointType?: string }).jointType ?? 'fixed';
+    const jointType = (joint as URDFJoint).jointType ?? 'fixed';
     const badgeCfg = JOINT_BADGE[jointType] ?? { cls: '', text: jointType };
     inspectorJointBadge.className = `pc-badge ${badgeCfg.cls}`;
     inspectorJointBadge.textContent = badgeCfg.text;
@@ -242,7 +248,7 @@ function selectPart(jointName: string | null): void {
     const isMovable = jointType !== 'fixed';
     inspectorJointSection.hidden = !isMovable;
     if (isMovable) {
-        const lim = (joint as { limit?: { lower?: number; upper?: number } }).limit ?? {};
+        const lim = (joint as URDFJoint).limit;
         const lower = lim.lower ?? -Math.PI;
         const upper = lim.upper ??  Math.PI;
         const isPrismatic = jointType === 'prismatic';
@@ -251,7 +257,7 @@ function selectPart(jointName: string | null): void {
         const sldrMax = isPrismatic ? upper * 1000 : upper * (180 / Math.PI);
         inspectorJointSldr.min   = String(sldrMin);
         inspectorJointSldr.max   = String(sldrMax);
-        const currentAngle = (joint as { angle?: number }).angle ?? 0;
+        const currentAngle = (joint as URDFJoint).angle ?? 0;
         inspectorJointSldr.value = String(toDisplay(currentAngle));
         inspectorJointVal.textContent = isPrismatic
             ? `${(currentAngle * 1000).toFixed(1)} mm`
@@ -263,7 +269,7 @@ function selectPart(jointName: string | null): void {
             const raw = parseFloat(inspectorJointSldr.value);
             const rad = isPrismatic ? raw / 1000 : raw * (Math.PI / 180);
             if (viewer.robot && jointName) {
-                (viewer.robot.joints[jointName] as { setJointValue?: (v: number) => void }).setJointValue?.(rad);
+                (viewer.robot.joints[jointName] as URDFJoint).setJointValue(rad);
                 viewer.redraw();
             }
             inspectorJointVal.textContent = isPrismatic
@@ -365,80 +371,8 @@ viewer.addEventListener('urdf-processed', () => {
         const selId = crudCtrl.getBuildSelCompId();
         if (selId) gizmoCtrl?.attach(selId);
     });
-    populateMeshTab();
+    populateMeshTab(viewer, buildCtrl);
 });
-
-function populateMeshTab(): void {
-    const meshList = document.getElementById('mesh-file-list');
-    if (!meshList) return;
-
-    // Collect mesh filenames referenced in robot objects
-    const meshNames: string[] = [];
-    if (viewer.robot) {
-        viewer.robot.traverse((obj: { userData?: { meshFileName?: string }; name?: string }) => {
-            const fn = obj.userData?.meshFileName;
-            if (fn && !meshNames.includes(fn)) meshNames.push(fn);
-        });
-    }
-
-    // Always show chassis.stl for robot-car
-    const allMeshes = meshNames.length > 0
-        ? meshNames
-        : ['chassis.stl'];
-
-    meshList.innerHTML = allMeshes.map(name => {
-        const isChassisStl = name === 'chassis.stl';
-        const regenBtn = isChassisStl
-            ? `<button type="button" class="m-btn" data-regen="${name}">Regenerate</button>`
-            : '';
-        return `<div class="mesh-row">
-            <span class="m-name">${name}</span>
-            <button type="button" class="m-btn" data-download="${name}">\u2193 Download</button>
-            ${regenBtn}
-        </div>`;
-    }).join('');
-
-    // Wire download buttons
-    meshList.querySelectorAll<HTMLButtonElement>('[data-download]').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const filename = btn.dataset.download!;
-            const pkg = (viewer as { _packageMap?: Map<string, string> })._packageMap;
-            if (pkg) {
-                for (const [key, url] of pkg.entries()) {
-                    if (key.endsWith(filename) || url.endsWith(filename)) {
-                        const a = document.createElement('a');
-                        a.href = url;
-                        a.download = filename;
-                        a.click();
-                        return;
-                    }
-                }
-            }
-            const orig = btn.textContent;
-            btn.textContent = 'Not found';
-            setTimeout(() => { btn.textContent = orig; }, 2000);
-        });
-    });
-
-    // Wire regenerate buttons (chassis.stl only for now)
-    meshList.querySelectorAll<HTMLButtonElement>('[data-regen]').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const filename = btn.dataset.regen!;
-            if (filename === 'chassis.stl') {
-                const orig = btn.textContent;
-                btn.textContent = 'Regenerating\u2026';
-                btn.disabled = true;
-                try {
-                    (buildCtrl as { regenerateChassis?: () => void }).regenerateChassis?.();
-                } catch { /* no-op */ }
-                setTimeout(() => {
-                    btn.textContent = orig;
-                    btn.disabled = false;
-                }, 1500);
-            }
-        });
-    });
-}
 
 // Mesh tab: custom STL upload
 document.getElementById('mesh-upload-input')?.addEventListener('change', (e) => {
@@ -450,7 +384,7 @@ document.getElementById('mesh-upload-input')?.addEventListener('change', (e) => 
     if (meshList) {
         const row = document.createElement('div');
         row.className = 'mesh-row';
-        row.innerHTML = `<span class="m-name">${file.name} <em style="color:var(--green);font-style:normal;font-size:.5rem">UPLOADED</em></span>`;
+        row.innerHTML = `<span class="m-name">${file.name} <em class="upload-success">UPLOADED</em></span>`;
         meshList.insertBefore(row, meshList.firstChild);
     }
 });
@@ -475,67 +409,43 @@ document.getElementById('chat-stl-upload')?.addEventListener('change', (e) => {
 // ── Init joint panel ──────────────────────────────────────────────────────
 initJointPanel(viewer, jointsPanel);
 
+// ── Joint animation helper ─────────────────────────────────────────────────
+// Shared by pose presets and chatCallbacks.animateJoints.
+let _animGen = 0;
+function _animateJoints(joints: Record<string, number>, durationMs: number): void {
+    if (durationMs <= 0) {
+        for (const [name, angle] of Object.entries(joints)) viewer.setJointValue(name, angle);
+        return;
+    }
+    const myGen = ++_animGen;
+    const start: Record<string, number> = {};
+    for (const name of Object.keys(joints)) {
+        start[name] = (viewer.robot?.joints[name] as URDFJoint | undefined)?.angle ?? 0;
+    }
+    const t0 = performance.now();
+    const tick = () => {
+        if (_animGen !== myGen) return;
+        const t = Math.min(1, (performance.now() - t0) / durationMs);
+        for (const [name, target] of Object.entries(joints)) {
+            viewer.setJointValue(name, start[name] + (target - start[name]) * ease(t));
+        }
+        if (t < 1) requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+}
+
 // ── Pose presets ──────────────────────────────────────────────────────────
 {
-    const ease = (t: number) => t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
     initPosePresets(
         $('poses-list'),
         $<HTMLInputElement>('pose-name-input'),
         $<HTMLButtonElement>('pose-save-btn'),
-        (joints) => {
-            const start: Record<string, number> = {};
-            for (const name of Object.keys(joints)) {
-                start[name] = (viewer.robot?.joints[name] as { angle?: number } | undefined)?.angle ?? 0;
-            }
-            const t0 = performance.now();
-            const tick = () => {
-                const t = Math.min(1, (performance.now() - t0) / 400);
-                for (const [name, target] of Object.entries(joints)) {
-                    viewer.setJointValue(name, start[name] + (target - start[name]) * ease(t));
-                }
-                if (t < 1) requestAnimationFrame(tick);
-            };
-            requestAnimationFrame(tick);
-        },
+        (joints) => _animateJoints(joints, 400),
     );
 }
 
 // ── Ghost overlay ─────────────────────────────────────────────────────────
-let _ghostRobot: Object3D | null = null;
-
-function _clearGhost(): void {
-    if (!_ghostRobot) return;
-    viewer.scene.remove(_ghostRobot);
-    _ghostRobot = null;
-    ghostBtn.classList.remove('active');
-    viewer.redraw();
-}
-
-ghostBtn.addEventListener('click', () => {
-    if (_ghostRobot) { _clearGhost(); return; }
-    if (!viewer.robot) return;
-    _ghostRobot = viewer.robot.clone(true);
-    _ghostRobot.traverse((node) => {
-        if (!(node instanceof Mesh)) return;
-        const mats = Array.isArray(node.material) ? node.material : [node.material];
-        node.material = mats.map((m: Material) => {
-            const c = m.clone();
-            c.transparent = true;
-            (c as Material & { opacity: number; depthWrite: boolean }).opacity = 0.2;
-            (c as Material & { depthWrite: boolean }).depthWrite = false;
-            return c;
-        });
-    });
-    viewer.scene.add(_ghostRobot);
-    ghostBtn.classList.add('active');
-    viewer.redraw();
-});
-
-// Show ghost-btn once a robot is loaded; clear stale ghost on robot switch
-viewer.addEventListener('urdf-processed', () => {
-    ghostBtn.hidden = false;
-    _clearGhost();
-});
+initGhostOverlay(viewer, ghostBtn);
 
 let _labelRaf = 0;
 viewer.addEventListener('pointermove', (e: PointerEvent) => {
@@ -997,7 +907,7 @@ document.querySelectorAll<HTMLButtonElement>('.build-section-detach').forEach(bt
                 const joint = viewer.robot?.joints[selPart];
                 if (!joint) return null;
                 const p = joint.position;
-                const jt = (joint as { jointType?: string }).jointType ?? 'fixed';
+                const jt = (joint as URDFJoint).jointType ?? 'fixed';
                 return {
                     id:   selPart,
                     type: jt,
@@ -1012,31 +922,7 @@ document.querySelectorAll<HTMLButtonElement>('.build-section-detach').forEach(bt
         openGestureHint:  () => openGestureHint(),
         isGestureActive:  () => gestureCtrl !== null,
         setJointValue:    (name, angle) => viewer.setJointValue(name, angle),
-        animateJoints:    (() => {
-            let gen = 0;
-            const ease = (t: number) => t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
-            return (joints: Record<string, number>, durationMs: number) => {
-                const myGen = ++gen;
-                if (durationMs <= 0) {
-                    for (const [name, angle] of Object.entries(joints)) viewer.setJointValue(name, angle);
-                    return;
-                }
-                const start: Record<string, number> = {};
-                for (const name of Object.keys(joints)) {
-                    start[name] = (viewer.robot?.joints[name] as { angle?: number } | undefined)?.angle ?? 0;
-                }
-                const t0 = performance.now();
-                const tick = () => {
-                    if (gen !== myGen) return;
-                    const t = Math.min(1, (performance.now() - t0) / durationMs);
-                    for (const [name, target] of Object.entries(joints)) {
-                        viewer.setJointValue(name, start[name] + (target - start[name]) * ease(t));
-                    }
-                    if (t < 1) requestAnimationFrame(tick);
-                };
-                requestAnimationFrame(tick);
-            };
-        })(),
+        animateJoints:    (joints, durationMs) => _animateJoints(joints, durationMs),
         getPhysicsSpec:   () => {
             // Detect ORCA hand by its unique joint combination
             const joints = viewer.robot?.joints ?? {};
@@ -1050,8 +936,7 @@ document.querySelectorAll<HTMLButtonElement>('.build-section-detach').forEach(bt
             const joints = viewer.robot?.joints ?? {};
             const result: Record<string, { type: string; lower: number; upper: number }> = {};
             for (const [name, joint] of Object.entries(joints)) {
-                const j = joint as { jointType: string; limit: { lower: number; upper: number } };
-                result[name] = { type: j.jointType, lower: j.limit.lower, upper: j.limit.upper };
+                result[name] = { type: joint.jointType, lower: joint.limit.lower, upper: joint.limit.upper };
             }
             return result;
         },
