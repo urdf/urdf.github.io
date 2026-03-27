@@ -98,14 +98,14 @@
       <!-- Mode / tab pill -->
       <div class="mode-pill" role="tablist" aria-label="View mode">
         <button type="button" class="mode-btn tab-btn" id="tab-inspect" data-tab="inspect"
-                role="tab" aria-selected="false" title="Control">Control</button>
+                role="tab" aria-selected="false" aria-controls="inspect-panel" title="Control">Control</button>
         <button type="button" class="mode-btn tab-btn" id="tab-build" data-tab="build"
-                role="tab" aria-selected="false" title="Build">Build</button>
+                role="tab" aria-selected="false" aria-controls="build-panel" title="Build">Build</button>
         <button type="button" class="mode-btn tab-btn" id="tab-editor" data-tab="editor"
-                role="tab" aria-selected="false" title="XML">XML</button>
+                role="tab" aria-selected="false" aria-controls="editor-panel" title="XML">XML</button>
         <span class="mode-sep" aria-hidden="true"></span>
         <button type="button" class="mode-btn mode-btn--panel tab-btn" id="tab-ai" data-tab="ai"
-                role="tab" aria-selected="true" title="AI">
+                role="tab" aria-selected="true" aria-controls="ai-panel" title="AI">
           <svg class="mode-icon" xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none"
                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/>
@@ -113,7 +113,7 @@
           </svg>
           AI</button>
         <button type="button" class="mode-btn mode-btn--panel tab-btn" id="tab-meshes" data-tab="meshes"
-                role="tab" aria-selected="false" title="Mesh">Mesh</button>
+                role="tab" aria-selected="false" aria-controls="meshes-panel" title="Mesh">Mesh</button>
       </div>
 
       <!-- 3D viewer -->
@@ -131,10 +131,10 @@
         </div>
         <div class="pc-joint" id="inspector-joint-section" hidden>
           <div class="pc-joint-top">
-            <span class="pc-joint-lbl">Drive angle</span>
+            <span class="pc-joint-lbl" id="pc-joint-lbl">Drive angle</span>
             <span class="pc-joint-val" id="inspector-joint-val">0°</span>
           </div>
-          <input type="range" class="joint-sldr" id="inspector-joint-sldr" min="-180" max="180" value="0">
+          <input type="range" class="joint-sldr" id="inspector-joint-sldr" min="-180" max="180" value="0" aria-labelledby="pc-joint-lbl">
         </div>
         <div class="pc-actions">
           <button type="button" class="pc-action details" id="inspector-details-btn">Inspect ›</button>
@@ -198,7 +198,7 @@
       </div>
 
       <!-- Control tab -->
-      <div class="tab-body" data-tab="inspect">
+      <div class="tab-body" data-tab="inspect" id="inspect-panel" role="tabpanel" aria-labelledby="tab-inspect">
         <div class="options-bar">
           <div class="options-row">
             <label class="option"><input type="checkbox" id="ignore-limits" /> Unlock</label>
@@ -235,9 +235,9 @@
           <summary>Simulate</summary>
           <div class="sim-controls">
             <div class="sim-toolbar">
-              <button type="button" id="sim-play-btn"  class="sim-btn" title="Start simulation">&#9654;</button>
-              <button type="button" id="sim-pause-btn" class="sim-btn" title="Pause simulation" hidden>&#9646;&#9646;</button>
-              <button type="button" id="sim-stop-btn"  class="sim-btn" title="Stop simulation"  hidden>&#9632;</button>
+              <button type="button" id="sim-play-btn"  class="sim-btn" title="Start simulation" aria-label="Start simulation">&#9654;</button>
+              <button type="button" id="sim-pause-btn" class="sim-btn" title="Pause simulation" aria-label="Pause simulation" hidden>&#9646;&#9646;</button>
+              <button type="button" id="sim-stop-btn"  class="sim-btn" title="Stop simulation"  aria-label="Stop simulation"  hidden>&#9632;</button>
               <button type="button" id="sim-reset-btn" class="sim-btn sim-btn--reset" title="Reset simulation">&#8635;</button>
               <span id="sim-status" class="sim-status">Ready</span>
             </div>
@@ -272,7 +272,7 @@
       </div>
 
       <!-- Build tab -->
-      <div class="tab-body" data-tab="build" id="build-panel">
+      <div class="tab-body" data-tab="build" id="build-panel" role="tabpanel" aria-labelledby="tab-build">
         <div class="sidebar-scroll">
           <div id="build-active-header" class="build-active-header" hidden>
             <span id="build-active-name" class="build-active-name"></span>
@@ -465,7 +465,7 @@
       </div>
 
       <!-- XML Editor tab -->
-      <div class="tab-body" data-tab="editor" id="editor-panel">
+      <div class="tab-body" data-tab="editor" id="editor-panel" role="tabpanel" aria-labelledby="tab-editor">
         <div class="editor-part-bar">
           <select id="part-select" hidden aria-label="Edit part file"></select>
           <button id="part-reset" hidden disabled title="Reset all parts to their original version">↺ Reset</button>
@@ -486,7 +486,7 @@
       </div>
 
       <!-- Meshes tab -->
-      <div class="tab-body" data-tab="meshes" id="meshes-panel">
+      <div class="tab-body" data-tab="meshes" id="meshes-panel" role="tabpanel" aria-labelledby="tab-meshes">
         <div class="sidebar-scroll">
           <div class="section-label">Mesh Files</div>
           <div id="mesh-file-list">
@@ -504,7 +504,7 @@
       </div>
 
       <!-- AI tab -->
-      <div class="tab-body ai-tab-body" data-tab="ai" id="ai-panel">
+      <div class="tab-body ai-tab-body" data-tab="ai" id="ai-panel" role="tabpanel" aria-labelledby="tab-ai">
         <div class="chat-pane">
           <button type="button" class="convo-history-btn" id="chat-history-toggle" hidden aria-expanded="false">
             Show accepted changes

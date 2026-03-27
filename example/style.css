@@ -2512,10 +2512,14 @@
       border-bottom: 1px solid var(--border);
       flex-shrink: 0;
       background: var(--bg);
-      scrollbar-width: none;
+      scrollbar-width: thin;
+      scrollbar-color: var(--border) transparent;
+      -webkit-mask-image: linear-gradient(to right, black 85%, transparent 100%);
+      mask-image: linear-gradient(to right, black 85%, transparent 100%);
     }
 
-    .editor-tabs::-webkit-scrollbar { display: none; }
+    .editor-tabs::-webkit-scrollbar { display: block; height: 3px; }
+    .editor-tabs::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
 
     .editor-tab {
       flex: 0 0 auto;
