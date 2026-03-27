@@ -5,7 +5,7 @@ import type { JointInfo } from './chat-tools.js';
 import { executeTool } from './chat-tool-executor.js';
 import type { TextBlock, ToolUseBlock, ToolResBlock, ContentBlock, Msg } from './ai-types.js';
 import { renderMd } from './ai-types.js';
-import { appendUserBubble, appendAssistantBubble, appendSpinner, appendAcceptedBubble, appendStlNote } from './ai-chat-ui.js';
+import { appendUserBubble, appendAssistantBubble, appendSpinner, appendStlNote } from './ai-chat-ui.js';
 import { AISession, LOCAL_PROXY, MODEL } from './ai-session.js';
 import type { ToolCardHandle } from './ai-session.js';
 import { $ } from './dom-utils.js';
@@ -396,7 +396,6 @@ export class URDFChatController extends AISession {
 
     private _updateEmptyState(): void {
         const empty = this._history.length === 0;
-        this._emptyStateEl.style.display = empty ? 'flex' : 'none';
         this._emptyStateEl.setAttribute('aria-hidden', String(!empty));
         this._chatPaneEl.classList.toggle('chat-empty', empty);
         if (empty) this._messagesEl.classList.remove('show-accepted-history');
@@ -1063,7 +1062,11 @@ Use tools to modify the robot. Prefer direct tool calls over lengthy explanation
                             if (!wrapper) return;
                             const summary = curText.slice(0, 80).replace(/\s+/g, ' ').trim();
                             wrapper.className = 'msg accepted';
-                            wrapper.innerHTML = `<span class="acc-check">✓</span>${summary}`;
+                            wrapper.replaceChildren();
+                            const check = document.createElement('span');
+                            check.className = 'acc-check';
+                            check.textContent = '✓';
+                            wrapper.append(check, document.createTextNode(summary));
                         },
                         onUndo: () => { /* undo not yet wired for GitHub Models path */ },
                         onAdjust: () => {

@@ -227,13 +227,13 @@ function selectPart(jointName: string | null): void {
     // Cylinder geometry extras
     const link = viewer.robot!.links[linkNameFor(jointName)];
     if (link) {
-        const cylGeom = link.traverse ? (() => {
-            let cyl: { parameters?: { radiusTop?: number; height?: number } } | null = null;
+        let cylGeom: { parameters?: { radiusTop?: number; height?: number } } | null = null;
+        if (link.traverse) {
             link.traverse((obj: { geometry?: { parameters?: { radiusTop?: number; height?: number }; type?: string } }) => {
-                if (!cyl && obj.geometry?.type === 'CylinderGeometry') cyl = obj.geometry as { parameters?: { radiusTop?: number; height?: number } };
+                if (!cylGeom && obj.geometry?.type === 'CylinderGeometry')
+                    cylGeom = obj.geometry as { parameters?: { radiusTop?: number; height?: number } };
             });
-            return cyl as { parameters?: { radiusTop?: number; height?: number } } | null;
-        })() : null;
+        }
         if (cylGeom?.parameters) {
             const r = cylGeom.parameters.radiusTop ?? 0;
             const h = cylGeom.parameters.height    ?? 0;
