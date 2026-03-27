@@ -32,6 +32,91 @@ export function makeScrubLabel(label: HTMLElement, input: HTMLInputElement): voi
 
 type JointEl = HTMLElement & { update: () => void };
 
+// ── Pose preset system ────────────────────────────────────────────────────
+
+type Pose = { name: string; joints: Record<string, number> };
+
+function _poseKey(): string {
+    if (!_viewer?.robot) return '';
+    const names = Object.values(_viewer.robot.joints)
+        .filter(j => j.jointType !== 'fixed')
+        .map(j => j.name)
+        .sort();
+    return 'urdf-poses-' + names.join(',');
+}
+
+function _loadPoses(): Pose[] {
+    const key = _poseKey();
+    if (!key) return [];
+    try { return JSON.parse(localStorage.getItem(key) || '[]'); }
+    catch { return []; }
+}
+
+function _savePoses(poses: Pose[]): void {
+    const key = _poseKey();
+    if (key) localStorage.setItem(key, JSON.stringify(poses));
+}
+
+export function initPosePresets(
+    posesList: HTMLElement,
+    nameInput: HTMLInputElement,
+    saveBtn: HTMLButtonElement,
+    applyPose: (joints: Record<string, number>) => void,
+): void {
+    function renderPoses(): void {
+        posesList.innerHTML = '';
+        for (const pose of _loadPoses()) {
+            const item = document.createElement('div');
+            item.className = 'pose-item';
+
+            const restoreBtn = document.createElement('button');
+            restoreBtn.type = 'button';
+            restoreBtn.className = 'pose-item-restore';
+            restoreBtn.textContent = pose.name;
+            restoreBtn.title = `Restore "${pose.name}"`;
+            restoreBtn.addEventListener('click', () => applyPose(pose.joints));
+
+            const delBtn = document.createElement('button');
+            delBtn.type = 'button';
+            delBtn.className = 'pose-item-del';
+            delBtn.textContent = '×';
+            delBtn.title = `Delete "${pose.name}"`;
+            delBtn.addEventListener('click', () => {
+                _savePoses(_loadPoses().filter(p => p.name !== pose.name));
+                renderPoses();
+            });
+
+            item.append(restoreBtn, delBtn);
+            posesList.appendChild(item);
+        }
+    }
+
+    saveBtn.addEventListener('click', () => {
+        const name = nameInput.value.trim();
+        if (!name || !_viewer?.robot) return;
+        const joints: Record<string, number> = {};
+        for (const [n, j] of Object.entries(_viewer.robot.joints)) {
+            if (j.jointType !== 'fixed') joints[n] = (j as { angle: number }).angle;
+        }
+        const poses = _loadPoses();
+        const idx = poses.findIndex(p => p.name === name);
+        if (idx >= 0) poses[idx] = { name, joints };
+        else poses.push({ name, joints });
+        _savePoses(poses);
+        nameInput.value = '';
+        renderPoses();
+    });
+
+    nameInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') saveBtn.click(); });
+
+    // Refresh list when a new robot loads
+    if (_viewer) {
+        _viewer.addEventListener('urdf-processed', renderPoses);
+    }
+
+    renderPoses();
+}
+
 let _viewer: URDFManipulator;
 let _jointsPanel: HTMLElement;
 let _jointPanelAbort: AbortController | null = null;

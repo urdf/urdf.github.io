@@ -4,7 +4,7 @@ import { URDFBuildController, COMPONENT_CATALOG } from './build.js';
 import { URDFChatController } from './chat.js';
 import type { ChatCallbacks } from './chat.js';
 import type { GestureController } from './gesture.js';
-import { Color } from 'three';
+import { Color, Mesh, Material, Object3D } from 'three';
 import { InfiniteGrid } from './infinite-grid.js';
 import { MuJoCoSimulator } from './simulator.js';
 import { SimController } from './sim-ctrl.js';
@@ -20,7 +20,7 @@ import { LIBRARY } from '../src/generators/components/index.js';
 import { RobotLoader, catalogToConfig } from './robot-loader.js';
 import type { RobotConfig, CatalogEntry } from './robot-loader.js';
 import { $ } from './dom-utils.js';
-import { initJointPanel, makeScrubLabel } from './joint-panel.js';
+import { initJointPanel, initPosePresets, makeScrubLabel } from './joint-panel.js';
 import { openPanel, openGestureHint } from './float-panel.js';
 import { RobotPicker } from './robot-carousel.js';
 import { GizmoController } from './gizmo-ctrl.js';
@@ -44,6 +44,7 @@ const gestureOverlay   = $<HTMLCanvasElement>('gesture-overlay');
 const gestureVideo     = $<HTMLVideoElement>('gesture-video');
 const gestureSectionEl = $<HTMLDetailsElement>('gesture-section');
 const mirrorHandBtn    = $<HTMLButtonElement>('mirror-hand-btn');
+const ghostBtn         = $<HTMLButtonElement>('ghost-btn');
 
 const editorPanelEl    = $('editor-panel');
 const buildNoticeEl    = $('build-notice');
@@ -469,6 +470,68 @@ document.getElementById('chat-stl-upload')?.addEventListener('change', (e) => {
 // ── Init joint panel ──────────────────────────────────────────────────────
 initJointPanel(viewer, jointsPanel);
 
+// ── Pose presets ──────────────────────────────────────────────────────────
+{
+    const ease = (t: number) => t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+    initPosePresets(
+        $('poses-list'),
+        $<HTMLInputElement>('pose-name-input'),
+        $<HTMLButtonElement>('pose-save-btn'),
+        (joints) => {
+            const start: Record<string, number> = {};
+            for (const name of Object.keys(joints)) {
+                start[name] = (viewer.robot?.joints[name] as { angle?: number } | undefined)?.angle ?? 0;
+            }
+            const t0 = performance.now();
+            const tick = () => {
+                const t = Math.min(1, (performance.now() - t0) / 400);
+                for (const [name, target] of Object.entries(joints)) {
+                    viewer.setJointValue(name, start[name] + (target - start[name]) * ease(t));
+                }
+                if (t < 1) requestAnimationFrame(tick);
+            };
+            requestAnimationFrame(tick);
+        },
+    );
+}
+
+// ── Ghost overlay ─────────────────────────────────────────────────────────
+let _ghostRobot: Object3D | null = null;
+
+function _clearGhost(): void {
+    if (!_ghostRobot) return;
+    viewer.scene.remove(_ghostRobot);
+    _ghostRobot = null;
+    ghostBtn.classList.remove('active');
+    viewer.redraw();
+}
+
+ghostBtn.addEventListener('click', () => {
+    if (_ghostRobot) { _clearGhost(); return; }
+    if (!viewer.robot) return;
+    _ghostRobot = viewer.robot.clone(true);
+    _ghostRobot.traverse((node) => {
+        if (!(node instanceof Mesh)) return;
+        const mats = Array.isArray(node.material) ? node.material : [node.material];
+        node.material = mats.map((m: Material) => {
+            const c = m.clone();
+            c.transparent = true;
+            (c as Material & { opacity: number; depthWrite: boolean }).opacity = 0.2;
+            (c as Material & { depthWrite: boolean }).depthWrite = false;
+            return c;
+        });
+    });
+    viewer.scene.add(_ghostRobot);
+    ghostBtn.classList.add('active');
+    viewer.redraw();
+});
+
+// Show ghost-btn once a robot is loaded; clear stale ghost on robot switch
+viewer.addEventListener('urdf-processed', () => {
+    ghostBtn.hidden = false;
+    _clearGhost();
+});
+
 let _labelRaf = 0;
 viewer.addEventListener('pointermove', (e: PointerEvent) => {
     cancelAnimationFrame(_labelRaf);
@@ -559,6 +622,7 @@ gestureToggleBtn.addEventListener('click', async () => {
             gestureToggleBtn.classList.remove('active');
             mirrorHandBtn.classList.remove('active');
             gestureSectionEl.hidden = true;
+            document.body.classList.remove('gesture-active');
         },
     });
     gestureCtrl.start()
@@ -566,6 +630,7 @@ gestureToggleBtn.addEventListener('click', async () => {
             gestureToggleBtn.classList.add('active');
             gestureSectionEl.hidden = false;
             gestureSectionEl.open = true;
+            document.body.classList.add('gesture-active');
         })
         .catch(() => {
             gestureCtrl = null;

@@ -255,8 +255,19 @@
         </details>
 
         <div class="sidebar-scroll">
-          <div class="section-label">Joints</div>
+          <div class="joints-header">
+            <div class="section-label">Joints</div>
+            <button type="button" id="ghost-btn" class="ghost-btn" title="Snapshot pose as ghost" hidden>Ghost</button>
+          </div>
           <div class="joints" id="joints"></div>
+          <div class="section-label" style="padding: 8px 12px 4px;">Poses</div>
+          <div class="poses-panel">
+            <div class="pose-save-row">
+              <input type="text" id="pose-name-input" class="pose-name-input" placeholder="Name...">
+              <button type="button" id="pose-save-btn" class="pose-save-btn">Save</button>
+            </div>
+            <div id="poses-list" class="poses-list"></div>
+          </div>
         </div>
       </div>
 

@@ -1385,6 +1385,9 @@
     /* Dim joint sliders while physics is running */
     body.simulating .joints input { pointer-events: none; opacity: 0.4; }
 
+    /* Dim joint sliders while gesture drive is active */
+    body.gesture-active .joints input { pointer-events: none; opacity: 0.4; }
+
     /* ── Gesture reference list (read-only, not interactive) ───────────── */
     .gesture-list {
       list-style: none;
@@ -1520,6 +1523,111 @@
       outline: 2px solid var(--blue);
       outline-offset: 1px;
     }
+
+    /* ── Joints section header (label + ghost btn) ───────────────────────── */
+    .joints-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 12px 4px;
+    }
+    .joints-header .section-label { padding: 0; }
+
+    .ghost-btn {
+      font-size: 0.5625rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding: 2px 7px;
+      border-radius: 4px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text-2);
+      cursor: pointer;
+      line-height: 1.6;
+    }
+    .ghost-btn:hover { background: var(--surface-2, var(--surface)); color: var(--text-1); }
+    .ghost-btn.active {
+      background: color-mix(in srgb, var(--blue) 15%, transparent);
+      border-color: var(--blue);
+      color: var(--blue-text);
+    }
+
+    /* ── Pose presets ────────────────────────────────────────────────────── */
+    .poses-panel { padding: 4px 6px 8px; }
+
+    .pose-save-row {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 6px;
+    }
+
+    .pose-name-input {
+      flex: 1;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      color: var(--text-1);
+      padding: 3px 7px;
+      font-size: 0.6875rem;
+      min-width: 0;
+    }
+    .pose-name-input:focus-visible { outline: 2px solid var(--blue); outline-offset: 1px; }
+
+    .pose-save-btn {
+      font-size: 0.625rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding: 3px 9px;
+      border-radius: 5px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text-1);
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .pose-save-btn:hover { background: var(--surface-2, var(--surface)); }
+
+    .poses-list { display: flex; flex-direction: column; gap: 3px; }
+
+    .pose-item {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 8px;
+      border-radius: 7px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+    }
+
+    .pose-item-restore {
+      flex: 1;
+      text-align: left;
+      font-size: 0.6875rem;
+      color: var(--text-1);
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .pose-item-restore:hover { color: var(--blue-text, var(--blue)); }
+
+    .pose-item-del {
+      font-size: 0.75rem;
+      line-height: 1;
+      color: var(--text-3);
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 2px 4px;
+      border-radius: 3px;
+      flex-shrink: 0;
+    }
+    .pose-item-del:hover { color: var(--text-1); background: var(--surface-2, var(--surface)); }
 
     .sidebar-backdrop {
       display: none;
