@@ -639,7 +639,7 @@ export class URDFChatController extends AISession {
         });
     }
 
-    // ── Conversation engine (copied from editor.ts pattern) ───────────────────
+    // ── Conversation engine ───────────────────────────────────────────────────
 
     private _buildSystem(): string {
         const entries = this._buildCtrl.getComponentEntries();
@@ -1065,9 +1065,7 @@ Use tools to modify the robot. Prefer direct tool calls over lengthy explanation
                             wrapper.className = 'msg accepted';
                             wrapper.innerHTML = `<span class="acc-check">✓</span>${summary}`;
                         },
-                        onUndo: () => {
-                            console.log('[chat] undo not yet implemented');
-                        },
+                        onUndo: () => { /* undo not yet wired for GitHub Models path */ },
                         onAdjust: () => {
                             this._inputEl.focus();
                         },

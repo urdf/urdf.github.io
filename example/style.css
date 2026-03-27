@@ -1192,6 +1192,8 @@
       text-transform: uppercase;
       padding: 10px 12px 4px;
     }
+    .section-label--tight  { padding: 8px 12px 4px; }
+    .section-label--spaced { margin-top: 12px; }
 
     /* ── Robot picker dropdown ──────────────────────────────────────────── */
 
@@ -1701,6 +1703,8 @@
 
     #urdf-error-banner.visible { display: flex; }
 
+    #urdf-error-text { flex: 1; word-break: break-word; }
+
     #urdf-error-banner button {
       background: none;
       border: none;
@@ -1921,6 +1925,7 @@
       display: none;
       z-index: var(--z-tooltip);
     }
+    .part-label.visible { display: block; }
 
     /* ── Motion & contrast ───────────────────────────────────────────────── */
 

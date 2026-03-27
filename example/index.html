@@ -120,7 +120,7 @@
       <urdf-viewer id="viewer" up="-Z" display-shadow ambient-color="#8ea0a8"></urdf-viewer>
 
       <!-- Floating part inspector card (replaces sidebar inspector) -->
-      <div id="inspector" class="part-card" style="display:none">
+      <div id="inspector" class="part-card" hidden>
         <div class="pc-hd">
           <span id="inspector-name" class="pc-name"></span>
           <span id="inspector-joint-badge" class="pc-badge" hidden></span>
@@ -164,7 +164,7 @@
       </div>
 
       <div id="urdf-error-banner" role="status">
-        <span id="urdf-error-text" style="flex:1;word-break:break-word;"></span>
+        <span id="urdf-error-text"></span>
         <button id="urdf-error-close" title="Dismiss">×</button>
       </div>
 
@@ -260,7 +260,7 @@
             <button type="button" id="ghost-btn" class="ghost-btn toggle-btn" title="Snapshot pose as ghost" hidden>Ghost</button>
           </div>
           <div class="joints" id="joints"></div>
-          <div class="section-label" style="padding: 8px 12px 4px;">Poses</div>
+          <div class="section-label section-label--tight">Poses</div>
           <div class="poses-panel">
             <div class="pose-save-row">
               <input type="text" id="pose-name-input" class="pose-name-input" placeholder="Name...">
@@ -493,13 +493,13 @@
             <!-- Populated by populateMeshTab() on urdf-processed -->
           </div>
 
-          <div class="section-label" style="margin-top: 12px;">Upload Custom Mesh</div>
+          <div class="section-label section-label--spaced">Upload Custom Mesh</div>
           <label class="upload-zone" for="mesh-upload-input">
             <span class="upload-zone-icon"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg></span>
             <span class="upload-zone-label">Drop STL or click to browse</span>
             <span class="upload-zone-sub">Supported: .stl, .dae, .obj</span>
           </label>
-          <input type="file" id="mesh-upload-input" accept=".stl,.dae,.obj" style="display:none">
+          <input type="file" id="mesh-upload-input" accept=".stl,.dae,.obj" hidden>
         </div>
       </div>
 
@@ -580,7 +580,7 @@
                   <path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
                 </svg>
               </label>
-              <input type="file" id="chat-stl-upload" accept=".stl" style="display:none">
+              <input type="file" id="chat-stl-upload" accept=".stl" hidden>
               <button type="button" id="chat-send" class="chat-send-btn" aria-label="Send message" title="Send (Enter)">
                 <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
                   <path d="M8 13V3M3.5 7.5L8 3l4.5 4.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>

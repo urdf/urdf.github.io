@@ -198,13 +198,13 @@ function selectPart(jointName: string | null): void {
     selectedJoint = jointName;
     const joint = jointName ? viewer.robot?.joints[jointName] : null;
     if (!joint || !jointName) {
-        inspectorEl.style.display = 'none';
+        inspectorEl.hidden = true;
         hideDimensions();
         if (crudCtrl.getBuildSelPartName()) { crudCtrl.setBuildSelPartName(null); crudCtrl.updateContextPill(null); }
         return;
     }
 
-    inspectorEl.style.display = '';
+    inspectorEl.hidden = false;
     updateDimensions(viewer, jointName);
     inspectorName.textContent = toLabel(jointName);
 
@@ -461,14 +461,14 @@ viewer.addEventListener('joint-mouseover', (e: Event) => {
     hoveredJointName = name;
     jointsPanel.querySelector(`[data-joint="${name}"]`)?.setAttribute('data-hovered', '');
     partLabel.textContent = toLabel(name);
-    partLabel.style.display = 'block';
+    partLabel.classList.add('visible');
 });
 
 viewer.addEventListener('joint-mouseout', (e: Event) => {
     const name = (e as CustomEvent<string>).detail;
     hoveredJointName = null;
     jointsPanel.querySelector(`[data-joint="${name}"]`)?.removeAttribute('data-hovered');
-    partLabel.style.display = 'none';
+    partLabel.classList.remove('visible');
 });
 
 // ── Init build sliders ────────────────────────────────────────────────────
