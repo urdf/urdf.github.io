@@ -207,6 +207,9 @@ function buildJointPanel(): void {
             }
         };
 
+        slider.setAttribute('aria-label', `${joint.name} angle`);
+        number.setAttribute('aria-label', `${joint.name} angle${isPrismatic ? ' (meters)' : ' (degrees)'}`);
+
         slider.addEventListener('input', () => {
             _viewer.setJointValue(joint.name, parseFloat(slider.value));
         }, { signal });

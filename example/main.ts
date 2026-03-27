@@ -74,7 +74,12 @@ const _buildGrid = new InfiniteGrid({
     fadeRadius: 0.6,
 });
 _buildGrid.visible = false;
-requestAnimationFrame(() => { viewer.scene.add(_viewportGrid); viewer.scene.add(_buildGrid); });
+requestAnimationFrame(() => {
+    viewer.scene.add(_viewportGrid);
+    viewer.scene.add(_buildGrid);
+    viewer.renderer.domElement.setAttribute('role', 'img');
+    viewer.renderer.domElement.setAttribute('aria-label', '3D robot viewer — interactive viewport');
+});
 
 // Update grid colors when OS theme changes
 window.matchMedia('(prefers-color-scheme: light)').addEventListener('change', () => {
