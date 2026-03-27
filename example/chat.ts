@@ -241,6 +241,8 @@ export class URDFChatController extends AISession {
             // don't leave this to Claude, it's too easy to skip.
             this._cb.initRobot('robot-car');
             this._runConversation('Please guide me through building this robot step by step.');
+            // initRobot switches to Build tab; re-assert AI tab so the conversation is visible.
+            document.getElementById('tab-ai')?.click();
         });
         document.getElementById('chat-new-robot')?.addEventListener('click', () => {
             this._guide = false;
